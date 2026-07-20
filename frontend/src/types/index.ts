@@ -11,6 +11,7 @@ export interface Bucket {
   size?: number;
   region?: string;
   websiteAccess: boolean;
+  publicUrl?: string;
   websiteConfig?: {
     indexDocument: string;
     errorDocument?: string;

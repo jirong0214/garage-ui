@@ -47,6 +47,7 @@ type BucketInfo struct {
 	Region        string               `json:"region,omitempty"`
 	WebsiteAccess bool                 `json:"websiteAccess"`
 	WebsiteConfig *BucketWebsiteConfig `json:"websiteConfig,omitempty"`
+	PublicURL     string               `json:"publicUrl,omitempty"`
 	Quotas        *BucketQuotas        `json:"quotas,omitempty"`
 
 	// EffectivePermissions is the caller's prefix-scoped permissions on this

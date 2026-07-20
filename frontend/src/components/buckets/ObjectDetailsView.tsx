@@ -9,10 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { IconTile } from '@/components/ui/icon-tile';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ObjectPreview } from '@/components/buckets/ObjectPreview';
-import { ArrowLeft, ChevronRight, Copy, Download, File, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Copy, Download, File, Link2, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadObject, formatBytes } from '@/lib/file-utils';
-import { formatDate } from '@/lib/utils';
+import { buildPublicObjectUrl, copyText, formatDate } from '@/lib/utils';
+import { ShareObjectDialog } from '@/components/buckets/ShareObjectDialog';
 
 function CardSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -50,6 +51,7 @@ export function ObjectDetailsView() {
   const [error, setError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     if (!bucketName || !objectKey) {
@@ -77,9 +79,13 @@ export function ObjectDetailsView() {
   const backHref = `/buckets/${bucketName}/objects${parentPath ? `?prefix=${encodeURIComponent(parentPath + '/')}` : ''}`;
   const pathSegments = parentPath ? parentPath.split('/').filter(Boolean) : [];
 
-  const copy = (text: string, label = 'Copied') => {
-    navigator.clipboard.writeText(text);
-    toast.success(label);
+  const copy = async (text: string, label = 'Copied') => {
+    try {
+      await copyText(text);
+      toast.success(label);
+    } catch {
+      toast.error('Failed to copy');
+    }
   };
 
   const handleDownload = () => {
@@ -166,7 +172,17 @@ export function ObjectDetailsView() {
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {bucket?.publicUrl && (
+            <Button variant="secondary" onClick={() => copy(buildPublicObjectUrl(bucket.publicUrl!, metadata.key), 'Public URL copied')}>
+              <Copy className="h-4 w-4" /> Copy public URL
+            </Button>
+          )}
+          {canRead && (
+            <Button variant="secondary" onClick={() => setShareOpen(true)}>
+              <Link2 className="h-4 w-4" /> Signed URL
+            </Button>
+          )}
           <Button variant="secondary" onClick={handleDownload}>
             <Download className="h-4 w-4" /> Download
           </Button>
@@ -242,6 +258,14 @@ export function ObjectDetailsView() {
         loading={deleting}
         onConfirm={handleDelete}
       />
+      {bucketName && objectKey && (
+        <ShareObjectDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          bucketName={bucketName}
+          objectKey={objectKey}
+        />
+      )}
     </div>
   );
 }

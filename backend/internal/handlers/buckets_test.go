@@ -21,7 +21,7 @@ import (
 func newBucketsTestApp(t *testing.T) (*fiber.App, *mocks.AdminMock) {
 	t.Helper()
 	admin := &mocks.AdminMock{}
-	h := NewBucketHandler(admin, nil) // s3 unused in this handler
+	h := NewBucketHandler(admin, nil, nil) // s3 unused in this handler
 	app := fiber.New()
 	app.Get("/buckets", h.ListBuckets)
 	app.Post("/buckets", h.CreateBucket)
@@ -47,7 +47,7 @@ func TestListBuckets_MapsAliasesAndStats(t *testing.T) {
 	admin.ListBucketsFn = func(_ context.Context) ([]models.ListBucketsResponseItem, error) {
 		return []models.ListBucketsResponseItem{
 			{ID: "id-1", Created: time.Unix(0, 0), GlobalAliases: []string{"alpha"}},
-			{ID: "id-2", Created: time.Unix(0, 0), GlobalAliases: []string{}},  // skipped: no global alias
+			{ID: "id-2", Created: time.Unix(0, 0), GlobalAliases: []string{}}, // skipped: no global alias
 			{ID: "id-3", Created: time.Unix(0, 0), GlobalAliases: []string{"gamma"}},
 		}, nil
 	}
@@ -97,6 +97,41 @@ func TestListBuckets_MapsAliasesAndStats(t *testing.T) {
 	}
 	if !foundAlpha || !foundGamma {
 		t.Errorf("missing buckets: alpha=%v gamma=%v", foundAlpha, foundGamma)
+	}
+}
+
+func TestListBuckets_ExposesConfiguredPublicURLOnlyForWebsiteBuckets(t *testing.T) {
+	admin := &mocks.AdminMock{}
+	h := NewBucketHandler(admin, nil, map[string]string{
+		"public":  "https://cdn.example.com",
+		"private": "https://private.example.com",
+	})
+	app := fiber.New()
+	app.Get("/buckets", h.ListBuckets)
+	admin.ListBucketsFn = func(context.Context) ([]models.ListBucketsResponseItem, error) {
+		return []models.ListBucketsResponseItem{
+			{ID: "1", GlobalAliases: []string{"public"}},
+			{ID: "2", GlobalAliases: []string{"private"}},
+		}, nil
+	}
+	admin.GetBucketInfoByAliasFn = func(_ context.Context, alias string) (*models.GarageBucketInfo, error) {
+		return &models.GarageBucketInfo{ID: alias, WebsiteAccess: alias == "public"}, nil
+	}
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/buckets", nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	var body struct {
+		Data models.BucketListResponse `json:"data"`
+	}
+	decodeJSON(t, resp.Body, &body)
+	if body.Data.Buckets[0].PublicURL != "https://cdn.example.com" {
+		t.Errorf("public URL = %q", body.Data.Buckets[0].PublicURL)
+	}
+	if body.Data.Buckets[1].PublicURL != "" {
+		t.Errorf("private bucket leaked public URL = %q", body.Data.Buckets[1].PublicURL)
 	}
 }
 

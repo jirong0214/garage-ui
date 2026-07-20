@@ -101,7 +101,7 @@ func newEnabledPolicyFixture(t *testing.T) (*routeFixture, string) {
 		cfg,
 		svc,
 		handlers.NewHealthHandler("test"),
-		handlers.NewBucketHandler(admin, s3),
+		handlers.NewBucketHandler(admin, s3, nil),
 		handlers.NewObjectHandler(s3, svc),
 		handlers.NewUserHandler(admin),
 		handlers.NewClusterHandler(admin),

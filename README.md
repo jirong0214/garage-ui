@@ -157,6 +157,19 @@ GARAGE_UI_GARAGE_ENDPOINT=http://garage:3900
 GARAGE_UI_GARAGE_ADMIN_TOKEN=your-token
 ```
 
+Object sharing can use a separate public S3 endpoint for presigned URLs while
+keeping normal data-plane traffic on the internal Garage endpoint. Stable
+website URLs are configured per bucket alias:
+
+```bash
+GARAGE_UI_GARAGE_PRESIGN_ENDPOINT=https://s3-api.example.com
+GARAGE_UI_GARAGE_PUBLIC_URLS='{"photos":"https://cdn.example.com"}'
+```
+
+`GARAGE_UI_GARAGE_PUBLIC_URLS` must be a JSON object. Public URLs are only
+returned for buckets with website access enabled. The presign endpoint host is
+part of the S3 signature and must be reachable by recipients of the URL.
+
 #### Loading sensitive values from files (`_FILE` suffix)
 
 For Docker and Kubernetes secrets, sensitive env vars can be read from files instead of plain values. Set `{VAR}_FILE=/path/to/file` and garage-ui uses the file's contents (trailing CR/LF trimmed) as the value. If both `{VAR}` and `{VAR}_FILE` are set, `_FILE` wins and a warning is logged. A missing or unreadable file stops startup.

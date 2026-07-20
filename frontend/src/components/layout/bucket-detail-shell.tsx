@@ -3,7 +3,7 @@ import { Database, Copy, Upload } from 'lucide-react';
 import { IconTile } from '@/components/ui/icon-tile';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, copyText } from '@/lib/utils';
 import { useBuckets } from '@/hooks/useApi';
 import { useBucketCan } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
@@ -44,7 +44,7 @@ export function BucketDetailShell() {
   const s3Url = `s3://${bucketName}`;
   const copyUrl = async () => {
     try {
-      await navigator.clipboard.writeText(s3Url);
+      await copyText(s3Url);
       toast.success('URL copied');
     } catch {
       toast.error('Failed to copy');

@@ -18,6 +18,12 @@ server:
 # Garage S3 Configuration
 garage:
   endpoint: "http://localhost:3900" # Garage S3 API endpoint
+  # Optional public S3 API endpoint used as the signed URL host. The host is
+  # part of the signature, so it cannot be replaced after signing.
+  presign_endpoint: "https://s3-api.example.com"
+  # Stable public website base URLs, keyed by Garage bucket alias.
+  public_urls:
+    photos: "https://cdn.example.com"
   region: "eu-west-1" # S3 region (ensure it matches Garage S3 configuration)
 
   # Garage Admin API configuration

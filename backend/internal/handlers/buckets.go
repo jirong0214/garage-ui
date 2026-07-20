@@ -12,13 +12,15 @@ import (
 type BucketHandler struct {
 	adminService services.AdminService
 	s3Service    services.S3Storage
+	publicURLs   map[string]string
 }
 
 // NewBucketHandler creates a new bucket handler.
-func NewBucketHandler(adminService services.AdminService, s3Service services.S3Storage) *BucketHandler {
+func NewBucketHandler(adminService services.AdminService, s3Service services.S3Storage, publicURLs map[string]string) *BucketHandler {
 	return &BucketHandler{
 		adminService: adminService,
 		s3Service:    s3Service,
+		publicURLs:   publicURLs,
 	}
 }
 
@@ -76,6 +78,9 @@ func (h *BucketHandler) ListBuckets(c fiber.Ctx) error {
 			WebsiteAccess: detailedInfo.WebsiteAccess,
 			WebsiteConfig: detailedInfo.WebsiteConfig,
 			Quotas:        detailedInfo.Quotas,
+		}
+		if detailedInfo.WebsiteAccess {
+			bucketInfo.PublicURL = h.publicURLs[bucketName]
 		}
 
 		buckets = append(buckets, bucketInfo)

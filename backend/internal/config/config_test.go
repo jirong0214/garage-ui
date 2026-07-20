@@ -115,6 +115,61 @@ func TestLoad_EnvOverridesYAML(t *testing.T) {
 	}
 }
 
+func TestLoad_SharingEndpointsFromYAMLAndEnv(t *testing.T) {
+	resetViper(t)
+	path := writeConfigFile(t, minimalValidYAML+`
+  presign_endpoint: https://api.example.com/
+  public_urls:
+    photos: https://old.example.com/
+`)
+	t.Setenv("GARAGE_UI_GARAGE_PUBLIC_URLS", `{"photos":"https://cdn.example.com/","docs":"https://example.com/files/"}`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Garage.PresignEndpoint != "https://api.example.com" {
+		t.Errorf("PresignEndpoint = %q", cfg.Garage.PresignEndpoint)
+	}
+	if got := cfg.Garage.PublicURLs["photos"]; got != "https://cdn.example.com" {
+		t.Errorf("photos public URL = %q", got)
+	}
+	if got := cfg.Garage.PublicURLs["docs"]; got != "https://example.com/files" {
+		t.Errorf("docs public URL = %q", got)
+	}
+}
+
+func TestLoad_InvalidPublicURLsEnvReturnsError(t *testing.T) {
+	resetViper(t)
+	path := writeConfigFile(t, minimalValidYAML)
+	t.Setenv("GARAGE_UI_GARAGE_PUBLIC_URLS", `not-json`)
+
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "must be a JSON object") {
+		t.Fatalf("Load error = %v, want structured env error", err)
+	}
+}
+
+func TestValidate_RejectsInvalidSharingURLs(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*Config)
+	}{
+		{"presign path", func(c *Config) { c.Garage.PresignEndpoint = "https://api.example.com/s3" }},
+		{"public relative", func(c *Config) { c.Garage.PublicURLs = map[string]string{"photos": "/files"} }},
+		{"public query", func(c *Config) { c.Garage.PublicURLs = map[string]string{"photos": "https://cdn.example.com?x=1"} }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validBaseConfig()
+			tt.mutate(&cfg)
+			if err := cfg.Validate(); err == nil {
+				t.Fatal("Validate returned nil")
+			}
+		})
+	}
+}
+
 func TestLoad_MalformedYAMLReturnsError(t *testing.T) {
 	resetViper(t)
 	// Deliberately broken YAML: unindented key after a mapping start.

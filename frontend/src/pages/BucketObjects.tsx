@@ -15,6 +15,7 @@ export function BucketObjects() {
   const canBucket = useBucketCan();
   const canWrite = canBucket(bucket, 'object.write');
   const canDelete = canBucket(bucket, 'object.delete');
+  const canRead = canBucket(bucket, 'object.read');
 
   const [currentPath, setCurrentPath] = useState(searchParams.get('prefix') ?? '');
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,6 +110,8 @@ export function BucketObjects() {
       />
       <ObjectBrowserView
         bucketName={bucketName}
+        publicBaseURL={bucket?.publicUrl}
+        canShare={canRead}
         objects={objects}
         currentPath={currentPath}
         searchQuery={searchQuery}

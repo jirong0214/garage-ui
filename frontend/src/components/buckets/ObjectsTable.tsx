@@ -12,13 +12,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {ChevronLeft, ChevronRight, Download, Eye, FileIcon, FolderIcon, Loader2, MoreVertical, Trash2} from 'lucide-react';
+import {ChevronLeft, ChevronRight, Copy, Download, Eye, FileIcon, FolderIcon, Link2, Loader2, MoreVertical, Trash2} from 'lucide-react';
 import {Select, SelectOption} from '@/components/ui/select';
 import {downloadObject, formatBytes, formatRelativeTime} from '@/lib/file-utils';
 import type {S3Object} from '@/types';
+import {buildPublicObjectUrl, copyText} from '@/lib/utils';
+import {toast} from 'sonner';
+import {ShareObjectDialog} from './ShareObjectDialog';
 
 interface ObjectsTableProps {
   bucketName: string;
+  publicBaseURL?: string;
+  canShare: boolean;
   objects: S3Object[];
   currentPath: string;
   searchQuery: string;
@@ -52,6 +57,8 @@ type SortDirection = 'asc' | 'desc';
 
 export function ObjectsTable({
   bucketName,
+  publicBaseURL,
+  canShare,
   objects,
   currentPath,
   searchQuery,
@@ -83,6 +90,17 @@ export function ObjectsTable({
   const [pageTokens, setPageTokens] = useState<(string | undefined)[]>([undefined]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [initialized, setInitialized] = useState(false);
+  const [shareObject, setShareObject] = useState<S3Object | null>(null);
+
+  const copyPublicURL = async (key: string) => {
+    if (!publicBaseURL) return;
+    try {
+      await copyText(buildPublicObjectUrl(publicBaseURL, key));
+      toast.success('Public URL copied');
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
 
   // Initialize from URL params on first load
   useEffect(() => {
@@ -441,6 +459,18 @@ export function ObjectsTable({
                         <Download className="h-4 w-4" />
                         Download
                       </DropdownMenuItem>
+                      {publicBaseURL && (
+                        <DropdownMenuItem onClick={() => copyPublicURL(obj.key)}>
+                          <Copy className="h-4 w-4" />
+                          Copy public URL
+                        </DropdownMenuItem>
+                      )}
+                      {canShare && (
+                        <DropdownMenuItem onClick={() => setShareObject(obj)}>
+                          <Link2 className="h-4 w-4" />
+                          Create signed URL
+                        </DropdownMenuItem>
+                      )}
                       {onDeleteObject && (
                         <>
                           <DropdownMenuSeparator />
@@ -514,6 +544,12 @@ export function ObjectsTable({
         </div>
       </div>
     )}
+    <ShareObjectDialog
+      open={shareObject !== null}
+      onOpenChange={(open) => { if (!open) setShareObject(null); }}
+      bucketName={bucketName}
+      objectKey={shareObject?.key ?? ''}
+    />
     </>
   );
 }

@@ -13,6 +13,8 @@ import type {S3Object, UploadTask} from '@/types';
 
 interface ObjectBrowserViewProps {
   bucketName: string;
+  publicBaseURL?: string;
+  canShare: boolean;
   objects: S3Object[];
   currentPath: string;
   searchQuery: string;
@@ -42,6 +44,8 @@ interface ObjectBrowserViewProps {
 
 export function ObjectBrowserView({
   bucketName,
+  publicBaseURL,
+  canShare,
   objects,
   currentPath,
   searchQuery,
@@ -441,6 +445,8 @@ export function ObjectBrowserView({
 
           <ObjectsTable
             bucketName={bucketName}
+            publicBaseURL={publicBaseURL}
+            canShare={canShare}
             objects={objects}
             currentPath={currentPath}
             searchQuery={searchQuery}

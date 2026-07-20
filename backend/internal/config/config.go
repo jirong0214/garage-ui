@@ -1,8 +1,10 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -39,12 +41,14 @@ type ServerConfig struct {
 
 // GarageConfig contains Garage S3 connection settings
 type GarageConfig struct {
-	Endpoint       string `mapstructure:"endpoint"`
-	Region         string `mapstructure:"region"`
-	UseSSL         bool   `mapstructure:"use_ssl"`
-	ForcePathStyle bool   `mapstructure:"force_path_style"`
-	AdminEndpoint  string `mapstructure:"admin_endpoint"`
-	AdminToken     string `mapstructure:"admin_token"`
+	Endpoint        string            `mapstructure:"endpoint"`
+	PresignEndpoint string            `mapstructure:"presign_endpoint"`
+	PublicURLs      map[string]string `mapstructure:"public_urls"`
+	Region          string            `mapstructure:"region"`
+	UseSSL          bool              `mapstructure:"use_ssl"`
+	ForcePathStyle  bool              `mapstructure:"force_path_style"`
+	AdminEndpoint   string            `mapstructure:"admin_endpoint"`
+	AdminToken      string            `mapstructure:"admin_token"`
 }
 
 // AuthConfig contains authentication configuration
@@ -245,6 +249,9 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
+	if err := applyStructuredEnvVars(&cfg); err != nil {
+		return nil, fmt.Errorf("error resolving structured env vars: %w", err)
+	}
 
 	// mapstructure leaves AccessControl nil when the section is present but
 	// decodes to an empty map (e.g. "access_control: {}"), even though
@@ -281,6 +288,7 @@ func bindEnvVars() {
 
 	// Garage config
 	viper.BindEnv("garage.endpoint", "GARAGE_UI_GARAGE_ENDPOINT")
+	viper.BindEnv("garage.presign_endpoint", "GARAGE_UI_GARAGE_PRESIGN_ENDPOINT")
 	viper.BindEnv("garage.region", "GARAGE_UI_GARAGE_REGION")
 	viper.BindEnv("garage.use_ssl", "GARAGE_UI_GARAGE_USE_SSL")
 	viper.BindEnv("garage.force_path_style", "GARAGE_UI_GARAGE_FORCE_PATH_STYLE")
@@ -331,6 +339,26 @@ func bindEnvVars() {
 	// Logging config
 	viper.BindEnv("logging.level", "GARAGE_UI_LOGGING_LEVEL")
 	viper.BindEnv("logging.format", "GARAGE_UI_LOGGING_FORMAT")
+}
+
+// applyStructuredEnvVars handles values that cannot be decoded reliably from
+// flat environment variables by mapstructure. The JSON form keeps per-bucket
+// URL mappings editable in Docker and Kubernetes manifests.
+func applyStructuredEnvVars(cfg *Config) error {
+	raw, ok := os.LookupEnv("GARAGE_UI_GARAGE_PUBLIC_URLS")
+	if !ok {
+		return nil
+	}
+	if strings.TrimSpace(raw) == "" {
+		cfg.Garage.PublicURLs = nil
+		return nil
+	}
+	var publicURLs map[string]string
+	if err := json.Unmarshal([]byte(raw), &publicURLs); err != nil {
+		return fmt.Errorf("GARAGE_UI_GARAGE_PUBLIC_URLS must be a JSON object: %w", err)
+	}
+	cfg.Garage.PublicURLs = publicURLs
+	return nil
 }
 
 // fileBackedEnvVars maps env var names to viper config keys for variables that
@@ -394,6 +422,23 @@ func (c *Config) Validate() error {
 	if c.Garage.AdminToken == "" {
 		return fmt.Errorf("garage admin_token is required")
 	}
+	if c.Garage.PresignEndpoint != "" {
+		parsed, err := validateHTTPURL(c.Garage.PresignEndpoint, false)
+		if err != nil {
+			return fmt.Errorf("invalid garage presign_endpoint: %w", err)
+		}
+		c.Garage.PresignEndpoint = parsed
+	}
+	for bucket, publicURL := range c.Garage.PublicURLs {
+		if strings.TrimSpace(bucket) == "" {
+			return fmt.Errorf("garage public_urls contains an empty bucket name")
+		}
+		parsed, err := validateHTTPURL(publicURL, true)
+		if err != nil {
+			return fmt.Errorf("invalid garage public_urls entry for bucket %q: %w", bucket, err)
+		}
+		c.Garage.PublicURLs[bucket] = parsed
+	}
 
 	// Validate admin auth if enabled
 	if c.Auth.Admin.Enabled {
@@ -429,6 +474,23 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+func validateHTTPURL(raw string, allowPath bool) (string, error) {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return "", err
+	}
+	if (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return "", fmt.Errorf("must be an absolute http or https URL")
+	}
+	if parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil {
+		return "", fmt.Errorf("must not contain credentials, a query, or a fragment")
+	}
+	if !allowPath && parsed.Path != "" && parsed.Path != "/" {
+		return "", fmt.Errorf("must not contain a path")
+	}
+	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
 // GetAddress returns the full server address (host:port)

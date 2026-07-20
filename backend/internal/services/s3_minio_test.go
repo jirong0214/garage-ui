@@ -427,6 +427,30 @@ func TestS3_GetPresignedURL_ReturnsURLWithoutServerCall(t *testing.T) {
 	}
 }
 
+func TestS3_GetPresignedURL_UsesPublicEndpointAndPathStyle(t *testing.T) {
+	s3 := newS3TestService(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	s3.config.PresignEndpoint = "https://s3-api.example.com:4433"
+	s3.config.ForcePathStyle = true
+
+	got, err := s3.GetPresignedURL(context.Background(), "photos", "相册/hello world.png", time.Hour)
+	if err != nil {
+		t.Fatalf("GetPresignedURL: %v", err)
+	}
+	u, err := url.Parse(got)
+	if err != nil {
+		t.Fatalf("url.Parse: %v", err)
+	}
+	if u.Scheme != "https" || u.Host != "s3-api.example.com:4433" {
+		t.Errorf("signed endpoint = %s://%s", u.Scheme, u.Host)
+	}
+	if u.EscapedPath() != "/photos/%E7%9B%B8%E5%86%8C/hello%20world.png" {
+		t.Errorf("signed path = %q", u.EscapedPath())
+	}
+	if u.Query().Get("X-Amz-Expires") != "3600" || u.Query().Get("X-Amz-Signature") == "" {
+		t.Errorf("missing signing parameters: %q", u.RawQuery)
+	}
+}
+
 // listBucketResultXML produces a ListBucketResult XML body that MinIO
 // parses. ListObjectsV2 is keyed on the `list-type=2` query parameter.
 func listBucketResultXML(bucket string, isTruncated bool, nextToken string, contents []struct {

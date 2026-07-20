@@ -129,15 +129,46 @@ func (s *S3Service) getMinioClient(ctx context.Context, bucketName string, op Op
 	}
 
 	// Create MinIO client with bucket-specific credentials
-	client, err := minio.New(s.config.Endpoint, &minio.Options{
+	options := &minio.Options{
 		Creds:  creds,
 		Secure: s.config.UseSSL,
 		Region: s.config.Region,
-	})
+	}
+	if s.config.ForcePathStyle {
+		options.BucketLookup = minio.BucketLookupPath
+	}
+	client, err := minio.New(s.config.Endpoint, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create MinIO client for bucket %s: %w", bucketName, err)
 	}
 
+	return client, nil
+}
+
+func (s *S3Service) getPresignClient(ctx context.Context, bucketName string) (*minio.Client, error) {
+	creds, err := s.getBucketCredentials(ctx, bucketName, OpRead)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get credentials for bucket %s: %w", bucketName, err)
+	}
+
+	endpoint := s.config.Endpoint
+	secure := s.config.UseSSL
+	if s.config.PresignEndpoint != "" {
+		parsed, err := url.Parse(s.config.PresignEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("invalid presign endpoint: %w", err)
+		}
+		endpoint = parsed.Host
+		secure = parsed.Scheme == "https"
+	}
+	options := &minio.Options{Creds: creds, Secure: secure, Region: s.config.Region}
+	if s.config.ForcePathStyle {
+		options.BucketLookup = minio.BucketLookupPath
+	}
+	client, err := minio.New(endpoint, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create presign client for bucket %s: %w", bucketName, err)
+	}
 	return client, nil
 }
 
@@ -725,7 +756,7 @@ func (s *S3Service) DeleteObjectsByPrefix(ctx context.Context, bucketName, prefi
 // This is useful for sharing files without exposing credentials
 func (s *S3Service) GetPresignedURL(ctx context.Context, bucketName, key string, expiresIn time.Duration) (string, error) {
 	// Get bucket-specific MinIO client
-	client, err := s.getMinioClient(ctx, bucketName, OpRead)
+	client, err := s.getPresignClient(ctx, bucketName)
 	if err != nil {
 		return "", fmt.Errorf("failed to get MinIO client for bucket %s: %w", bucketName, err)
 	}
