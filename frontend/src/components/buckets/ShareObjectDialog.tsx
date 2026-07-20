@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link2, Loader2 } from 'lucide-react';
+import { Copy, Link2, Loader2 } from 'lucide-react';
 import { objectsApi } from '@/lib/api';
 import { copyText } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Select, SelectOption } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 
 interface ShareObjectDialogProps {
   open: boolean;
@@ -32,19 +33,33 @@ const expiryOptions = [
 export function ShareObjectDialog({ open, onOpenChange, bucketName, objectKey }: ShareObjectDialogProps) {
   const [expiresIn, setExpiresIn] = useState('3600');
   const [loading, setLoading] = useState(false);
+  const [signedURL, setSignedURL] = useState('');
 
-  const copySignedURL = async () => {
+  const generateSignedURL = async () => {
     try {
       setLoading(true);
       const url = await objectsApi.getPresignedUrl(bucketName, objectKey, Number(expiresIn));
-      await copyText(url);
-      toast.success('Signed URL copied');
-      onOpenChange(false);
+      setSignedURL(url);
+      toast.success('Signed URL created');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create signed URL');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await copyText(signedURL);
+      toast.success('Signed URL copied');
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
+
+  const handleExpiryChange = (value: string) => {
+    setExpiresIn(value);
+    setSignedURL('');
   };
 
   return (
@@ -61,18 +76,39 @@ export function ShareObjectDialog({ open, onOpenChange, bucketName, objectKey }:
             Expires in
           </div>
           <div>
-            <Select value={expiresIn} onChange={setExpiresIn} disabled={loading}>
+            <Select value={expiresIn} onChange={handleExpiryChange} disabled={loading}>
               {expiryOptions.map((option) => (
                 <SelectOption key={option.value} value={option.value}>{option.label}</SelectOption>
               ))}
             </Select>
           </div>
+          {signedURL && (
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={signedURL}
+                aria-label="Signed URL"
+                className="min-w-0 font-mono text-[12px]"
+                onFocus={(event) => event.currentTarget.select()}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                aria-label="Copy signed URL"
+                title="Copy signed URL"
+                onClick={handleCopy}
+              >
+                <Copy />
+              </Button>
+            </div>
+          )}
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
-          <Button onClick={copySignedURL} disabled={loading}>
+          <Button onClick={generateSignedURL} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : <Link2 />}
-            Create and copy
+            {signedURL ? 'Regenerate URL' : 'Generate URL'}
           </Button>
         </DialogFooter>
       </DialogContent>
