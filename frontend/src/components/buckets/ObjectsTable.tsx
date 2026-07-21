@@ -54,6 +54,38 @@ interface ObjectsTableProps {
 
 type SortColumn = 'name' | 'size' | 'modified';
 type SortDirection = 'asc' | 'desc';
+interface SortPreference {
+  column: SortColumn;
+  direction: SortDirection;
+}
+
+const SORT_STORAGE_KEY = 'garage-ui:objects-sort';
+const DEFAULT_SORT: SortPreference = {column: 'name', direction: 'asc'};
+
+function loadSortPreference(): SortPreference {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY) ?? 'null') as Partial<SortPreference> | null;
+    const column = stored?.column;
+    const direction = stored?.direction;
+    if (
+      (column === 'name' || column === 'size' || column === 'modified') &&
+      (direction === 'asc' || direction === 'desc')
+    ) {
+      return {column, direction};
+    }
+  } catch {
+    // Ignore unavailable storage and malformed values.
+  }
+  return DEFAULT_SORT;
+}
+
+function saveSortPreference(preference: SortPreference) {
+  try {
+    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(preference));
+  } catch {
+    // Sorting still works when storage is unavailable.
+  }
+}
 
 export function ObjectsTable({
   bucketName,
@@ -84,8 +116,8 @@ export function ObjectsTable({
 }: ObjectsTableProps) {
   const navigate = useNavigate();
   const canDelete = Boolean(onDeleteObject);
-  const [sortColumn, setSortColumn] = useState<SortColumn>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortPreference, setSortPreference] = useState<SortPreference>(loadSortPreference);
+  const {column: sortColumn, direction: sortDirection} = sortPreference;
   // Store tokens for each page: [undefined (page 1), token1 (page 2), token2 (page 3), ...]
   const [pageTokens, setPageTokens] = useState<(string | undefined)[]>([undefined]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -228,12 +260,11 @@ export function ObjectsTable({
   };
 
   const handleSort = (column: SortColumn) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
+    const nextPreference: SortPreference = sortColumn === column
+      ? {column, direction: sortDirection === 'asc' ? 'desc' : 'asc'}
+      : {column, direction: 'asc'};
+    setSortPreference(nextPreference);
+    saveSortPreference(nextPreference);
   };
 
   return (

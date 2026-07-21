@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { BookOpen, Database, Key, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Server } from 'lucide-react';
+import { BookOpen, Database, HardDrive, Key, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Server } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useQuery } from '@tanstack/react-query';
 import { healthApi, garageApi } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useBuckets } from '@/hooks/useApi';
 
 interface NavItem {
   title: string;
@@ -48,6 +49,8 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
   const location = useLocation();
   const { config } = useAuthStore();
   const perms = usePermissions();
+  const canListBuckets = perms.hasAnyPerm('bucket.list');
+  const { data: buckets = [] } = useBuckets(canListBuckets);
 
   const { data: uiVersion } = useQuery({
     queryKey: ['ui-version'],
@@ -107,7 +110,9 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
               <ul className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const Icon = item.icon;
-                  const active = isActive(item.href);
+                  const active = item.href === '/buckets'
+                    ? location.pathname === '/buckets'
+                    : isActive(item.href);
                   return (
                     <li key={item.href}>
                       <Link
@@ -125,6 +130,35 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
                         <Icon className="h-4 w-4" />
                         <span className={cn(isCollapsed && 'md:hidden')}>{item.title}</span>
                       </Link>
+                      {item.href === '/buckets' && buckets.length > 0 && (
+                        <ul className={cn('mt-1 space-y-0.5 border-l border-[var(--border)] pl-2 ml-4', isCollapsed && 'md:hidden')}>
+                          {[...buckets]
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((bucket) => {
+                              const bucketBase = `/buckets/${encodeURIComponent(bucket.name)}`;
+                              const href = `${bucketBase}/objects`;
+                              const bucketActive = location.pathname === bucketBase || location.pathname.startsWith(`${bucketBase}/`);
+                              return (
+                                <li key={bucket.name}>
+                                  <Link
+                                    to={href}
+                                    onClick={onClose}
+                                    title={bucket.name}
+                                    className={cn(
+                                      'flex h-8 min-w-0 items-center gap-2 rounded-md px-2 text-[13px] transition-colors',
+                                      bucketActive
+                                        ? 'bg-[var(--accent-primary-soft)] font-medium text-[var(--primary)]'
+                                        : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]',
+                                    )}
+                                  >
+                                    <HardDrive className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate">{bucket.name}</span>
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                        </ul>
+                      )}
                     </li>
                   );
                 })}

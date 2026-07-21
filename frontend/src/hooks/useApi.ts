@@ -4,10 +4,11 @@ import { queryKeys } from '@/lib/query-client';
 import { toast } from 'sonner';
 
 
-export function useBuckets() {
+export function useBuckets(enabled = true) {
   return useQuery({
     queryKey: queryKeys.buckets.list(),
     queryFn: () => bucketsApi.list(),
+    enabled,
   });
 }
 

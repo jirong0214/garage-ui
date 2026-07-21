@@ -252,8 +252,8 @@ export function ObjectDetailsView() {
       </div>
 
       {/* Hero */}
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           <IconTile icon={<File />} tone="primary" />
           <div className="min-w-0">
             <button
