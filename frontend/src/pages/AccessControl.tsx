@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {cn} from '@/lib/utils';
+import {cn, copyText, formatDate} from '@/lib/utils';
 import {PageHeader} from '@/components/ui/page-header';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -30,7 +30,6 @@ import {Select, SelectOption} from '@/components/ui/select';
 import {useQueryClient} from '@tanstack/react-query';
 import {accessApi, bucketsApi} from '@/lib/api';
 import {queryKeys} from '@/lib/query-client';
-import {formatDate} from '@/lib/utils';
 import type {AccessKey, Bucket, BucketPermission} from '@/types';
 import {AlertTriangle, Calendar, Check, Copy, Database, Edit, Eye, EyeOff, Key, KeyRound, Loader2, MoreVertical, Plus, Search, ShieldCheck, ShieldX, Trash2,} from 'lucide-react';
 import {toast} from 'sonner';
@@ -52,12 +51,16 @@ function CredentialField({
 }) {
   const [copied, setCopied] = useState(false);
   const [revealed, setRevealed] = useState(!maskable);
-  const copy = () => {
+  const copy = async () => {
     if (!value) return;
-    navigator.clipboard.writeText(value);
-    setCopied(true);
-    toast.success(`${label} copied`);
-    setTimeout(() => setCopied(false), 1600);
+    try {
+      await copyText(value);
+      setCopied(true);
+      toast.success(`${label} copied`);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      toast.error('Failed to copy');
+    }
   };
   const display = loading ? '' : revealed || !maskable ? value : '•'.repeat(Math.min(40, value.length || 40));
   return (
@@ -154,6 +157,15 @@ export function AccessControl() {
   const [viewingKey, setViewingKey] = useState<AccessKey | null>(null);
   const [detailsSecretKey, setDetailsSecretKey] = useState<string>('');
   const [isLoadingDetailsSecretKey, setIsLoadingDetailsSecretKey] = useState(false);
+
+  const copyAccessKeyId = async (accessKeyId: string) => {
+    try {
+      await copyText(accessKeyId);
+      toast.success('Access Key ID copied');
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
 
   useEffect(() => {
     const fetchKeys = async () => {
@@ -550,24 +562,25 @@ export function AccessControl() {
                         <TableCell className="font-medium truncate max-w-[150px]">{key.name}</TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <div className="flex items-center gap-2">
-                            <code
-                              className="text-xs bg-muted px-2 py-1 rounded truncate max-w-[150px] block cursor-pointer hover:bg-muted/80 transition-colors"
+                            <button
+                              type="button"
+                              title="Copy Access Key ID"
+                              className="block max-w-[150px] truncate rounded bg-muted px-2 py-1 font-mono text-xs transition-colors hover:bg-muted/80"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigator.clipboard.writeText(key.accessKeyId);
-                                toast.success('Access Key ID copied to clipboard');
+                                void copyAccessKeyId(key.accessKeyId);
                               }}
                             >
                               {key.accessKeyId}
-                            </code>
+                            </button>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6 flex-shrink-0"
+                              aria-label={`Copy Access Key ID ${key.accessKeyId}`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigator.clipboard.writeText(key.accessKeyId);
-                                toast.success('Access Key ID copied to clipboard');
+                                void copyAccessKeyId(key.accessKeyId);
                               }}
                             >
                               <Copy className="h-3 w-3" />
@@ -599,10 +612,11 @@ export function AccessControl() {
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
-                            <DropdownMenuTrigger>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
+                            <DropdownMenuTrigger
+                              aria-label={`Actions for ${key.name}`}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-md hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                            >
+                              <MoreVertical className="h-4 w-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleRevealSecretKey(key)}>
