@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { objectsApi } from '@/lib/api';
 import { useBuckets } from '@/hooks/useApi';
@@ -9,19 +10,33 @@ import { Badge } from '@/components/ui/badge';
 import { IconTile } from '@/components/ui/icon-tile';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ObjectPreview } from '@/components/buckets/ObjectPreview';
-import { ArrowLeft, ChevronRight, Copy, Download, File, Link2, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Copy, Download, File, Link2, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadObject, formatBytes } from '@/lib/file-utils';
-import { buildPublicObjectUrl, copyText, formatDate } from '@/lib/utils';
+import { buildPublicObjectUrl, cn, copyText, formatDate } from '@/lib/utils';
 import { ShareObjectDialog } from '@/components/buckets/ShareObjectDialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-function CardSection({ title, children }: { title: string; children: React.ReactNode }) {
+function CardSection({
+  title,
+  action,
+  children,
+  className,
+  contentClassName,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
+}) {
   return (
-    <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
-      <div className="border-b border-[var(--border)] px-5 py-3.5">
+    <section className={cn('overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]', className)}>
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
         <h3 className="text-[14px] font-semibold tracking-[-0.01em]">{title}</h3>
+        {action}
       </div>
-      {children}
+      <div className={contentClassName}>{children}</div>
     </section>
   );
 }
@@ -52,6 +67,7 @@ export function ObjectDetailsView() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [previewFullscreen, setPreviewFullscreen] = useState(false);
 
   useEffect(() => {
     if (!bucketName || !objectKey) {
@@ -73,6 +89,15 @@ export function ObjectDetailsView() {
     };
     fetchMetadata();
   }, [bucketName, objectKey]);
+
+  useEffect(() => {
+    if (!previewFullscreen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewFullscreen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [previewFullscreen]);
 
   const parentPath = objectKey?.split('/').slice(0, -1).join('/') ?? '';
   const fileName = objectKey?.split('/').pop() || objectKey || '';
@@ -128,6 +153,50 @@ export function ObjectDetailsView() {
       </div>
     );
   }
+
+  const previewFullscreenLabel = previewFullscreen ? 'Exit fullscreen preview' : 'Open fullscreen preview';
+  const previewCard = (
+    <CardSection
+      title="Preview"
+      className={cn(previewFullscreen && 'absolute inset-0 z-40 flex flex-col rounded-none border-0')}
+      contentClassName={cn(previewFullscreen && 'min-h-0 flex-1')}
+      action={
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setPreviewFullscreen((fullscreen) => !fullscreen)}
+                aria-label={previewFullscreenLabel}
+                title={previewFullscreenLabel}
+              >
+                {previewFullscreen ? <Minimize2 /> : <Maximize2 />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{previewFullscreenLabel}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      }
+    >
+      {canRead && bucketName && objectKey ? (
+        <ObjectPreview
+          bucket={bucketName}
+          objectKey={objectKey}
+          size={metadata.size}
+          contentType={metadata.contentType}
+          onDownload={handleDownload}
+          fullscreen={previewFullscreen}
+        />
+      ) : (
+        <div className="px-5 py-10 text-center text-[13px] text-[var(--muted-foreground)]">
+          No preview available for this object.
+        </div>
+      )}
+    </CardSection>
+  );
+  const previewHost = document.getElementById('app-content');
 
   return (
     <div className="px-7 py-6 space-y-6">
@@ -195,21 +264,7 @@ export function ObjectDetailsView() {
       </section>
 
       {/* Preview */}
-      <CardSection title="Preview">
-        {canRead && bucketName && objectKey ? (
-          <ObjectPreview
-            bucket={bucketName}
-            objectKey={objectKey}
-            size={metadata.size}
-            contentType={metadata.contentType}
-            onDownload={handleDownload}
-          />
-        ) : (
-          <div className="px-5 py-10 text-center text-[13px] text-[var(--muted-foreground)]">
-            No preview available for this object.
-          </div>
-        )}
-      </CardSection>
+      {previewFullscreen && previewHost ? createPortal(previewCard, previewHost) : previewCard}
 
       {/* Details */}
       <CardSection title="Details">

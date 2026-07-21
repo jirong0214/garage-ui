@@ -36,6 +36,7 @@ function useCrumbs(): BreadcrumbItem[] {
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const crumbs = useCrumbs();
   const { noAccess } = usePermissions();
 
@@ -58,12 +59,19 @@ export function Layout() {
         />
       )}
 
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        isCollapsed={sidebarCollapsed}
+        onClose={() => setSidebarOpen(false)}
+        onToggleCollapse={() => setSidebarCollapsed((collapsed) => !collapsed)}
+      />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar crumbs={crumbs} />
-        <main className="app-scroll-region min-h-0 flex-1 overflow-y-auto scrollbar-thin">
-          {noAccess ? <NoAccess /> : <Outlet />}
-        </main>
+        <div id="app-content" className="relative min-h-0 flex-1">
+          <main className="app-scroll-region absolute inset-0 overflow-y-auto scrollbar-thin">
+            {noAccess ? <NoAccess /> : <Outlet />}
+          </main>
+        </div>
       </div>
     </div>
   );

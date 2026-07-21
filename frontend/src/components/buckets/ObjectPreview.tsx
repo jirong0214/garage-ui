@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { KeepScale, TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
-import { Download, Loader2, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
+import { Download, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useObjectPreview } from '@/hooks/useObjectPreview';
 import { getHighlightLanguage, TEXT_HIGHLIGHT_MAX_BYTES } from '@/lib/preview-utils';
 import { formatBytes } from '@/lib/file-utils';
@@ -39,7 +37,7 @@ function Notice({
   );
 }
 
-function CodeBlock({ text, objectKey }: { text: string; objectKey: string }) {
+function CodeBlock({ text, objectKey, fullscreen }: { text: string; objectKey: string; fullscreen: boolean }) {
   const [html, setHtml] = useState<string | null>(null);
 
   useEffect(() => {
@@ -58,91 +56,30 @@ function CodeBlock({ text, objectKey }: { text: string; objectKey: string }) {
   }, [text, objectKey]);
 
   return (
-    <pre className="overflow-x-auto px-5 py-4 font-mono text-[12.5px] leading-relaxed">
+    <pre className={cn('overflow-auto px-5 py-4 font-mono text-[12.5px] leading-relaxed', fullscreen && 'h-full')}>
       {html !== null ? <code dangerouslySetInnerHTML={{ __html: html }} /> : <code>{text}</code>}
     </pre>
   );
 }
 
-function ImagePreview({ src, alt }: { src: string; alt: string }) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    if (!isFullscreen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsFullscreen(false);
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isFullscreen]);
-
-  const toggleFullscreen = () => setIsFullscreen((current) => !current);
-
-  const fullscreenLabel = isFullscreen ? 'Exit fullscreen preview' : 'Open fullscreen preview';
-
-  const fullscreenControl = (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={toggleFullscreen}
-            aria-label={fullscreenLabel}
-            title={fullscreenLabel}
-            className="border border-white/20 bg-black/65 text-white shadow-md hover:bg-black/85 hover:text-white"
-          >
-            {isFullscreen ? <Minimize2 /> : <Maximize2 />}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{fullscreenLabel}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-
+function ImagePreview({ src, alt, fullscreen }: { src: string; alt: string; fullscreen: boolean }) {
   const imageLayer = (
-    <div className="relative inline-flex max-h-full max-w-full">
+    <div className="inline-flex max-h-full max-w-full">
       <img
         src={src}
         alt={alt}
         draggable={false}
         className={cn(
           'block h-auto w-auto select-none object-contain',
-          isFullscreen ? 'max-h-screen max-w-full' : 'max-h-[85vh] max-w-full',
+          fullscreen ? 'max-h-full max-w-full' : 'max-h-[85vh] max-w-full',
         )}
       />
-      {isFullscreen ? (
-        <KeepScale className="absolute right-3 top-3">
-          {fullscreenControl}
-        </KeepScale>
-      ) : (
-        <div className="absolute right-3 top-3">
-          {fullscreenControl}
-        </div>
-      )}
     </div>
   );
 
-  const surface = (
-    <div
-      onClick={(event) => {
-        if (isFullscreen && event.target === event.currentTarget) {
-          setIsFullscreen(false);
-        }
-      }}
-      className={cn(
-        'relative flex w-full items-center justify-center overflow-hidden',
-        !isFullscreen && 'bg-[var(--surface-sunken)]',
-        isFullscreen && 'fixed inset-0 z-[100] h-[100dvh] w-screen bg-black/60',
-      )}
-    >
-      {isFullscreen ? (
+  return (
+    <div className={cn('flex w-full items-center justify-center overflow-hidden bg-[var(--surface-sunken)]', fullscreen && 'h-full')}>
+      {fullscreen ? (
         <TransformWrapper
           minScale={1}
           maxScale={5}
@@ -153,13 +90,8 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
           doubleClick={{ mode: 'toggle', step: 1.5 }}
         >
           <TransformComponent
-            wrapperStyle={{ width: '100vw', height: '100dvh', touchAction: 'none' }}
+            wrapperStyle={{ width: '100%', height: '100%', touchAction: 'none' }}
             contentStyle={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
-            contentProps={{
-              onClick: (event) => {
-                if (event.target === event.currentTarget) setIsFullscreen(false);
-              },
-            }}
           >
             {imageLayer}
           </TransformComponent>
@@ -167,8 +99,6 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
       ) : imageLayer}
     </div>
   );
-
-  return isFullscreen ? createPortal(surface, document.body) : surface;
 }
 
 export function ObjectPreview({
@@ -177,12 +107,14 @@ export function ObjectPreview({
   size,
   contentType,
   onDownload,
+  fullscreen = false,
 }: {
   bucket: string;
   objectKey: string;
   size: number;
   contentType?: string;
   onDownload: () => void;
+  fullscreen?: boolean;
 }) {
   const preview = useObjectPreview(bucket, objectKey, size, contentType);
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
@@ -224,10 +156,10 @@ export function ObjectPreview({
 
   switch (preview.kind) {
     case 'image':
-      return <ImagePreview src={preview.objectUrl!} alt={objectKey} />;
+      return <ImagePreview src={preview.objectUrl!} alt={objectKey} fullscreen={fullscreen} />;
     case 'video':
       return (
-        <div className="flex justify-center bg-black">
+        <div className={cn('flex justify-center bg-black', fullscreen && 'h-full')}>
           <video
             ref={(el) => {
               mediaRef.current = el;
@@ -237,7 +169,7 @@ export function ObjectPreview({
             src={preview.mediaUrl!}
             onError={handleMediaError}
             onLoadedMetadata={handleLoadedMetadata}
-            className="max-h-[85vh] w-full"
+            className={cn('w-full', fullscreen ? 'h-full max-h-full' : 'max-h-[85vh]')}
           />
         </div>
       );
@@ -257,9 +189,9 @@ export function ObjectPreview({
         </div>
       );
     case 'pdf':
-      return <iframe src={preview.objectUrl!} title={objectKey} className="h-[85vh] w-full" />;
+      return <iframe src={preview.objectUrl!} title={objectKey} className={cn('w-full', fullscreen ? 'h-full' : 'h-[85vh]')} />;
     case 'text':
-      return <CodeBlock text={preview.text!} objectKey={objectKey} />;
+      return <CodeBlock text={preview.text!} objectKey={objectKey} fullscreen={fullscreen} />;
     default:
       return <Notice message="No preview available for this object." onDownload={onDownload} />;
   }

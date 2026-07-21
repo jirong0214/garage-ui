@@ -1,10 +1,12 @@
-import {render, screen} from '@testing-library/react';
+import {fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {describe, expect, it, vi} from 'vitest';
 import {Layout} from './layout';
 
 vi.mock('./sidebar', () => ({
-  Sidebar: () => <aside>Sidebar</aside>,
+  Sidebar: ({isCollapsed, onToggleCollapse}: {isCollapsed: boolean; onToggleCollapse: () => void}) => (
+    <button type="button" onClick={onToggleCollapse}>{isCollapsed ? 'Expand navigation' : 'Collapse navigation'}</button>
+  ),
 }));
 
 vi.mock('./top-bar', () => ({
@@ -25,10 +27,16 @@ describe('Layout', () => {
 
     const topBar = screen.getByText('Top bar');
     const viewport = topBar.parentElement?.parentElement;
-    const main = topBar.nextElementSibling;
+    const contentFrame = topBar.nextElementSibling;
+    const main = contentFrame?.firstElementChild;
 
     expect(viewport).toHaveClass('app-viewport', 'min-h-0', 'overflow-hidden');
     expect(topBar.parentElement).toHaveClass('min-h-0');
-    expect(main).toHaveClass('app-scroll-region', 'min-h-0', 'overflow-y-auto');
+    expect(contentFrame).toHaveAttribute('id', 'app-content');
+    expect(contentFrame).toHaveClass('relative', 'min-h-0');
+    expect(main).toHaveClass('app-scroll-region', 'absolute', 'inset-0', 'overflow-y-auto');
+
+    fireEvent.click(screen.getByRole('button', {name: 'Collapse navigation'}));
+    expect(screen.getByRole('button', {name: 'Expand navigation'})).toBeInTheDocument();
   });
 });

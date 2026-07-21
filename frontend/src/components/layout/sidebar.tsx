@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { BookOpen, Database, Key, LayoutDashboard, Server } from 'lucide-react';
+import { BookOpen, Database, Key, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Server } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useQuery } from '@tanstack/react-query';
 import { healthApi, garageApi } from '@/lib/api';
@@ -39,10 +39,12 @@ const navGroups: NavGroup[] = [
 
 interface SidebarProps {
   isOpen: boolean;
+  isCollapsed: boolean;
   onClose: () => void;
+  onToggleCollapse: () => void;
 }
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) {
   const location = useLocation();
   const { config } = useAuthStore();
   const perms = usePermissions();
@@ -72,23 +74,33 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex h-full w-64 flex-col border-r border-[var(--border)] bg-[var(--background)] transition-transform duration-300 ease-in-out md:translate-x-0',
+        'flex h-full w-64 flex-col border-r border-[var(--border)] bg-[var(--background)] transition-[width,transform] duration-300 ease-in-out md:translate-x-0',
+        isCollapsed ? 'md:w-16' : 'md:w-64',
         'fixed md:static z-50',
         isOpen ? 'translate-x-0' : '-translate-x-full',
       )}
     >
-      <div className="flex h-16 items-center gap-2 border-b border-[var(--border)] px-4">
-        <img src="/garage.png" alt="" className="h-8 w-8" />
-        <span className="text-[18px] font-semibold tracking-tight">Garage UI</span>
+      <div className={cn('flex h-16 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3', isCollapsed && 'md:justify-center md:gap-0')}>
+        <img src="/garage.png" alt="" className={cn('h-8 w-8', isCollapsed && 'md:hidden')} />
+        <span className={cn('min-w-0 flex-1 truncate text-[18px] font-semibold tracking-tight', isCollapsed && 'md:hidden')}>Garage UI</span>
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          title={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] md:inline-flex"
+        >
+          {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
       </div>
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-thin">
+      <nav className={cn('flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-thin', isCollapsed && 'md:px-2')}>
         {navGroups.map((group, gi) => {
           const visibleItems = group.items.filter((item) => !item.visible || item.visible(perms));
           if (visibleItems.length === 0) return null;
           return (
             <div key={gi}>
               {group.label && (
-                <div className="px-2 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--muted-foreground)]">
+                <div className={cn('px-2 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--muted-foreground)]', isCollapsed && 'md:hidden')}>
                   {group.label}
                 </div>
               )}
@@ -101,15 +113,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <Link
                         to={item.href}
                         onClick={onClose}
+                        title={isCollapsed ? item.title : undefined}
                         className={cn(
                           'flex h-9 items-center gap-2 rounded-md px-2.5 text-[14px] transition-colors',
+                          isCollapsed && 'md:justify-center md:px-0',
                           active
                             ? 'bg-[var(--primary)] font-medium text-[var(--primary-foreground)]'
                             : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]',
                         )}
-                      >
+                        >
                         <Icon className="h-4 w-4" />
-                        {item.title}
+                        <span className={cn(isCollapsed && 'md:hidden')}>{item.title}</span>
                       </Link>
                     </li>
                   );
@@ -119,7 +133,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           );
         })}
       </nav>
-      <div className="px-3 py-3 flex flex-col items-center gap-1.5">
+      <div className={cn('px-3 py-3 flex flex-col items-center gap-1.5', isCollapsed && 'md:hidden')}>
         <a
           href="https://garagehq.deuxfleurs.fr/documentation/"
           target="_blank"

@@ -1,4 +1,4 @@
-import {render, screen} from '@testing-library/react';
+import {fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {objectsApi} from '@/lib/api';
@@ -20,7 +20,9 @@ vi.mock('@/hooks/usePermissions', () => ({
 }));
 
 vi.mock('@/components/buckets/ObjectPreview', () => ({
-  ObjectPreview: () => <div>Object preview content</div>,
+  ObjectPreview: ({fullscreen}: {fullscreen?: boolean}) => (
+    <div data-testid="object-preview" data-fullscreen={fullscreen ? 'true' : 'false'}>Object preview content</div>
+  ),
 }));
 
 vi.mock('sonner', () => ({
@@ -52,5 +54,26 @@ describe('ObjectDetailsView', () => {
     const detailsHeading = screen.getByRole('heading', {name: 'Details'});
 
     expect(previewHeading.compareDocumentPosition(detailsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('expands the whole Preview card inside the app content frame', async () => {
+    render(
+      <MemoryRouter initialEntries={['/buckets/photos/objects/summer%2Fphoto.jpg']}>
+        <div id="app-content" className="relative">
+          <Routes>
+            <Route path="/buckets/:bucketName/objects/*" element={<ObjectDetailsView />} />
+          </Routes>
+        </div>
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('heading', {name: 'Preview'});
+    fireEvent.click(screen.getByRole('button', {name: 'Open fullscreen preview'}));
+
+    expect(screen.getByRole('heading', {name: 'Preview'}).closest('section')).toHaveClass('absolute', 'inset-0');
+    expect(screen.getByTestId('object-preview')).toHaveAttribute('data-fullscreen', 'true');
+
+    fireEvent.keyDown(document, {key: 'Escape'});
+    expect(screen.getByRole('button', {name: 'Open fullscreen preview'})).toBeInTheDocument();
   });
 });

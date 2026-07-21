@@ -22,18 +22,16 @@ function state(overrides: Partial<ObjectPreviewState>): ObjectPreviewState {
   };
 }
 
-function renderPreview() {
+function renderPreview(fullscreen = false) {
   // A .json key keeps the highlight language deterministic in the text test.
   return render(
-    <ObjectPreview bucket="b" objectKey="k.json" size={100} contentType="text/plain" onDownload={vi.fn()} />,
+    <ObjectPreview bucket="b" objectKey="k.json" size={100} contentType="text/plain" onDownload={vi.fn()} fullscreen={fullscreen} />,
   );
 }
 
 afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
-  delete (HTMLElement.prototype as Partial<HTMLElement>).requestFullscreen;
-  document.body.style.overflow = '';
 });
 
 describe('ObjectPreview', () => {
@@ -53,45 +51,17 @@ describe('ObjectPreview', () => {
     expect(image.parentElement?.parentElement).not.toHaveClass('px-5', 'py-6');
   });
 
-  it('always uses the viewport overlay instead of native fullscreen', async () => {
-    const requestFullscreen = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
-      configurable: true,
-      value: requestFullscreen,
-    });
+  it('enables image gestures when the Preview card is fullscreen', () => {
     vi.stubGlobal('ResizeObserver', class {
       observe() {}
       unobserve() {}
       disconnect() {}
     });
     mockedHook.mockReturnValue(state({ kind: 'image', status: 'ready', objectUrl: 'blob:img' }));
-    renderPreview();
+    const {container} = renderPreview(true);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open fullscreen preview' }));
-
-    expect(await screen.findByRole('button', { name: 'Exit fullscreen preview' })).toBeInTheDocument();
-    expect(requestFullscreen).not.toHaveBeenCalled();
-  });
-
-  it('uses a viewport overlay when native fullscreen is unavailable', async () => {
-    vi.stubGlobal('ResizeObserver', class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    });
-    mockedHook.mockReturnValue(state({ kind: 'image', status: 'ready', objectUrl: 'blob:img' }));
-    renderPreview();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open fullscreen preview' }));
-
-    const exitButton = await screen.findByRole('button', { name: 'Exit fullscreen preview' });
-    expect(exitButton.parentElement?.parentElement).toBe(screen.getByRole('img').parentElement);
-    expect(exitButton.closest('.fixed')).toHaveClass('inset-0', 'h-[100dvh]', 'w-screen', 'bg-black/60');
-    expect(exitButton.closest('.fixed')?.querySelector('.react-transform-wrapper')).toHaveStyle({ touchAction: 'none' });
-    expect(document.body).toHaveStyle({ overflow: 'hidden' });
-
-    fireEvent.click(exitButton);
-    expect(screen.getByRole('button', { name: 'Open fullscreen preview' })).toBeInTheDocument();
+    expect(container.querySelector('.react-transform-wrapper')).toHaveStyle({touchAction: 'none'});
+    expect(screen.getByRole('img')).toHaveClass('max-h-full');
   });
 
   it('renders video with the media url', () => {
@@ -113,6 +83,12 @@ describe('ObjectPreview', () => {
     mockedHook.mockReturnValue(state({ kind: 'pdf', status: 'ready', objectUrl: 'blob:pdf' }));
     renderPreview();
     expect(screen.getByTitle('k.json')).toHaveAttribute('src', 'blob:pdf');
+  });
+
+  it('fills the Preview card with a PDF in fullscreen mode', () => {
+    mockedHook.mockReturnValue(state({ kind: 'pdf', status: 'ready', objectUrl: 'blob:pdf' }));
+    renderPreview(true);
+    expect(screen.getByTitle('k.json')).toHaveClass('h-full', 'w-full');
   });
 
   it('renders plain text immediately and highlighted text after the import resolves', async () => {
