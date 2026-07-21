@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { ArrowLeft, ArrowRight, User, LogOut, Monitor, Moon, Sun } from 'lucide-react';
-import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, User, LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb';
 import { useTheme } from '@/components/theme-provider';
 import { useAuthStore } from '@/store/auth-store';
@@ -13,39 +13,37 @@ interface TopBarProps {
 export function TopBar({ crumbs }: TopBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const navigationType = useNavigationType();
   const { theme, setTheme } = useTheme();
   const { user, config, logout } = useAuthStore();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [navigationPending, setNavigationPending] = React.useState(false);
-  const [appHistory, setAppHistory] = React.useState(() => ({
-    entries: [location.key],
-    index: 0,
-  }));
+  const currentUrl = `${location.pathname}${location.search}${location.hash}`;
+  const isBucketPage = location.pathname === '/buckets' || location.pathname.startsWith('/buckets/');
+  const [bucketHistory, setBucketHistory] = React.useState(() => {
+    if (!isBucketPage || currentUrl === '/buckets') return {entries: ['/buckets'], index: 0};
+    return {entries: ['/buckets', currentUrl], index: 1};
+  });
   const menuRef = React.useRef<HTMLDivElement>(null);
+  const bucketHistoryTargetRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     setNavigationPending(false);
-    setAppHistory((current) => {
-      if (current.entries[current.index] === location.key) return current;
-
-      const knownIndex = current.entries.indexOf(location.key);
-      if (navigationType === 'POP') {
-        return knownIndex >= 0
-          ? {...current, index: knownIndex}
-          : {entries: [location.key], index: 0};
+    if (bucketHistoryTargetRef.current === currentUrl) {
+      bucketHistoryTargetRef.current = null;
+      return;
+    }
+    setBucketHistory((current) => {
+      if (!isBucketPage || currentUrl === '/buckets') {
+        return current.entries.length === 1 && current.entries[0] === '/buckets' && current.index === 0
+          ? current
+          : {entries: ['/buckets'], index: 0};
       }
+      if (current.entries[current.index] === currentUrl) return current;
 
-      if (navigationType === 'REPLACE') {
-        const entries = [...current.entries];
-        entries[current.index] = location.key;
-        return {entries, index: current.index};
-      }
-
-      const entries = [...current.entries.slice(0, current.index + 1), location.key];
+      const entries = [...current.entries.slice(0, current.index + 1), currentUrl];
       return {entries, index: entries.length - 1};
     });
-  }, [location.key, navigationType]);
+  }, [currentUrl, isBucketPage]);
 
   React.useEffect(() => {
     if (!menuOpen) return;
@@ -57,13 +55,17 @@ export function TopBar({ crumbs }: TopBarProps) {
   }, [menuOpen]);
 
   const hasUser = !!(config && (config.admin.enabled || config.oidc.enabled) && user);
-  const canGoBack = appHistory.index > 0;
-  const canGoForward = appHistory.index < appHistory.entries.length - 1;
+  const canGoBack = bucketHistory.index > 0;
+  const canGoForward = bucketHistory.index < bucketHistory.entries.length - 1;
 
-  const moveInHistory = (delta: -1 | 1) => {
+  const moveInBucketHistory = (delta: -1 | 1) => {
     if (navigationPending || (delta < 0 ? !canGoBack : !canGoForward)) return;
+    const index = bucketHistory.index + delta;
+    const target = bucketHistory.entries[index];
     setNavigationPending(true);
-    navigate(delta);
+    bucketHistoryTargetRef.current = target;
+    setBucketHistory((current) => ({...current, index}));
+    navigate(target, {replace: true});
   };
 
   return (
@@ -71,28 +73,30 @@ export function TopBar({ crumbs }: TopBarProps) {
       className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface-sunken)] px-4 backdrop-blur"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2 pl-8 md:pl-0">
-        <div className="flex shrink-0 items-center gap-0.5 border-r border-[var(--border)] pr-2">
+        {isBucketPage && (
+        <div className="flex shrink-0 items-center rounded-lg border border-[var(--border)] bg-[var(--background)]/70 p-0.5 shadow-sm">
           <button
             type="button"
-            onClick={() => moveInHistory(-1)}
+            onClick={() => moveInBucketHistory(-1)}
             disabled={!canGoBack || navigationPending}
             aria-label="Back"
             title="Back"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:pointer-events-none disabled:opacity-35"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--foreground)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:pointer-events-none disabled:text-[var(--muted-foreground)] disabled:opacity-35"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             type="button"
-            onClick={() => moveInHistory(1)}
+            onClick={() => moveInBucketHistory(1)}
             disabled={!canGoForward || navigationPending}
             aria-label="Forward"
             title="Forward"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:pointer-events-none disabled:opacity-35"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--foreground)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:pointer-events-none disabled:text-[var(--muted-foreground)] disabled:opacity-35"
           >
-            <ArrowRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+        )}
         <Breadcrumb items={crumbs} className="flex-1" />
       </div>
       <div className="flex items-center gap-1">

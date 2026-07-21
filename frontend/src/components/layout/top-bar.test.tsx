@@ -23,7 +23,7 @@ function LocationProbe() {
 }
 
 describe('TopBar navigation', () => {
-  it('moves backward and forward through router history', async () => {
+  it('moves through bucket history without crossing the buckets list boundary', async () => {
     render(
       <MemoryRouter initialEntries={['/outside', '/buckets']} initialIndex={1}>
         <TopBar crumbs={[{label: 'Buckets'}, {label: 'default-bucket'}, {label: 'Objects'}]} />
@@ -54,5 +54,32 @@ describe('TopBar navigation', () => {
     await waitFor(() => {
       expect(screen.getByTestId('location')).toHaveTextContent('/buckets/default-bucket/objects');
     });
+  });
+
+  it('hides navigation controls outside bucket pages', () => {
+    render(
+      <MemoryRouter initialEntries={['/cluster']}>
+        <TopBar crumbs={[{label: 'Cluster'}]} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole('button', {name: 'Back'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Forward'})).not.toBeInTheDocument();
+  });
+
+  it('uses the buckets list as the boundary when opening a bucket directly', async () => {
+    render(
+      <MemoryRouter initialEntries={['/buckets/default-bucket/objects']}>
+        <TopBar crumbs={[{label: 'Buckets'}, {label: 'default-bucket'}, {label: 'Objects'}]} />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    const back = screen.getByRole('button', {name: 'Back'});
+    expect(back).toBeEnabled();
+    fireEvent.click(back);
+
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/buckets'));
+    expect(back).toBeDisabled();
   });
 });
