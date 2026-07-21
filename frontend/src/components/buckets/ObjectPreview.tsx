@@ -95,7 +95,7 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
     <div
       ref={containerRef}
       className={cn(
-        'relative flex w-full items-center justify-center overflow-hidden bg-neutral-950',
+        'relative flex w-full items-center justify-center overflow-hidden bg-[var(--surface-sunken)]',
         isFullscreen && 'h-screen',
       )}
     >

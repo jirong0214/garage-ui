@@ -47,7 +47,7 @@ describe('ObjectPreview', () => {
     const image = screen.getByRole('img');
     expect(image).toHaveAttribute('src', 'blob:img');
     expect(image).toHaveClass('h-auto', 'w-auto', 'object-contain');
-    expect(image.parentElement).toHaveClass('bg-neutral-950');
+    expect(image.parentElement).toHaveClass('bg-[var(--surface-sunken)]');
     expect(image.parentElement).not.toHaveClass('px-5', 'py-6');
   });
 
