@@ -32,6 +32,7 @@ function renderPreview() {
 afterEach(() => {
   vi.clearAllMocks();
   delete (HTMLElement.prototype as Partial<HTMLElement>).requestFullscreen;
+  document.body.style.overflow = '';
 });
 
 describe('ObjectPreview', () => {
@@ -63,6 +64,20 @@ describe('ObjectPreview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open fullscreen preview' }));
 
     await waitFor(() => expect(requestFullscreen).toHaveBeenCalledTimes(1));
+  });
+
+  it('uses a viewport overlay when native fullscreen is unavailable', async () => {
+    mockedHook.mockReturnValue(state({ kind: 'image', status: 'ready', objectUrl: 'blob:img' }));
+    renderPreview();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open fullscreen preview' }));
+
+    const exitButton = await screen.findByRole('button', { name: 'Exit fullscreen preview' });
+    expect(exitButton.closest('.fixed')).toHaveClass('inset-0', 'h-[100dvh]', 'w-screen');
+    expect(document.body).toHaveStyle({ overflow: 'hidden' });
+
+    fireEvent.click(exitButton);
+    expect(screen.getByRole('button', { name: 'Open fullscreen preview' })).toBeInTheDocument();
   });
 
   it('renders video with the media url', () => {

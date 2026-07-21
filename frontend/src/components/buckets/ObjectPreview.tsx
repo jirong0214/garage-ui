@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, Loader2, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -6,7 +7,6 @@ import { useObjectPreview } from '@/hooks/useObjectPreview';
 import { getHighlightLanguage, TEXT_HIGHLIGHT_MAX_BYTES } from '@/lib/preview-utils';
 import { formatBytes } from '@/lib/file-utils';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 function Notice({
   message,
@@ -65,38 +65,69 @@ function CodeBlock({ text, objectKey }: { text: string; objectKey: string }) {
 
 function ImagePreview({ src, alt }: { src: string; alt: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+  const [isFallbackFullscreen, setIsFallbackFullscreen] = useState(false);
+  const isFullscreen = isNativeFullscreen || isFallbackFullscreen;
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(document.fullscreenElement === containerRef.current);
+      setIsNativeFullscreen(document.fullscreenElement === containerRef.current);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  useEffect(() => {
+    if (!isFallbackFullscreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsFallbackFullscreen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFallbackFullscreen]);
+
   const toggleFullscreen = async () => {
-    try {
-      if (document.fullscreenElement === containerRef.current) {
-        await document.exitFullscreen();
-      } else if (containerRef.current?.requestFullscreen) {
-        await containerRef.current.requestFullscreen();
-      } else {
-        toast.error('Fullscreen preview is unavailable');
-      }
-    } catch {
-      toast.error('Failed to open fullscreen preview');
+    if (isFallbackFullscreen) {
+      setIsFallbackFullscreen(false);
+      return;
     }
+
+    if (document.fullscreenElement === containerRef.current) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        setIsNativeFullscreen(false);
+      }
+      return;
+    }
+
+    if (containerRef.current?.requestFullscreen) {
+      try {
+        await containerRef.current.requestFullscreen();
+        return;
+      } catch {
+        // Mobile browsers and embedded webviews may expose the API but reject
+        // fullscreen for non-video elements. Fall back to a viewport overlay.
+      }
+    }
+
+    setIsFallbackFullscreen(true);
   };
 
   const fullscreenLabel = isFullscreen ? 'Exit fullscreen preview' : 'Open fullscreen preview';
 
-  return (
+  const surface = (
     <div
       ref={containerRef}
       className={cn(
         'relative flex w-full items-center justify-center overflow-hidden bg-[var(--surface-sunken)]',
-        isFullscreen && 'h-screen',
+        isNativeFullscreen && 'h-screen',
+        isFallbackFullscreen && 'fixed inset-0 z-[100] h-[100dvh] w-screen',
       )}
     >
       <img
@@ -127,6 +158,8 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
       </TooltipProvider>
     </div>
   );
+
+  return isFallbackFullscreen ? createPortal(surface, document.body) : surface;
 }
 
 export function ObjectPreview({
