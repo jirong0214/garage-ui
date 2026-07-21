@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useParams } from 'react-router-dom';
+import { NavLink, Outlet, useMatch, useParams } from 'react-router-dom';
 import { Database, Copy, Upload } from 'lucide-react';
 import { IconTile } from '@/components/ui/icon-tile';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { cn, copyText } from '@/lib/utils';
 import { useBuckets } from '@/hooks/useApi';
 import { useBucketCan } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TabSpec {
   to: string;
@@ -38,6 +39,7 @@ export function BucketDetailShell() {
   const { bucketName = '' } = useParams<{ bucketName: string }>();
   const { data: buckets = [] } = useBuckets();
   const bucket = buckets.find((b) => b.name === bucketName);
+  const isObjectsTab = useMatch('/buckets/:bucketName/objects') !== null;
   const canBucket = useBucketCan();
   const visibleTabs = tabs.filter((t) => !t.perms || t.perms.every((p) => canBucket(bucket, p)));
 
@@ -53,31 +55,47 @@ export function BucketDetailShell() {
 
   return (
     <div className="flex flex-col">
-      {/* Hero */}
-      <section className="px-7 pt-6 pb-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <IconTile icon={<Database />} tone="primary" size="lg" />
+      {/* Bucket summary */}
+      <section className="px-7 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <IconTile icon={<Database />} tone="primary" />
             <div className="min-w-0">
-              <h1 className="truncate text-[26px] font-semibold tracking-[-0.02em]">{bucketName}</h1>
-              <p className="mt-1 truncate font-mono text-[13.5px] text-[var(--muted-foreground)]">{s3Url}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="flex min-w-0 items-center gap-1">
+                <p className="truncate font-mono text-[13.5px] text-[var(--muted-foreground)]">{s3Url}</p>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={copyUrl}
+                        aria-label="Copy bucket URL"
+                      >
+                        <Copy />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Copy bucket URL</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 <Badge variant="success">Active</Badge>
                 {bucket?.objectCount != null && <Badge>{bucket.objectCount.toLocaleString()} objects</Badge>}
                 {bucket?.size != null && <Badge>{formatBytes(bucket.size)}</Badge>}
               </div>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button variant="secondary" onClick={copyUrl}>
-              <Copy /> Copy URL
+          {isObjectsTab && canBucket(bucket, 'object.write') && (
+            <Button
+              variant="primary"
+              className="shrink-0"
+              onClick={() => document.dispatchEvent(new CustomEvent('bucket:upload'))}
+            >
+              <Upload /> Upload
             </Button>
-            {canBucket(bucket, 'object.write') && (
-              <Button variant="primary" onClick={() => document.dispatchEvent(new CustomEvent('bucket:upload'))}>
-                <Upload /> Upload
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       </section>
 

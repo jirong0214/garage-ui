@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { ObjectBrowserView } from '@/components/buckets/ObjectBrowserView';
 import { useBucketObjects } from '@/hooks/useBucketObjects';
 import { useBuckets } from '@/hooks/useApi';
@@ -7,7 +7,6 @@ import { useBucketCan } from '@/hooks/usePermissions';
 
 export function BucketObjects() {
   const { bucketName = '' } = useParams<{ bucketName: string }>();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: buckets = [] } = useBuckets();
@@ -83,7 +82,6 @@ export function BucketObjects() {
   const handleRefresh = async () => {
     await fetchObjects(undefined, true);
   };
-  const handleBackToBuckets = () => navigate('/buckets');
 
   // CustomEvent bridge for the Upload button in BucketDetailShell hero.
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -124,7 +122,6 @@ export function BucketObjects() {
         onSearchChange={setSearchQuery}
         onDeepSearchChange={setDeepSearch}
         onNavigateToFolder={handleNavigateToFolder}
-        onBackToBuckets={handleBackToBuckets}
         onUploadFiles={canWrite ? uploadFiles : undefined}
         uploadTasks={uploadTasks}
         onDeleteObject={canDelete ? deleteObject : undefined}

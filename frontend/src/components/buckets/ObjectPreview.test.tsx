@@ -53,18 +53,24 @@ describe('ObjectPreview', () => {
     expect(image.parentElement?.parentElement).not.toHaveClass('px-5', 'py-6');
   });
 
-  it('opens the image preview in fullscreen', async () => {
+  it('always uses the viewport overlay instead of native fullscreen', async () => {
     const requestFullscreen = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
       configurable: true,
       value: requestFullscreen,
+    });
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
     });
     mockedHook.mockReturnValue(state({ kind: 'image', status: 'ready', objectUrl: 'blob:img' }));
     renderPreview();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open fullscreen preview' }));
 
-    await waitFor(() => expect(requestFullscreen).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole('button', { name: 'Exit fullscreen preview' })).toBeInTheDocument();
+    expect(requestFullscreen).not.toHaveBeenCalled();
   });
 
   it('uses a viewport overlay when native fullscreen is unavailable', async () => {

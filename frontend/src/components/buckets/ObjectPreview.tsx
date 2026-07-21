@@ -65,60 +65,23 @@ function CodeBlock({ text, objectKey }: { text: string; objectKey: string }) {
 }
 
 function ImagePreview({ src, alt }: { src: string; alt: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
-  const [isFallbackFullscreen, setIsFallbackFullscreen] = useState(false);
-  const isFullscreen = isNativeFullscreen || isFallbackFullscreen;
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsNativeFullscreen(document.fullscreenElement === containerRef.current);
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
-  useEffect(() => {
-    if (!isFallbackFullscreen) return;
+    if (!isFullscreen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsFallbackFullscreen(false);
+      if (event.key === 'Escape') setIsFullscreen(false);
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isFallbackFullscreen]);
+  }, [isFullscreen]);
 
-  const toggleFullscreen = async () => {
-    if (isFallbackFullscreen) {
-      setIsFallbackFullscreen(false);
-      return;
-    }
-
-    if (document.fullscreenElement === containerRef.current) {
-      try {
-        await document.exitFullscreen();
-      } catch {
-        setIsNativeFullscreen(false);
-      }
-      return;
-    }
-
-    if (containerRef.current?.requestFullscreen) {
-      try {
-        await containerRef.current.requestFullscreen();
-        return;
-      } catch {
-        // Mobile browsers and embedded webviews may expose the API but reject
-        // fullscreen for non-video elements. Fall back to a viewport overlay.
-      }
-    }
-
-    setIsFallbackFullscreen(true);
-  };
+  const toggleFullscreen = () => setIsFullscreen((current) => !current);
 
   const fullscreenLabel = isFullscreen ? 'Exit fullscreen preview' : 'Open fullscreen preview';
 
@@ -154,7 +117,7 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
           isFullscreen ? 'max-h-screen max-w-full' : 'max-h-[85vh] max-w-full',
         )}
       />
-      {isFallbackFullscreen ? (
+      {isFullscreen ? (
         <KeepScale className="absolute right-3 top-3">
           {fullscreenControl}
         </KeepScale>
@@ -168,20 +131,18 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
 
   const surface = (
     <div
-      ref={containerRef}
       onClick={(event) => {
-        if (isFallbackFullscreen && event.target === event.currentTarget) {
-          setIsFallbackFullscreen(false);
+        if (isFullscreen && event.target === event.currentTarget) {
+          setIsFullscreen(false);
         }
       }}
       className={cn(
         'relative flex w-full items-center justify-center overflow-hidden',
-        !isFallbackFullscreen && 'bg-[var(--surface-sunken)]',
-        isNativeFullscreen && 'h-screen',
-        isFallbackFullscreen && 'fixed inset-0 z-[100] h-[100dvh] w-screen bg-black/60',
+        !isFullscreen && 'bg-[var(--surface-sunken)]',
+        isFullscreen && 'fixed inset-0 z-[100] h-[100dvh] w-screen bg-black/60',
       )}
     >
-      {isFallbackFullscreen ? (
+      {isFullscreen ? (
         <TransformWrapper
           minScale={1}
           maxScale={5}
@@ -196,7 +157,7 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
             contentStyle={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
             contentProps={{
               onClick: (event) => {
-                if (event.target === event.currentTarget) setIsFallbackFullscreen(false);
+                if (event.target === event.currentTarget) setIsFullscreen(false);
               },
             }}
           >
@@ -207,7 +168,7 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
     </div>
   );
 
-  return isFallbackFullscreen ? createPortal(surface, document.body) : surface;
+  return isFullscreen ? createPortal(surface, document.body) : surface;
 }
 
 export function ObjectPreview({

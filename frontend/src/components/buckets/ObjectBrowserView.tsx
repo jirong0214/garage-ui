@@ -7,7 +7,7 @@ import {CreateDirectoryDialog} from './CreateDirectoryDialog';
 import {DeleteObjectDialog} from './DeleteObjectDialog';
 import {ConfirmDialog} from '@/components/ui/confirm-dialog';
 import {UploadProgress} from './UploadProgress';
-import {ArrowLeft, ChevronRight, FolderPlus, Home, RotateCwIcon, ScanSearch, Search, Trash, Upload} from 'lucide-react';
+import {ChevronRight, FolderPlus, Home, RotateCwIcon, ScanSearch, Search, Trash, Upload} from 'lucide-react';
 import {getBreadcrumbs} from '@/lib/file-utils';
 import type {S3Object, UploadTask} from '@/types';
 
@@ -27,7 +27,6 @@ interface ObjectBrowserViewProps {
   onSearchChange: (query: string) => void;
   onDeepSearchChange: (enabled: boolean) => void;
   onNavigateToFolder: (path: string) => void;
-  onBackToBuckets: () => void;
   onUploadFiles?: (files: File[]) => Promise<boolean>;
   uploadTasks: UploadTask[];
   onDeleteObject?: (key: string) => Promise<boolean>;
@@ -58,7 +57,6 @@ export function ObjectBrowserView({
   onSearchChange,
   onDeepSearchChange,
   onNavigateToFolder,
-  onBackToBuckets,
   onUploadFiles,
   uploadTasks,
   onDeleteObject,
@@ -245,13 +243,6 @@ export function ObjectBrowserView({
   return (
     <div>
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Back Button */}
-        <Button variant="secondary" onClick={onBackToBuckets} className="text-sm sm:text-base">
-          <ArrowLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">Back to Buckets</span>
-          <span className="sm:hidden">Back</span>
-        </Button>
-
         {/* Breadcrumb Navigation */}
         <div className="flex items-center gap-2 text-xs sm:text-sm overflow-x-auto">
           <Home className="h-4 w-4 text-muted-foreground" />
