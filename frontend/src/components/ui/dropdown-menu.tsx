@@ -6,6 +6,8 @@ interface DropdownMenuContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
   triggerRef: React.RefObject<HTMLButtonElement | null>;
+  triggerRect: DOMRect | null;
+  updatePosition: () => void;
 }
 
 const DropdownMenuContext = React.createContext<DropdownMenuContextValue | undefined>(undefined);
@@ -25,8 +27,14 @@ interface DropdownMenuProps {
 const DropdownMenu: React.FC<DropdownMenuProps> = ({ children }) => {
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const [triggerRect, setTriggerRect] = React.useState<DOMRect | null>(null);
+  const updatePosition = React.useCallback(() => {
+    if (triggerRef.current) {
+      setTriggerRect(triggerRef.current.getBoundingClientRect());
+    }
+  }, []);
   return (
-    <DropdownMenuContext.Provider value={{ open, setOpen, triggerRef }}>
+    <DropdownMenuContext.Provider value={{ open, setOpen, triggerRef, triggerRect, updatePosition }}>
       <div className="relative inline-block text-left">{children}</div>
     </DropdownMenuContext.Provider>
   );
@@ -36,7 +44,7 @@ const DropdownMenuTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ onClick, ...props }, ref) => {
-  const { open, setOpen, triggerRef } = useDropdownMenu();
+  const { open, setOpen, triggerRef, updatePosition } = useDropdownMenu();
 
   // Merge the forwarded ref with the context triggerRef
   React.useImperativeHandle(ref, () => triggerRef.current as HTMLButtonElement);
@@ -45,6 +53,7 @@ const DropdownMenuTrigger = React.forwardRef<
     <button
       ref={triggerRef}
       onClick={(e) => {
+        if (!open) updatePosition();
         setOpen(!open);
         onClick?.(e);
       }}
@@ -59,45 +68,21 @@ interface DropdownMenuContentProps extends React.HTMLAttributes<HTMLDivElement> 
 }
 
 const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
-  ({ className, children, align = 'start', ...props }) => {
-    const { open, setOpen, triggerRef } = useDropdownMenu();
+  ({ className, children, align = 'start', ...props }, ref) => {
+    const { open, setOpen, triggerRef, triggerRect, updatePosition } = useDropdownMenu();
     const contentRef = React.useRef<HTMLDivElement>(null);
-    const [position, setPosition] = React.useState({ top: 0, left: 0 });
+    React.useImperativeHandle(ref, () => contentRef.current as HTMLDivElement);
 
-    // Calculate position based on trigger element
     React.useEffect(() => {
-      const updatePosition = () => {
-        if (open && triggerRef.current) {
-          const rect = triggerRef.current.getBoundingClientRect();
-          const scrollY = window.scrollY || document.documentElement.scrollTop;
-          const scrollX = window.scrollX || document.documentElement.scrollLeft;
-
-          let left = rect.left + scrollX;
-          const top = rect.bottom + scrollY + 8; // 8px gap (mt-2)
-
-          // Adjust horizontal alignment
-          if (align === 'end') {
-            left = rect.right + scrollX - 224; // 224px = w-56
-          } else if (align === 'center') {
-            left = rect.left + scrollX + (rect.width / 2) - 112; // 112px = half of w-56
-          }
-
-          setPosition({ top, left });
-        }
-      };
-
-      updatePosition();
-
-      if (open) {
-        window.addEventListener('scroll', updatePosition, true);
-        window.addEventListener('resize', updatePosition);
-      }
+      if (!open) return;
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
 
       return () => {
         window.removeEventListener('scroll', updatePosition, true);
         window.removeEventListener('resize', updatePosition);
       };
-    }, [open, align, triggerRef]);
+    }, [open, updatePosition]);
 
     React.useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
@@ -118,7 +103,23 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
       };
     }, [open, setOpen, triggerRef]);
 
-    if (!open) return null;
+    if (!open || !triggerRect) return null;
+
+    const viewportPadding = 8;
+    const gap = 8;
+    const menuWidth = Math.min(224, window.innerWidth - viewportPadding * 2);
+    let left = triggerRect.left;
+    if (align === 'end') {
+      left = triggerRect.right - menuWidth;
+    } else if (align === 'center') {
+      left = triggerRect.left + triggerRect.width / 2 - menuWidth / 2;
+    }
+    left = Math.min(Math.max(viewportPadding, left), window.innerWidth - menuWidth - viewportPadding);
+
+    const spaceBelow = window.innerHeight - triggerRect.bottom - gap - viewportPadding;
+    const spaceAbove = triggerRect.top - gap - viewportPadding;
+    const openAbove = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(80, Math.min(320, openAbove ? spaceAbove : spaceBelow));
 
     const content = (
       <div
@@ -126,11 +127,16 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         style={{
           backgroundColor: 'var(--popover)',
           position: 'fixed',
-          top: `${position.top}px`,
-          left: `${position.left}px`,
+          left: `${left}px`,
+          width: `${menuWidth}px`,
+          maxHeight: `${maxHeight}px`,
+          overflowY: 'auto',
+          ...(openAbove
+            ? { bottom: `${window.innerHeight - triggerRect.top + gap}px` }
+            : { top: `${triggerRect.bottom + gap}px` }),
         }}
         className={cn(
-          'z-50 w-56 origin-top-right rounded-md text-popover-foreground shadow-lg ring-1 ring-border border border-border focus:outline-none',
+          'z-50 origin-top-right rounded-md text-popover-foreground shadow-lg ring-1 ring-border border border-border focus:outline-none',
           className
         )}
         {...props}

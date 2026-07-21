@@ -1,4 +1,5 @@
 import * as React from 'react';
+import {createPortal} from 'react-dom';
 import {cn} from '@/lib/utils';
 import {ChevronDown, Check} from 'lucide-react';
 
@@ -32,11 +33,15 @@ const useSelectContext = () => {
 };
 
 const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
-  ({ className, children, value, onChange, disabled, placeholder = 'Select an option...', ...props }, _ref) => {
+  ({ className, children, value, onChange, disabled, placeholder = 'Select an option...', ...props }, ref) => {
     const [open, setOpen] = React.useState(false);
     const [internalValue, setInternalValue] = React.useState(value);
     const containerRef = React.useRef<HTMLDivElement>(null);
     const buttonRef = React.useRef<HTMLButtonElement>(null);
+    const menuRef = React.useRef<HTMLDivElement>(null);
+    const [triggerRect, setTriggerRect] = React.useState<DOMRect | null>(null);
+
+    React.useImperativeHandle(ref, () => buttonRef.current as HTMLButtonElement);
 
     const displayValue = React.useMemo(() => {
       const currentValue = value ?? internalValue;
@@ -64,7 +69,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
 
     React.useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
-        if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        const target = event.target as Node;
+        if (!containerRef.current?.contains(target) && !menuRef.current?.contains(target)) {
           setOpen(false);
         }
       };
@@ -78,11 +84,65 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       };
     }, [open]);
 
+    React.useEffect(() => {
+      if (!open) return;
+      const updatePosition = () => {
+        if (buttonRef.current) {
+          setTriggerRect(buttonRef.current.getBoundingClientRect());
+        }
+      };
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+      };
+    }, [open]);
+
     const handleChange = (newValue: string) => {
       setInternalValue(newValue);
       onChange?.(newValue);
       setOpen(false);
     };
+
+    const handleToggle = () => {
+      if (disabled) return;
+      if (!open && buttonRef.current) {
+        setTriggerRect(buttonRef.current.getBoundingClientRect());
+      }
+      setOpen(!open);
+    };
+
+    const viewportPadding = 8;
+    const gap = 4;
+    const spaceBelow = triggerRect ? window.innerHeight - triggerRect.bottom - gap - viewportPadding : 0;
+    const spaceAbove = triggerRect ? triggerRect.top - gap - viewportPadding : 0;
+    const openAbove = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const menuWidth = triggerRect ? Math.min(triggerRect.width, window.innerWidth - viewportPadding * 2) : 0;
+    const menuLeft = triggerRect
+      ? Math.min(Math.max(viewportPadding, triggerRect.left), window.innerWidth - menuWidth - viewportPadding)
+      : 0;
+    const menuMaxHeight = Math.max(80, Math.min(240, openAbove ? spaceAbove : spaceBelow));
+
+    const options = open && triggerRect ? createPortal(
+      <div
+        ref={menuRef}
+        className="z-[60] overflow-auto rounded-md border border-border text-popover-foreground shadow-lg"
+        style={{
+          backgroundColor: 'var(--popover)',
+          position: 'fixed',
+          left: `${menuLeft}px`,
+          width: `${menuWidth}px`,
+          maxHeight: `${menuMaxHeight}px`,
+          ...(openAbove
+            ? { bottom: `${window.innerHeight - triggerRect.top + gap}px` }
+            : { top: `${triggerRect.bottom + gap}px` }),
+        }}
+      >
+        {children}
+      </div>,
+      document.body,
+    ) : null;
 
     return (
       <SelectContext.Provider value={{ value: value ?? internalValue, onChange: handleChange, open, setOpen }}>
@@ -98,7 +158,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
               !internalValue && !value && 'text-muted-foreground',
               className
             )}
-            onClick={() => !disabled && setOpen(!open)}
+            onClick={handleToggle}
             disabled={disabled}
             {...props}
           >
@@ -106,14 +166,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             <ChevronDown className={cn('h-4 w-4 opacity-50 transition-transform', open && 'transform rotate-180')} />
           </button>
 
-          {open && (
-            <div
-              className="absolute z-50 w-full mt-1 text-popover-foreground rounded-md border border-border shadow-lg max-h-60 overflow-auto"
-              style={{ backgroundColor: 'var(--popover)' }}
-            >
-              {children}
-            </div>
-          )}
+          {options}
         </div>
       </SelectContext.Provider>
     );
@@ -161,4 +214,3 @@ const SelectOption = React.forwardRef<HTMLDivElement, SelectOptionProps>(
 SelectOption.displayName = 'SelectOption';
 
 export { Select, SelectOption };
-
