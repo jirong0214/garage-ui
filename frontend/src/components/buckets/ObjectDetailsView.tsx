@@ -194,6 +194,23 @@ export function ObjectDetailsView() {
         </div>
       </section>
 
+      {/* Preview */}
+      <CardSection title="Preview">
+        {canRead && bucketName && objectKey ? (
+          <ObjectPreview
+            bucket={bucketName}
+            objectKey={objectKey}
+            size={metadata.size}
+            contentType={metadata.contentType}
+            onDownload={handleDownload}
+          />
+        ) : (
+          <div className="px-5 py-10 text-center text-[13px] text-[var(--muted-foreground)]">
+            No preview available for this object.
+          </div>
+        )}
+      </CardSection>
+
       {/* Details */}
       <CardSection title="Details">
         <dl className="divide-y divide-[var(--border)]">
@@ -231,23 +248,6 @@ export function ObjectDetailsView() {
           </dl>
         </CardSection>
       )}
-
-      {/* Preview */}
-      <CardSection title="Preview">
-        {canRead && bucketName && objectKey ? (
-          <ObjectPreview
-            bucket={bucketName}
-            objectKey={objectKey}
-            size={metadata.size}
-            contentType={metadata.contentType}
-            onDownload={handleDownload}
-          />
-        ) : (
-          <div className="px-5 py-10 text-center text-[13px] text-[var(--muted-foreground)]">
-            No preview available for this object.
-          </div>
-        )}
-      </CardSection>
 
       <ConfirmDialog
         open={deleteOpen}

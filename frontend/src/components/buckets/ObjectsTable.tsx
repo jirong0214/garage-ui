@@ -1,7 +1,7 @@
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {Badge} from '@/components/ui/badge';
-import {Button} from '@/components/ui/button';
+import {Button, buttonVariants} from '@/components/ui/button';
 import {Checkbox} from '@/components/ui/checkbox';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip';
@@ -286,7 +286,7 @@ export function ObjectsTable({
           >
             Modified {sortColumn === 'modified' && (sortDirection === 'asc' ? '↑' : '↓')}
           </TableHead>
-          <TableHead className="w-[50px]"></TableHead>
+          <TableHead className="w-[92px]"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -416,13 +416,31 @@ export function ObjectsTable({
                   );
                 })() : null}
               </TableCell>
-              <TableCell>
-                {obj.isFolder ? (
+              <TableCell className="w-[92px]">
+                <div className="flex items-center justify-end gap-1">
+                  {!obj.isFolder && publicBaseURL && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => copyPublicURL(obj.key)}
+                          aria-label={`Copy public URL for ${obj.key}`}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Copy public URL</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {obj.isFolder ? (
                   <DropdownMenu>
-                    <DropdownMenuTrigger>
-                      <Button variant="ghost" size="icon" className="-m-6 top-1 relative">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                    <DropdownMenuTrigger
+                      aria-label={`Actions for ${obj.key}`}
+                      className={buttonVariants({variant: 'ghost', size: 'icon-sm'})}
+                    >
+                      <MoreVertical className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onNavigateToFolder(obj.key)}>
@@ -445,10 +463,11 @@ export function ObjectsTable({
                   </DropdownMenu>
                 ) : (
                   <DropdownMenu>
-                    <DropdownMenuTrigger>
-                      <Button variant="ghost" size="icon" className="-m-6 top-1 relative">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                    <DropdownMenuTrigger
+                      aria-label={`Actions for ${obj.key}`}
+                      className={buttonVariants({variant: 'ghost', size: 'icon-sm'})}
+                    >
+                      <MoreVertical className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => navigate(`/buckets/${bucketName}/objects/${encodeURIComponent(obj.key)}`)}>
@@ -459,12 +478,6 @@ export function ObjectsTable({
                         <Download className="h-4 w-4" />
                         Download
                       </DropdownMenuItem>
-                      {publicBaseURL && (
-                        <DropdownMenuItem onClick={() => copyPublicURL(obj.key)}>
-                          <Copy className="h-4 w-4" />
-                          Copy public URL
-                        </DropdownMenuItem>
-                      )}
                       {canShare && (
                         <DropdownMenuItem onClick={() => setShareObject(obj)}>
                           <Link2 className="h-4 w-4" />
@@ -486,6 +499,7 @@ export function ObjectsTable({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
+                </div>
               </TableCell>
             </TableRow>
           ))

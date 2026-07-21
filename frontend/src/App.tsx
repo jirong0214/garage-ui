@@ -70,11 +70,11 @@ function App() {
               <Route path="buckets/:bucketName" element={<BucketDetailShell />}>
                 <Route index element={<Navigate to="objects" replace />} />
                 <Route path="objects" element={<BucketObjects />} />
-                <Route path="objects/*" element={<ObjectDetailsView />} />
                 <Route path="permissions" element={<BucketPermissions />} />
                 <Route path="website" element={<BucketWebsite />} />
                 <Route path="settings" element={<BucketSettings />} />
               </Route>
+              <Route path="buckets/:bucketName/objects/*" element={<ObjectDetailsView />} />
               <Route path="cluster" element={<Cluster />} />
               <Route path="access" element={<AccessControl />} />
             </Route>
