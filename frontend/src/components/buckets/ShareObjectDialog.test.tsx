@@ -41,4 +41,35 @@ describe('ShareObjectDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy signed URL' }));
     await waitFor(() => expect(copyText).toHaveBeenCalledWith(signedURL));
   });
+
+  it('does not retain a generated URL when switching objects', async () => {
+    vi.mocked(objectsApi.getPresignedUrl).mockResolvedValue(
+      'https://s3.example.com/bucket/a.png?X-Amz-Signature=test',
+    );
+
+    const { rerender } = render(
+      <ShareObjectDialog
+        open
+        onOpenChange={vi.fn()}
+        bucketName="bucket"
+        objectKey="a.png"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate URL' }));
+    expect(await screen.findByRole('textbox', { name: 'Signed URL' })).toBeInTheDocument();
+
+    rerender(
+      <ShareObjectDialog
+        open
+        onOpenChange={vi.fn()}
+        bucketName="bucket"
+        objectKey="b.png"
+      />,
+    );
+
+    expect(screen.queryByRole('textbox', { name: 'Signed URL' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generate URL' })).toBeInTheDocument();
+    expect(screen.getByText('b.png')).toBeInTheDocument();
+  });
 });

@@ -30,7 +30,7 @@ const expiryOptions = [
   { value: '604800', label: '7 days' },
 ];
 
-export function ShareObjectDialog({ open, onOpenChange, bucketName, objectKey }: ShareObjectDialogProps) {
+function ShareObjectDialogInstance({ open, onOpenChange, bucketName, objectKey }: ShareObjectDialogProps) {
   const [expiresIn, setExpiresIn] = useState('3600');
   const [loading, setLoading] = useState(false);
   const [signedURL, setSignedURL] = useState('');
@@ -113,5 +113,16 @@ export function ShareObjectDialog({ open, onOpenChange, bucketName, objectKey }:
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function ShareObjectDialog(props: ShareObjectDialogProps) {
+  if (!props.open) return null;
+
+  return (
+    <ShareObjectDialogInstance
+      key={`${props.bucketName}\0${props.objectKey}`}
+      {...props}
+    />
   );
 }

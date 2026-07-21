@@ -114,8 +114,8 @@ export function ObjectPreview({
   switch (preview.kind) {
     case 'image':
       return (
-        <div className="flex justify-center bg-[var(--surface-sunken)] px-5 py-6">
-          <img src={preview.objectUrl!} alt={objectKey} className="h-auto max-w-full object-contain" />
+        <div className="flex justify-center bg-[var(--surface-sunken)]">
+          <img src={preview.objectUrl!} alt={objectKey} className="block max-h-[85vh] w-full object-contain" />
         </div>
       );
     case 'video':
@@ -136,7 +136,7 @@ export function ObjectPreview({
       );
     case 'audio':
       return (
-        <div className="px-5 py-6">
+        <div>
           <audio
             ref={(el) => {
               mediaRef.current = el;
@@ -145,7 +145,7 @@ export function ObjectPreview({
             src={preview.mediaUrl!}
             onError={handleMediaError}
             onLoadedMetadata={handleLoadedMetadata}
-            className="w-full"
+            className="block w-full"
           />
         </div>
       );

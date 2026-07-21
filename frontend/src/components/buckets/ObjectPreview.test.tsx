@@ -43,7 +43,10 @@ describe('ObjectPreview', () => {
   it('renders an image from the object url', () => {
     mockedHook.mockReturnValue(state({ kind: 'image', status: 'ready', objectUrl: 'blob:img' }));
     renderPreview();
-    expect(screen.getByRole('img')).toHaveAttribute('src', 'blob:img');
+    const image = screen.getByRole('img');
+    expect(image).toHaveAttribute('src', 'blob:img');
+    expect(image).toHaveClass('w-full');
+    expect(image.parentElement).not.toHaveClass('px-5', 'py-6');
   });
 
   it('renders video with the media url', () => {
