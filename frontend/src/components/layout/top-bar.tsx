@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { User, LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, ArrowRight, User, LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb';
 import { useTheme } from '@/components/theme-provider';
 import { useAuthStore } from '@/store/auth-store';
@@ -10,6 +11,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ crumbs }: TopBarProps) {
+  const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { user, config, logout } = useAuthStore();
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -30,8 +32,28 @@ export function TopBar({ crumbs }: TopBarProps) {
     <div
       className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface-sunken)] px-4 backdrop-blur"
     >
-      <div className="min-w-0 flex-1 pl-8 md:pl-0">
-        <Breadcrumb items={crumbs} />
+      <div className="flex min-w-0 flex-1 items-center gap-2 pl-8 md:pl-0">
+        <div className="flex shrink-0 items-center gap-0.5 border-r border-[var(--border)] pr-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Back"
+            title="Back"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(1)}
+            aria-label="Forward"
+            title="Forward"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+          >
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+        <Breadcrumb items={crumbs} className="flex-1" />
       </div>
       <div className="flex items-center gap-1">
         <ThemeMiniToggle theme={theme} setTheme={setTheme} />
