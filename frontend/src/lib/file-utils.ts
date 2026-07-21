@@ -108,8 +108,7 @@ export function getBreadcrumbs(currentPath: string): Array<{ label: string; path
 /**
  * Format relative time from a date
  */
-export function formatRelativeTime(date: Date): string {
-  const now = new Date();
+export function formatRelativeTime(date: Date, now = new Date()): string {
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
@@ -121,6 +120,24 @@ export function formatRelativeTime(date: Date): string {
   if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
   if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) !== 1 ? 's' : ''} ago`;
   return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) !== 1 ? 's' : ''} ago`;
+}
+
+const padDatePart = (value: number) => String(value).padStart(2, '0');
+
+export function formatLocalDateTime(date: Date): string {
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
+}
+
+export function formatUTCDateTime(date: Date): string {
+  return `${date.getUTCFullYear()}-${padDatePart(date.getUTCMonth() + 1)}-${padDatePart(date.getUTCDate())} ${padDatePart(date.getUTCHours())}:${padDatePart(date.getUTCMinutes())}:${padDatePart(date.getUTCSeconds())} UTC`;
+}
+
+export function formatObjectModifiedTime(date: Date, now = new Date()): string {
+  const age = now.getTime() - date.getTime();
+  if (age >= 0 && age < 7 * 24 * 60 * 60 * 1000) {
+    return formatRelativeTime(date, now);
+  }
+  return formatLocalDateTime(date);
 }
 
 /**

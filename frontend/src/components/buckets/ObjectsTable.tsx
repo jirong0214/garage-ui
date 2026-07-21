@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {ChevronLeft, ChevronRight, Copy, Download, Eye, FileIcon, FolderIcon, Link2, Loader2, MoreVertical, Trash2} from 'lucide-react';
 import {Select, SelectOption} from '@/components/ui/select';
-import {downloadObject, formatBytes, formatRelativeTime} from '@/lib/file-utils';
+import {downloadObject, formatBytes, formatObjectModifiedTime} from '@/lib/file-utils';
 import type {S3Object} from '@/types';
 import {buildPublicObjectUrl, copyText} from '@/lib/utils';
 import {toast} from 'sonner';
@@ -365,55 +365,7 @@ export function ObjectsTable({
               <TableCell>
                 {obj.lastModified ? (() => {
                   const d = new Date(obj.lastModified);
-                  return (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="decoration-dashed decoration-1 underline underline-offset-6 cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
-                          {d.toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })} {d.toLocaleTimeString('en-GB', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false,
-                          })} CET
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <div className="space-y-1 min-w-max">
-                          <div className="flex gap-3 items-center">
-                            <span className="text-sm text-gray-400 w-20 text-right">UTC</span>
-                            <span className="text-sm text-white">
-                              {d.toLocaleString('en-GB', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit',
-                                hour12: false,
-                                timeZone: 'UTC',
-                              })} UTC
-                            </span>
-                          </div>
-                          <div className="flex gap-3 items-center">
-                            <span className="text-sm text-gray-400 w-20 text-right">Relative</span>
-                            <span className="text-sm text-white">
-                              {formatRelativeTime(d)}
-                            </span>
-                          </div>
-                          <div className="flex gap-3 items-center">
-                            <span className="text-sm text-gray-400 w-20 text-right">Timestamp</span>
-                            <span className="text-sm text-white font-mono">
-                              {d.toISOString()}
-                            </span>
-                          </div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
+                  return <span className="text-muted-foreground">{formatObjectModifiedTime(d)}</span>;
                 })() : null}
               </TableCell>
               <TableCell className="w-[92px]">

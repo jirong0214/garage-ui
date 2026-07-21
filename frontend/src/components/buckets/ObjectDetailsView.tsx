@@ -10,10 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { IconTile } from '@/components/ui/icon-tile';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ObjectPreview } from '@/components/buckets/ObjectPreview';
-import { ArrowLeft, ChevronRight, Copy, Download, File, Link2, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Copy, Download, File, Info, Link2, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { downloadObject, formatBytes } from '@/lib/file-utils';
-import { buildPublicObjectUrl, cn, copyText, formatDate } from '@/lib/utils';
+import { downloadObject, formatBytes, formatLocalDateTime, formatRelativeTime, formatUTCDateTime } from '@/lib/file-utils';
+import { buildPublicObjectUrl, cn, copyText } from '@/lib/utils';
 import { ShareObjectDialog } from '@/components/buckets/ShareObjectDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -46,6 +46,38 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
     <div className="grid grid-cols-1 gap-1 px-5 py-3.5 sm:grid-cols-[200px_1fr] sm:gap-4">
       <dt className="text-[12.5px] font-medium text-[var(--muted-foreground)]">{label}</dt>
       <dd className="text-[13.5px] text-[var(--foreground)] break-words">{children}</dd>
+    </div>
+  );
+}
+
+function ModifiedTimeDetails({ value }: { value: string }) {
+  const date = new Date(value);
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>{formatLocalDateTime(date)}</span>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="Show modified time details"
+              className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            >
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <dl className="grid min-w-max grid-cols-[72px_1fr] gap-x-3 gap-y-1 text-[12.5px]">
+              <dt className="text-right text-neutral-400">UTC</dt>
+              <dd>{formatUTCDateTime(date)}</dd>
+              <dt className="text-right text-neutral-400">Relative</dt>
+              <dd>{formatRelativeTime(date)}</dd>
+              <dt className="text-right text-neutral-400">Timestamp</dt>
+              <dd className="font-mono">{date.toISOString()}</dd>
+            </dl>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 }
@@ -222,19 +254,18 @@ export function ObjectDetailsView() {
       {/* Hero */}
       <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
-          <IconTile icon={<File />} tone="primary" size="lg" />
+          <IconTile icon={<File />} tone="primary" />
           <div className="min-w-0">
-            <h1 className="truncate text-[22px] font-semibold tracking-[-0.02em]">{fileName}</h1>
             <button
               type="button"
               onClick={() => copy(metadata.key, 'Object key copied')}
               title="Copy key"
-              className="group mt-1 inline-flex max-w-full items-center gap-1.5 truncate font-mono text-[13px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              className="group inline-flex max-w-full items-center gap-1.5 truncate font-mono text-[13px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             >
               <span className="truncate">{metadata.key}</span>
               <Copy className="h-3 w-3 flex-shrink-0 opacity-60 group-hover:opacity-100" />
             </button>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
               <Badge>{formatBytes(metadata.size)}</Badge>
               <Badge>{metadata.contentType || 'application/octet-stream'}</Badge>
               {metadata.storageClass && <Badge>{metadata.storageClass}</Badge>}
@@ -272,7 +303,7 @@ export function ObjectDetailsView() {
           <DetailRow label="Size">{formatBytes(metadata.size)}</DetailRow>
           <DetailRow label="Content type">{metadata.contentType || 'application/octet-stream'}</DetailRow>
           <DetailRow label="Storage class">{metadata.storageClass || 'Standard'}</DetailRow>
-          <DetailRow label="Last modified">{formatDate(metadata.lastModified)}</DetailRow>
+          <DetailRow label="Last modified"><ModifiedTimeDetails value={metadata.lastModified} /></DetailRow>
           <DetailRow label="ETag">
             <button
               type="button"

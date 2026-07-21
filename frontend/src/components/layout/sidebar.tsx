@@ -80,7 +80,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
         isOpen ? 'translate-x-0' : '-translate-x-full',
       )}
     >
-      <div className={cn('flex h-16 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3', isCollapsed && 'md:justify-center md:gap-0')}>
+      <div className={cn('flex h-14 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3', isCollapsed && 'md:justify-center md:gap-0')}>
         <img src="/garage.png" alt="" className={cn('h-8 w-8', isCollapsed && 'md:hidden')} />
         <span className={cn('min-w-0 flex-1 truncate text-[18px] font-semibold tracking-tight', isCollapsed && 'md:hidden')}>Garage UI</span>
         <button

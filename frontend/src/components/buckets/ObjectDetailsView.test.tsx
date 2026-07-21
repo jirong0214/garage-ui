@@ -2,6 +2,7 @@ import {fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {objectsApi} from '@/lib/api';
+import {formatLocalDateTime} from '@/lib/file-utils';
 import {ObjectDetailsView} from './ObjectDetailsView';
 
 vi.mock('@/lib/api', () => ({
@@ -54,6 +55,9 @@ describe('ObjectDetailsView', () => {
     const detailsHeading = screen.getByRole('heading', {name: 'Details'});
 
     expect(previewHeading.compareDocumentPosition(detailsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('heading', {name: 'photo.jpg'})).not.toBeInTheDocument();
+    expect(screen.getByText(formatLocalDateTime(new Date('2026-07-20T12:00:00Z')))).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Show modified time details'})).toBeInTheDocument();
   });
 
   it('expands the whole Preview card inside the app content frame', async () => {
