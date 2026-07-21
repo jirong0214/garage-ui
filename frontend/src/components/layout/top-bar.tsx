@@ -28,7 +28,7 @@ export function TopBar({ crumbs }: TopBarProps) {
 
   return (
     <div
-      className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface-sunken)] px-4 backdrop-blur"
+      className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface-sunken)] px-4 backdrop-blur"
     >
       <div className="min-w-0 flex-1 pl-8 md:pl-0">
         <Breadcrumb items={crumbs} />

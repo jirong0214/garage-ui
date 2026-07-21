@@ -40,7 +40,7 @@ export function Layout() {
   const { noAccess } = usePermissions();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--background)]">
+    <div className="app-viewport flex min-h-0 overflow-hidden bg-[var(--background)]">
       <Button
         variant="ghost"
         size="icon"
@@ -59,9 +59,9 @@ export function Layout() {
       )}
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar crumbs={crumbs} />
-        <main className="flex-1 overflow-y-auto scrollbar-thin">
+        <main className="app-scroll-region min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           {noAccess ? <NoAccess /> : <Outlet />}
         </main>
       </div>

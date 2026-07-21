@@ -143,6 +143,18 @@
 }
 
 @layer utilities {
+  .app-viewport {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .app-scroll-region {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+    scroll-padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+  }
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 8px;
     height: 8px;
