@@ -1,37 +1,17 @@
-import { Outlet, useLocation, useParams } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './sidebar';
 import { TopBar } from './top-bar';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { BreadcrumbItem } from '@/components/ui/breadcrumb';
 import { usePermissions } from '@/hooks/usePermissions';
 import { NoAccess } from '@/pages/NoAccess';
+import { buildAppBreadcrumbs } from '@/lib/breadcrumbs';
 
 function useCrumbs(): BreadcrumbItem[] {
   const location = useLocation();
-  const params = useParams();
-  return useMemo(() => {
-    const path = location.pathname;
-    if (path === '/') return [{ label: 'Dashboard' }];
-    if (path === '/cluster') return [{ label: 'Cluster' }];
-    if (path === '/access') return [{ label: 'Access Control' }];
-    if (path === '/buckets') return [{ label: 'Buckets' }];
-    if (path.startsWith('/buckets/')) {
-      const bucketName = (params as { bucketName?: string }).bucketName ?? path.split('/')[2];
-      const crumbs: BreadcrumbItem[] = [
-        { label: 'Buckets', to: '/buckets' },
-        { label: bucketName, to: `/buckets/${bucketName}/objects` },
-      ];
-      const segs = path.split('/').slice(3); // after /buckets/:name
-      if (segs[0] && segs[0] !== 'objects') {
-        const tabLabel = segs[0][0].toUpperCase() + segs[0].slice(1);
-        crumbs.push({ label: tabLabel });
-      }
-      return crumbs;
-    }
-    return [];
-  }, [location.pathname, params]);
+  return buildAppBreadcrumbs(location.pathname, location.search);
 }
 
 export function Layout() {

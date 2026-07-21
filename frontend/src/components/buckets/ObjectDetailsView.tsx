@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { objectsApi } from '@/lib/api';
 import { useBuckets } from '@/hooks/useApi';
 import { useBucketCan } from '@/hooks/usePermissions';
@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { IconTile } from '@/components/ui/icon-tile';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ObjectPreview } from '@/components/buckets/ObjectPreview';
-import { ArrowLeft, ChevronRight, Copy, Download, File, Info, Link2, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Download, File, Info, Link2, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadObject, formatBytes, formatLocalDateTime, formatRelativeTime, formatUTCDateTime } from '@/lib/file-utils';
 import { buildPublicObjectUrl, cn, copyText } from '@/lib/utils';
@@ -143,7 +143,6 @@ export function ObjectDetailsView() {
   const parentPath = objectKey?.split('/').slice(0, -1).join('/') ?? '';
   const fileName = objectKey?.split('/').pop() || objectKey || '';
   const backHref = `/buckets/${bucketName}/objects${parentPath ? `?prefix=${encodeURIComponent(parentPath + '/')}` : ''}`;
-  const pathSegments = parentPath ? parentPath.split('/').filter(Boolean) : [];
 
   const copy = async (text: string, label = 'Copied') => {
     try {
@@ -241,25 +240,6 @@ export function ObjectDetailsView() {
 
   return (
     <div className="px-7 py-6 space-y-6">
-      {/* Back + breadcrumb */}
-      <div className="flex items-center gap-2 text-[13px] text-[var(--muted-foreground)]">
-        <Link
-          to={backHref}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Objects
-        </Link>
-        {pathSegments.map((seg, i) => (
-          <span key={i} className="inline-flex items-center gap-1">
-            <ChevronRight className="h-3.5 w-3.5 opacity-50" />
-            <span className="font-mono">{seg}</span>
-          </span>
-        ))}
-        <ChevronRight className="h-3.5 w-3.5 opacity-50" />
-        <span className="truncate font-mono text-[var(--foreground)]">{fileName}</span>
-      </div>
-
       {/* Hero */}
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">

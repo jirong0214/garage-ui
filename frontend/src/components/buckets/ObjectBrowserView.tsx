@@ -7,8 +7,7 @@ import {CreateDirectoryDialog} from './CreateDirectoryDialog';
 import {DeleteObjectDialog} from './DeleteObjectDialog';
 import {ConfirmDialog} from '@/components/ui/confirm-dialog';
 import {UploadProgress} from './UploadProgress';
-import {ChevronRight, FolderPlus, Home, RotateCwIcon, ScanSearch, Search, Trash, Upload} from 'lucide-react';
-import {getBreadcrumbs} from '@/lib/file-utils';
+import {FolderPlus, RotateCwIcon, ScanSearch, Search, Trash, Upload} from 'lucide-react';
 import type {S3Object, UploadTask} from '@/types';
 
 interface ObjectBrowserViewProps {
@@ -243,26 +242,6 @@ export function ObjectBrowserView({
   return (
     <div>
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Breadcrumb Navigation */}
-        <div className="flex items-center gap-2 text-xs sm:text-sm overflow-x-auto">
-          <Home className="h-4 w-4 text-muted-foreground" />
-          {getBreadcrumbs(currentPath).map((crumb, index) => (
-            <div key={index} className="flex items-center gap-2">
-              {index > 0 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-              <button
-                onClick={() => onNavigateToFolder(crumb.path)}
-                className={
-                  index === getBreadcrumbs(currentPath).length - 1
-                    ? 'font-medium'
-                    : 'text-muted-foreground hover:text-foreground'
-                }
-              >
-                {crumb.label}
-              </button>
-            </div>
-          ))}
-        </div>
-
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex flex-1 items-center gap-2 max-w-full sm:max-w-md">

@@ -89,23 +89,6 @@ export function getFileType(filename: string): string {
 }
 
 /**
- * Generate breadcrumbs from a file path
- */
-export function getBreadcrumbs(currentPath: string): Array<{ label: string; path: string }> {
-  if (!currentPath) return [{ label: 'Root', path: '' }];
-
-  const parts = currentPath.split('/').filter(Boolean);
-  const breadcrumbs = [{ label: 'Root', path: '' }];
-
-  parts.forEach((part, index) => {
-    const path = parts.slice(0, index + 1).join('/') + '/';
-    breadcrumbs.push({ label: part, path });
-  });
-
-  return breadcrumbs;
-}
-
-/**
  * Format relative time from a date
  */
 export function formatRelativeTime(date: Date, now = new Date()): string {
