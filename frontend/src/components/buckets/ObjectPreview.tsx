@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { KeepScale, TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 import { Download, Loader2, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -121,6 +122,50 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
 
   const fullscreenLabel = isFullscreen ? 'Exit fullscreen preview' : 'Open fullscreen preview';
 
+  const fullscreenControl = (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={toggleFullscreen}
+            aria-label={fullscreenLabel}
+            title={fullscreenLabel}
+            className="border border-white/20 bg-black/65 text-white shadow-md hover:bg-black/85 hover:text-white"
+          >
+            {isFullscreen ? <Minimize2 /> : <Maximize2 />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{fullscreenLabel}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
+  const imageLayer = (
+    <div className="relative inline-flex max-h-full max-w-full">
+      <img
+        src={src}
+        alt={alt}
+        draggable={false}
+        className={cn(
+          'block h-auto w-auto select-none object-contain',
+          isFullscreen ? 'max-h-screen max-w-full' : 'max-h-[85vh] max-w-full',
+        )}
+      />
+      {isFallbackFullscreen ? (
+        <KeepScale className="absolute right-3 top-3">
+          {fullscreenControl}
+        </KeepScale>
+      ) : (
+        <div className="absolute right-3 top-3">
+          {fullscreenControl}
+        </div>
+      )}
+    </div>
+  );
+
   const surface = (
     <div
       ref={containerRef}
@@ -136,34 +181,29 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
         isFallbackFullscreen && 'fixed inset-0 z-[100] h-[100dvh] w-screen bg-black/60',
       )}
     >
-      <div className="relative inline-flex max-h-full max-w-full">
-        <img
-          src={src}
-          alt={alt}
-          className={cn(
-            'block h-auto w-auto object-contain',
-            isFullscreen ? 'max-h-screen max-w-full' : 'max-h-[85vh] max-w-full',
-          )}
-        />
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={toggleFullscreen}
-                aria-label={fullscreenLabel}
-                title={fullscreenLabel}
-                className="absolute right-3 top-3 border border-white/20 bg-black/65 text-white shadow-md hover:bg-black/85 hover:text-white"
-              >
-                {isFullscreen ? <Minimize2 /> : <Maximize2 />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{fullscreenLabel}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
+      {isFallbackFullscreen ? (
+        <TransformWrapper
+          minScale={1}
+          maxScale={5}
+          centerOnInit
+          centerZoomedOut
+          limitToBounds={false}
+          wheel={{ disabled: true }}
+          doubleClick={{ mode: 'toggle', step: 1.5 }}
+        >
+          <TransformComponent
+            wrapperStyle={{ width: '100vw', height: '100dvh', touchAction: 'none' }}
+            contentStyle={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
+            contentProps={{
+              onClick: (event) => {
+                if (event.target === event.currentTarget) setIsFallbackFullscreen(false);
+              },
+            }}
+          >
+            {imageLayer}
+          </TransformComponent>
+        </TransformWrapper>
+      ) : imageLayer}
     </div>
   );
 

@@ -31,6 +31,7 @@ function renderPreview() {
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
   delete (HTMLElement.prototype as Partial<HTMLElement>).requestFullscreen;
   document.body.style.overflow = '';
 });
@@ -67,14 +68,20 @@ describe('ObjectPreview', () => {
   });
 
   it('uses a viewport overlay when native fullscreen is unavailable', async () => {
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
     mockedHook.mockReturnValue(state({ kind: 'image', status: 'ready', objectUrl: 'blob:img' }));
     renderPreview();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open fullscreen preview' }));
 
     const exitButton = await screen.findByRole('button', { name: 'Exit fullscreen preview' });
-    expect(exitButton.parentElement).toBe(screen.getByRole('img').parentElement);
+    expect(exitButton.parentElement?.parentElement).toBe(screen.getByRole('img').parentElement);
     expect(exitButton.closest('.fixed')).toHaveClass('inset-0', 'h-[100dvh]', 'w-screen', 'bg-black/60');
+    expect(exitButton.closest('.fixed')?.querySelector('.react-transform-wrapper')).toHaveStyle({ touchAction: 'none' });
     expect(document.body).toHaveStyle({ overflow: 'hidden' });
 
     fireEvent.click(exitButton);
