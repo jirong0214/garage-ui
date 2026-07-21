@@ -124,10 +124,16 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
   const surface = (
     <div
       ref={containerRef}
+      onClick={(event) => {
+        if (isFallbackFullscreen && event.target === event.currentTarget) {
+          setIsFallbackFullscreen(false);
+        }
+      }}
       className={cn(
-        'relative flex w-full items-center justify-center overflow-hidden bg-[var(--surface-sunken)]',
+        'relative flex w-full items-center justify-center overflow-hidden',
+        !isFallbackFullscreen && 'bg-[var(--surface-sunken)]',
         isNativeFullscreen && 'h-screen',
-        isFallbackFullscreen && 'fixed inset-0 z-[100] h-[100dvh] w-screen',
+        isFallbackFullscreen && 'fixed inset-0 z-[100] h-[100dvh] w-screen bg-black/60',
       )}
     >
       <img

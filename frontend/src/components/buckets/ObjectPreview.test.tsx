@@ -73,7 +73,7 @@ describe('ObjectPreview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open fullscreen preview' }));
 
     const exitButton = await screen.findByRole('button', { name: 'Exit fullscreen preview' });
-    expect(exitButton.closest('.fixed')).toHaveClass('inset-0', 'h-[100dvh]', 'w-screen');
+    expect(exitButton.closest('.fixed')).toHaveClass('inset-0', 'h-[100dvh]', 'w-screen', 'bg-black/60');
     expect(document.body).toHaveStyle({ overflow: 'hidden' });
 
     fireEvent.click(exitButton);
