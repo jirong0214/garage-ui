@@ -52,15 +52,24 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 
 function ModifiedTimeDetails({ value }: { value: string }) {
   const date = new Date(value);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   return (
     <div className="flex items-center gap-1.5">
       <span>{formatLocalDateTime(date)}</span>
-      <TooltipProvider>
-        <Tooltip>
+      <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+        <Tooltip open={detailsOpen} onOpenChange={setDetailsOpen} delayDuration={0}>
           <TooltipTrigger asChild>
             <button
               type="button"
               aria-label="Show modified time details"
+              aria-expanded={detailsOpen}
+              onPointerEnter={(event) => {
+                if (event.pointerType === 'mouse') setDetailsOpen(true);
+              }}
+              onPointerLeave={(event) => {
+                if (event.pointerType === 'mouse') setDetailsOpen(false);
+              }}
+              onClick={() => setDetailsOpen(true)}
               className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             >
               <Info className="h-3.5 w-3.5" />

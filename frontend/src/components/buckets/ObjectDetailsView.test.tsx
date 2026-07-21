@@ -60,6 +60,27 @@ describe('ObjectDetailsView', () => {
     expect(screen.getByRole('button', {name: 'Show modified time details'})).toBeInTheDocument();
   });
 
+  it('shows modified time details immediately on hover and click', async () => {
+    render(
+      <MemoryRouter initialEntries={['/buckets/photos/objects/summer%2Fphoto.jpg']}>
+        <Routes>
+          <Route path="/buckets/:bucketName/objects/*" element={<ObjectDetailsView />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const trigger = await screen.findByRole('button', {name: 'Show modified time details'});
+    fireEvent.pointerEnter(trigger, {pointerType: 'mouse'});
+    expect(screen.getAllByText('UTC').length).toBeGreaterThan(0);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.pointerLeave(trigger, {pointerType: 'mouse'});
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(trigger);
+    expect(screen.getAllByText('Timestamp').length).toBeGreaterThan(0);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('expands the whole Preview card inside the app content frame', async () => {
     render(
       <MemoryRouter initialEntries={['/buckets/photos/objects/summer%2Fphoto.jpg']}>
