@@ -31,6 +31,7 @@ function renderPreview() {
 
 afterEach(() => {
   vi.clearAllMocks();
+  delete (HTMLElement.prototype as Partial<HTMLElement>).requestFullscreen;
 });
 
 describe('ObjectPreview', () => {
@@ -45,8 +46,23 @@ describe('ObjectPreview', () => {
     renderPreview();
     const image = screen.getByRole('img');
     expect(image).toHaveAttribute('src', 'blob:img');
-    expect(image).toHaveClass('w-full');
+    expect(image).toHaveClass('h-auto', 'w-auto', 'object-contain');
+    expect(image.parentElement).toHaveClass('bg-neutral-950');
     expect(image.parentElement).not.toHaveClass('px-5', 'py-6');
+  });
+
+  it('opens the image preview in fullscreen', async () => {
+    const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
+      configurable: true,
+      value: requestFullscreen,
+    });
+    mockedHook.mockReturnValue(state({ kind: 'image', status: 'ready', objectUrl: 'blob:img' }));
+    renderPreview();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open fullscreen preview' }));
+
+    await waitFor(() => expect(requestFullscreen).toHaveBeenCalledTimes(1));
   });
 
   it('renders video with the media url', () => {

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, Loader2, RefreshCw } from 'lucide-react';
+import { Download, Loader2, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useObjectPreview } from '@/hooks/useObjectPreview';
 import { getHighlightLanguage, TEXT_HIGHLIGHT_MAX_BYTES } from '@/lib/preview-utils';
 import { formatBytes } from '@/lib/file-utils';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 function Notice({
   message,
@@ -60,6 +63,72 @@ function CodeBlock({ text, objectKey }: { text: string; objectKey: string }) {
   );
 }
 
+function ImagePreview({ src, alt }: { src: string; alt: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === containerRef.current);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === containerRef.current) {
+        await document.exitFullscreen();
+      } else if (containerRef.current?.requestFullscreen) {
+        await containerRef.current.requestFullscreen();
+      } else {
+        toast.error('Fullscreen preview is unavailable');
+      }
+    } catch {
+      toast.error('Failed to open fullscreen preview');
+    }
+  };
+
+  const fullscreenLabel = isFullscreen ? 'Exit fullscreen preview' : 'Open fullscreen preview';
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative flex w-full items-center justify-center overflow-hidden bg-neutral-950',
+        isFullscreen && 'h-screen',
+      )}
+    >
+      <img
+        src={src}
+        alt={alt}
+        className={cn(
+          'block h-auto w-auto object-contain',
+          isFullscreen ? 'max-h-screen max-w-full' : 'max-h-[85vh] max-w-full',
+        )}
+      />
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullscreen}
+              aria-label={fullscreenLabel}
+              title={fullscreenLabel}
+              className="absolute right-3 top-3 border border-white/20 bg-black/65 text-white shadow-md hover:bg-black/85 hover:text-white"
+            >
+              {isFullscreen ? <Minimize2 /> : <Maximize2 />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{fullscreenLabel}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+}
+
 export function ObjectPreview({
   bucket,
   objectKey,
@@ -113,11 +182,7 @@ export function ObjectPreview({
 
   switch (preview.kind) {
     case 'image':
-      return (
-        <div className="flex justify-center bg-[var(--surface-sunken)]">
-          <img src={preview.objectUrl!} alt={objectKey} className="block max-h-[85vh] w-full object-contain" />
-        </div>
-      );
+      return <ImagePreview src={preview.objectUrl!} alt={objectKey} />;
     case 'video':
       return (
         <div className="flex justify-center bg-black">
