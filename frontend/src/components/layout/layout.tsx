@@ -65,7 +65,7 @@ export function Layout() {
         onClose={() => setSidebarOpen(false)}
         onToggleCollapse={() => setSidebarCollapsed((collapsed) => !collapsed)}
       />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div id="app-workspace" className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar crumbs={crumbs} />
         <div id="app-content" className="relative min-h-0 flex-1">
           <main className="app-scroll-region absolute inset-0 overflow-y-auto scrollbar-thin">

@@ -26,12 +26,14 @@ describe('Layout', () => {
     );
 
     const topBar = screen.getByText('Top bar');
-    const viewport = topBar.parentElement?.parentElement;
+    const workspace = topBar.parentElement;
+    const viewport = workspace?.parentElement;
     const contentFrame = topBar.nextElementSibling;
     const main = contentFrame?.firstElementChild;
 
     expect(viewport).toHaveClass('app-viewport', 'min-h-0', 'overflow-hidden');
-    expect(topBar.parentElement).toHaveClass('min-h-0');
+    expect(workspace).toHaveAttribute('id', 'app-workspace');
+    expect(workspace).toHaveClass('relative', 'min-h-0');
     expect(contentFrame).toHaveAttribute('id', 'app-content');
     expect(contentFrame).toHaveClass('relative', 'min-h-0');
     expect(main).toHaveClass('app-scroll-region', 'absolute', 'inset-0', 'overflow-y-auto');

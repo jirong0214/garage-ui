@@ -196,7 +196,7 @@ export function ObjectDetailsView() {
       )}
     </CardSection>
   );
-  const previewHost = document.getElementById('app-content');
+  const previewHost = document.getElementById('app-workspace');
 
   return (
     <div className="px-7 py-6 space-y-6">

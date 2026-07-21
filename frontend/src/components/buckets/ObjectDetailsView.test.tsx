@@ -59,7 +59,7 @@ describe('ObjectDetailsView', () => {
   it('expands the whole Preview card inside the app content frame', async () => {
     render(
       <MemoryRouter initialEntries={['/buckets/photos/objects/summer%2Fphoto.jpg']}>
-        <div id="app-content" className="relative">
+        <div id="app-workspace" className="relative">
           <Routes>
             <Route path="/buckets/:bucketName/objects/*" element={<ObjectDetailsView />} />
           </Routes>
