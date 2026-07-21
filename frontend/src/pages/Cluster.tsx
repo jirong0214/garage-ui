@@ -6,6 +6,7 @@ import {useQuery} from '@tanstack/react-query';
 import {garageApi} from '@/lib/api';
 import {Badge} from '@/components/ui/badge';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import {Select, SelectOption} from '@/components/ui/select';
 import type {ClusterNode, LocalNodeInfo, NodeStatistics} from '@/types';
 import {useState} from 'react';
 import { useCapabilities } from '@/hooks/useCapabilities';
@@ -55,9 +56,9 @@ export function Cluster() {
   });
 
   const { data: nodeInfo, isLoading: nodeInfoLoading } = useQuery({
-    queryKey: ['node-info', selectedNodeId || '*'],
-    queryFn: () => garageApi.getNodeInfo(selectedNodeId || '*'),
-    enabled: features?.nodeInfo !== false && (!!selectedNodeId || selectedNodeId === null),
+    queryKey: ['node-info', selectedNodeId],
+    queryFn: () => garageApi.getNodeInfo(selectedNodeId!),
+    enabled: features?.nodeInfo !== false && !!selectedNodeId,
   });
 
   const { data: nodeStats } = useQuery({
@@ -214,13 +215,7 @@ export function Cluster() {
                         : 0;
 
                       return (
-                        <Card
-                          key={node.id}
-                          className={`cursor-pointer transition-all hover:shadow-md ${
-                            selectedNodeId === node.id ? 'ring-2 ring-primary' : ''
-                          }`}
-                          onClick={() => setSelectedNodeId(node.id)}
-                        >
+                        <Card key={node.id} className="select-none">
                           <CardContent className="pt-6">
                             <div className="flex items-start justify-between">
                               <div className="flex-1 space-y-2">
@@ -281,7 +276,7 @@ export function Cluster() {
                                         <div className="text-xs text-muted-foreground mb-1">
                                           Data Partition: {formatBytes(node.dataPartition.total - node.dataPartition.available)} / {formatBytes(node.dataPartition.total)}
                                         </div>
-                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-black/30">
                                           <div
                                             className={`h-full transition-all ${
                                               dataUsage > 90 ? 'bg-red-500' : dataUsage > 70 ? 'bg-yellow-500' : 'bg-green-500'
@@ -297,7 +292,7 @@ export function Cluster() {
                                         <div className="text-xs text-muted-foreground mb-1">
                                           Metadata Partition: {formatBytes(node.metadataPartition.total - node.metadataPartition.available)} / {formatBytes(node.metadataPartition.total)}
                                         </div>
-                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-black/30">
                                           <div
                                             className={`h-full transition-all ${
                                               metadataUsage > 90 ? 'bg-red-500' : metadataUsage > 70 ? 'bg-yellow-500' : 'bg-green-500'
@@ -367,6 +362,20 @@ export function Cluster() {
 
           {/* Details Tab */}
           <TabsContent value="details" className="space-y-4">
+            <div className="max-w-sm space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Node</label>
+              <Select
+                value={selectedNodeId ?? ''}
+                onChange={(value) => setSelectedNodeId(value || null)}
+                placeholder="Select a node..."
+              >
+                {status?.nodes?.map((node) => (
+                  <SelectOption key={node.id} value={node.id}>
+                    {node.hostname || `${node.id.substring(0, 16)}...`}
+                  </SelectOption>
+                ))}
+              </Select>
+            </div>
             {selectedNodeId ? (
               <>
                 {features?.nodeInfo === false ? (
@@ -507,7 +516,7 @@ export function Cluster() {
                     <Server className="h-16 w-16 mx-auto mb-4 opacity-50" />
                     <p className="text-lg font-medium mb-2">Select a Node</p>
                     <p className="text-sm">
-                      Click on a node in the Nodes tab to view detailed information and statistics
+                      Choose a node above to view detailed information and statistics
                     </p>
                   </div>
                 </CardContent>
@@ -519,5 +528,4 @@ export function Cluster() {
     </div>
   );
 }
-
 

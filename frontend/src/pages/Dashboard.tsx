@@ -106,7 +106,11 @@ export function Dashboard() {
 
           {/* Charts */}
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <Card title="Storage usage by bucket" description="Distribution of storage across buckets">
+            <Card
+              title="Storage usage by bucket"
+              description="Distribution of storage across buckets"
+              className="select-none"
+            >
               {metrics?.usageByBucket && metrics.usageByBucket.length > 0 ? (
                 <BucketUsageChart data={metrics.usageByBucket} />
               ) : (
@@ -220,13 +224,15 @@ function Card({
   title,
   description,
   children,
+  className = '',
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
+    <section className={`rounded-xl border border-[var(--border)] bg-[var(--card)] ${className}`}>
       <header className="border-b border-[var(--border)] px-5 py-3">
         <h2 className="text-[15px] font-semibold">{title}</h2>
         {description && <p className="mt-0.5 text-[12.5px] text-[var(--muted-foreground)]">{description}</p>}

@@ -63,6 +63,9 @@ describe('floating controls', () => {
     const content = screen.getByText('View').parentElement?.parentElement;
     expect(content?.parentElement).toBe(document.body);
     expect(content).toHaveStyle({position: 'fixed', top: '148px'});
+    expect(content).toHaveStyle({overflowX: 'hidden'});
+    expect(content).toHaveClass('border-[var(--border)]');
+    expect(screen.getByText('View')).toHaveClass('mx-1', 'h-9');
     expect(content).not.toHaveStyle({top: '0px', left: '0px'});
   });
 });

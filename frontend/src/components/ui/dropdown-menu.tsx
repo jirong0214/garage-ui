@@ -131,12 +131,13 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
           width: `${menuWidth}px`,
           maxHeight: `${maxHeight}px`,
           overflowY: 'auto',
+          overflowX: 'hidden',
           ...(openAbove
             ? { bottom: `${window.innerHeight - triggerRect.top + gap}px` }
             : { top: `${triggerRect.bottom + gap}px` }),
         }}
         className={cn(
-          'z-50 origin-top-right rounded-md text-popover-foreground shadow-lg ring-1 ring-border border border-border focus:outline-none',
+          'z-50 origin-top-right rounded-md border border-[var(--border)] text-popover-foreground shadow-md focus:outline-none',
           className
         )}
         {...props}
@@ -157,7 +158,7 @@ const DropdownMenuItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<H
       <div
         ref={ref}
         className={cn(
-          'relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0',
+          'relative mx-1 flex h-9 cursor-pointer select-none items-center gap-2 rounded-sm px-2.5 text-sm leading-none outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0',
           className
         )}
         onClick={(e) => {
@@ -173,7 +174,7 @@ DropdownMenuItem.displayName = 'DropdownMenuItem';
 
 const DropdownMenuSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('-mx-1 my-1 h-px bg-muted', className)} {...props} />
+    <div ref={ref} className={cn('mx-1 my-1 h-px bg-[var(--border)]', className)} {...props} />
   )
 );
 DropdownMenuSeparator.displayName = 'DropdownMenuSeparator';
