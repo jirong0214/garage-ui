@@ -48,8 +48,8 @@ describe('ObjectPreview', () => {
     const image = screen.getByRole('img');
     expect(image).toHaveAttribute('src', 'blob:img');
     expect(image).toHaveClass('h-auto', 'w-auto', 'object-contain');
-    expect(image.parentElement).toHaveClass('bg-[var(--surface-sunken)]');
-    expect(image.parentElement).not.toHaveClass('px-5', 'py-6');
+    expect(image.parentElement?.parentElement).toHaveClass('bg-[var(--surface-sunken)]');
+    expect(image.parentElement?.parentElement).not.toHaveClass('px-5', 'py-6');
   });
 
   it('opens the image preview in fullscreen', async () => {
@@ -73,6 +73,7 @@ describe('ObjectPreview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open fullscreen preview' }));
 
     const exitButton = await screen.findByRole('button', { name: 'Exit fullscreen preview' });
+    expect(exitButton.parentElement).toBe(screen.getByRole('img').parentElement);
     expect(exitButton.closest('.fixed')).toHaveClass('inset-0', 'h-[100dvh]', 'w-screen', 'bg-black/60');
     expect(document.body).toHaveStyle({ overflow: 'hidden' });
 

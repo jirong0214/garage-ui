@@ -136,32 +136,34 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
         isFallbackFullscreen && 'fixed inset-0 z-[100] h-[100dvh] w-screen bg-black/60',
       )}
     >
-      <img
-        src={src}
-        alt={alt}
-        className={cn(
-          'block h-auto w-auto object-contain',
-          isFullscreen ? 'max-h-screen max-w-full' : 'max-h-[85vh] max-w-full',
-        )}
-      />
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={toggleFullscreen}
-              aria-label={fullscreenLabel}
-              title={fullscreenLabel}
-              className="absolute right-3 top-3 border border-white/20 bg-black/65 text-white shadow-md hover:bg-black/85 hover:text-white"
-            >
-              {isFullscreen ? <Minimize2 /> : <Maximize2 />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{fullscreenLabel}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <div className="relative inline-flex max-h-full max-w-full">
+        <img
+          src={src}
+          alt={alt}
+          className={cn(
+            'block h-auto w-auto object-contain',
+            isFullscreen ? 'max-h-screen max-w-full' : 'max-h-[85vh] max-w-full',
+          )}
+        />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={toggleFullscreen}
+                aria-label={fullscreenLabel}
+                title={fullscreenLabel}
+                className="absolute right-3 top-3 border border-white/20 bg-black/65 text-white shadow-md hover:bg-black/85 hover:text-white"
+              >
+                {isFullscreen ? <Minimize2 /> : <Maximize2 />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{fullscreenLabel}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
     </div>
   );
 
