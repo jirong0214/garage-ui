@@ -36,7 +36,7 @@ services:
       # On-demand object thumbnails
       GARAGE_UI_THUMBNAIL_CACHE_DIR: "/var/cache/garage-ui/thumbnails"
       GARAGE_UI_THUMBNAIL_CONCURRENCY: "4"
-      GARAGE_UI_THUMBNAIL_MAX_PIXELS: "40000000"
+      GARAGE_UI_THUMBNAIL_MAX_PIXELS: "50000000"
 
       # Server Configuration
       GARAGE_UI_SERVER_HOST: "0.0.0.0"

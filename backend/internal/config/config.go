@@ -219,7 +219,7 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	viper.SetDefault("thumbnail.enabled", true)
 	viper.SetDefault("thumbnail.cache_dir", "/tmp/garage-ui/thumbnails")
 	viper.SetDefault("thumbnail.concurrency", 4)
-	viper.SetDefault("thumbnail.max_pixels", 40_000_000)
+	viper.SetDefault("thumbnail.max_pixels", 50_000_000)
 	viper.SetDefault("thumbnail.max_source_size", 50*1024*1024)
 	viper.SetDefault("thumbnail.cache_max_size", 2*1024*1024*1024)
 	viper.SetDefault("thumbnail.cache_max_age", 30*24*time.Hour)

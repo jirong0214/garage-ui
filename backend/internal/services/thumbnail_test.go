@@ -57,7 +57,7 @@ func thumbnailTestConfig(t *testing.T) config.ThumbnailConfig {
 		Enabled:       true,
 		CacheDir:      t.TempDir(),
 		Concurrency:   4,
-		MaxPixels:     40_000_000,
+		MaxPixels:     50_000_000,
 		MaxSourceSize: 50 * 1024 * 1024,
 		CacheMaxSize:  2 * 1024 * 1024 * 1024,
 		CacheMaxAge:   30 * 24 * time.Hour,

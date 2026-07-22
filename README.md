@@ -178,14 +178,14 @@ of the URL.
 Object-list thumbnails are generated on demand and cached on disk. Mount
 `/var/cache/garage-ui` on persistent storage so container recreation does not
 discard the cache. Defaults allow four concurrent generators, reject images
-above 40 million pixels or source objects above 50 MiB, retain entries for 30
+above 50 million pixels or source objects above 50 MiB, retain entries for 30
 days, and cap the cache at 2 GiB. These can be overridden with:
 
 ```bash
 GARAGE_UI_THUMBNAIL_ENABLED=true
 GARAGE_UI_THUMBNAIL_CACHE_DIR=/var/cache/garage-ui/thumbnails
 GARAGE_UI_THUMBNAIL_CONCURRENCY=4
-GARAGE_UI_THUMBNAIL_MAX_PIXELS=40000000
+GARAGE_UI_THUMBNAIL_MAX_PIXELS=50000000
 GARAGE_UI_THUMBNAIL_MAX_SOURCE_SIZE=52428800
 GARAGE_UI_THUMBNAIL_CACHE_MAX_SIZE=2147483648
 GARAGE_UI_THUMBNAIL_CACHE_MAX_AGE=720h

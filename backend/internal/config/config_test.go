@@ -96,7 +96,7 @@ func TestLoad_ThumbnailDefaultsAndEnvOverrides(t *testing.T) {
 	resetViper(t)
 	path := writeConfigFile(t, minimalValidYAML)
 	t.Setenv("GARAGE_UI_THUMBNAIL_CONCURRENCY", "4")
-	t.Setenv("GARAGE_UI_THUMBNAIL_MAX_PIXELS", "40000000")
+	t.Setenv("GARAGE_UI_THUMBNAIL_MAX_PIXELS", "50000000")
 	t.Setenv("GARAGE_UI_THUMBNAIL_CACHE_MAX_AGE", "48h")
 
 	cfg, err := Load(path)
@@ -106,7 +106,7 @@ func TestLoad_ThumbnailDefaultsAndEnvOverrides(t *testing.T) {
 	if !cfg.Thumbnail.Enabled {
 		t.Fatal("Thumbnail.Enabled = false, want true")
 	}
-	if cfg.Thumbnail.Concurrency != 4 || cfg.Thumbnail.MaxPixels != 40_000_000 {
+	if cfg.Thumbnail.Concurrency != 4 || cfg.Thumbnail.MaxPixels != 50_000_000 {
 		t.Fatalf("thumbnail limits = (%d, %d)", cfg.Thumbnail.Concurrency, cfg.Thumbnail.MaxPixels)
 	}
 	if cfg.Thumbnail.CacheMaxAge != 48*time.Hour {
