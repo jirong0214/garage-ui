@@ -26,13 +26,62 @@ A modern web interface to manage <a href="https://garagehq.deuxfleurs.fr/">Garag
 
 ## Features
 
-- **Bucket management** - create, configure, and browse buckets with drag-and-drop file uploads
-- **Access key management** - create keys, assign per-bucket permissions
-- **Cluster overview** - monitor node status, layout configuration, and storage usage
-- **Flexible authentication** - no auth, basic credentials, or OIDC (Keycloak, Authentik, etc.)
-- **Multi-user access control** - optional OIDC-team-based permissions, see [docs/access-control.md](docs/access-control.md)
-- **Easy deployment** - separate Web and API containers with Docker Compose, or a Helm chart
-- **Preview common file types** - images, video, PDF, and text without downloading
+### Objects
+
+- Browse bucket prefixes as folders with breadcrumbs and bounded back/forward navigation
+- Upload one or many files, create directory markers, download, and batch-delete objects
+- Search recursively by object name and remember table sorting locally
+- Preview images, video, PDF, and text; expand the complete preview card into an in-app fullscreen view
+- Generate cached thumbnails on demand for JPEG, PNG, GIF, WebP, BMP, and TIFF images
+- Copy configured public object URLs and generate time-limited presigned download URLs
+
+### Buckets and access keys
+
+- Create and delete buckets, inspect usage, and enforce size or object-count quotas
+- Enable static website access and configure index and error documents
+- Configure a default public URL template plus per-bucket URL overrides for copied links
+- Create, inspect, enable, disable, expire, and delete S3 access keys
+- Reveal credentials when authorized and manage read, write, and owner permissions per bucket
+
+Public URL templates are presentation settings used only when Garage UI builds a
+link for copying. They do not change Garage's `s3_web.root_domain`, reverse-proxy
+rules, DNS, or bucket website access. Website access must be enabled separately
+and the corresponding Garage endpoint must be exposed by your infrastructure.
+
+### Cluster, security, and operations
+
+- Dashboard for cluster health, bucket storage usage, and recent buckets
+- Read-only cluster and node status, statistics, partition health, disk usage, and version details
+- No-auth, administrator password, Garage admin-token, and OIDC login modes
+- Optional OIDC-team authorization with permissions scoped to buckets and object prefixes; see [access control](docs/access-control.md)
+- Light/dark themes, responsive object workflows, collapsible navigation, and mobile-compatible copy controls
+- Prometheus metrics endpoint, generated API documentation, file-backed secrets, and Garage v1/v2 Admin API compatibility
+
+## Architecture
+
+The Docker Compose deployment separates the browser-facing application from the
+privileged backend:
+
+```mermaid
+flowchart LR
+    Browser[Browser or reverse proxy] -->|HTTP :3910 / container :8080| Web[garage-ui-web<br/>Nginx + static SPA]
+    Web -->|/api, /auth, /docs,<br/>/health, /metrics| API[garage-ui-api<br/>Go service]
+    API -->|S3 API :3900| Garage[Garage]
+    API -->|Admin API :3903| Garage
+    API --> Cache[(Thumbnail cache)]
+    Public[Public S3 / website traffic] -.->|Configured separately| Garage
+```
+
+- `garage-ui-web` contains only the compiled frontend and an unprivileged Nginx process.
+- `garage-ui-api` owns Garage credentials, authentication, authorization, S3/Admin API access, and thumbnail generation.
+- Only the Web service publishes a host port. The API is reachable only on the Compose network.
+- Browser requests remain same-origin: Nginx proxies backend paths, avoiding a public API port and cross-origin cookie configuration.
+- Nginx re-resolves the API service through Docker DNS, so the API container can be replaced without restarting the Web container.
+- The thumbnail cache is a backend-only persistent volume. No application database is required for the current feature set.
+
+The repository retains the original all-in-one `Dockerfile` for the current Helm
+chart and compatibility deployments. Compose builds the separated images from
+`Dockerfile.web` and `Dockerfile.api`.
 
 ## Quick Start
 
@@ -262,7 +311,7 @@ npm install
 npm run dev
 ```
 
-API docs: http://localhost:8080/api/v1/
+API docs: http://localhost:8080/docs/index.html
 
 ## Troubleshooting
 
@@ -280,19 +329,34 @@ logging:
 
 ## Roadmap
 
-Roughly ordered by value. Open an [issue](https://github.com/Noooste/garage-ui/issues) to push something up the list.
+Roughly ordered by value. Candidates are limited to capabilities Garage actually
+provides through its S3 or Admin API. Open an [issue](https://github.com/Noooste/garage-ui/issues)
+to discuss the workflow and safety model before implementation.
 
 - [x] **Fine-grained access control**: OIDC teams with per-bucket-prefix permissions, see [docs/access-control.md](docs/access-control.md)
 - [x] **Object search**: recursive substring search across a bucket
 - [x] **Bucket quotas**: size and object count limits from bucket settings
 - [x] **Zero-config startup**: run straight from `garage.toml`, log in with the admin token
 - [x] **Broad compatibility**: Garage v1 through latest, IPv6-only networks, secrets from files
-- [X] **Inline object preview**: images, video, PDF, and text without downloading ([#60](https://github.com/Noooste/garage-ui/issues/60))
-- [ ] **Presigned share links**: time-limited download links from the object browser
-- [ ] **Resumable uploads**: multipart uploads that survive a dropped connection
-- [ ] **Visual layout editor**: staged vs. applied diff before committing layout changes
-- [ ] **Admin audit log**: who changed what, building on access control
-- [ ] **Table and detail polish**: sortable columns, clearer node details ([#36](https://github.com/Noooste/garage-ui/issues/36), [#37](https://github.com/Noooste/garage-ui/issues/37))
+- [x] **Inline object preview**: images, video, PDF, and text without downloading ([#60](https://github.com/Noooste/garage-ui/issues/60))
+- [x] **Object sharing**: public URL mappings and time-limited presigned download links
+- [x] **Image thumbnails**: bounded, cached thumbnail generation with configurable concurrency and pixel limits
+- [x] **Separated runtime**: independently replaceable Web and API containers with a private backend network
+- [ ] **Object copy, move, and rename**: use S3 server-side copy with conflict handling and explicit delete-after-copy semantics
+- [ ] **Bucket CORS editor**: view, validate, update, and remove S3 CORS rules
+- [ ] **Lifecycle editor**: object expiration and incomplete multipart-upload cleanup rules supported by Garage
+- [ ] **Multipart upload manager**: resumable uploads plus inspection, resume, abort, and cleanup of incomplete sessions
+- [ ] **Bucket alias manager**: inspect and safely add or remove global bucket aliases
+- [ ] **Scoped admin-token manager**: create expiring least-privilege Admin API tokens without using the master token
+- [ ] **Visual cluster layout editor**: preview staged changes, show data movement, then apply or revert exactly once
+- [ ] **Maintenance center**: workers, scrub status, metadata snapshots, repair operations, and block-resync errors with explicit safeguards
+- [ ] **Observability views**: request rates, latency, errors, disk pressure, and resync health from Garage metrics
+- [ ] **Admin audit log**: record who changed what; requires a durable external store because Garage does not provide this history
+
+Garage currently does not implement S3 bucket/object ACLs, bucket policies, or
+object versioning. Garage UI should not expose controls for those features until
+the underlying Garage APIs support them. See Garage's
+[S3 compatibility status](https://garagehq.deuxfleurs.fr/documentation/reference-manual/s3-compatibility/).
 
 ## License
 
@@ -303,6 +367,10 @@ MIT - see [LICENSE](LICENSE)
 - [Issues](https://github.com/Noooste/garage-ui/issues)
 - [Contributing](CONTRIBUTING.md)
 - [Garage Docs](https://garagehq.deuxfleurs.fr/documentation/)
+- [Garage Admin API v2](https://garagehq.deuxfleurs.fr/documentation/reference-manual/admin-api/)
+- [Garage S3 compatibility](https://garagehq.deuxfleurs.fr/documentation/reference-manual/s3-compatibility/)
+- [Garage cluster layout management](https://garagehq.deuxfleurs.fr/documentation/operations/layout/)
+- [Garage durability and repairs](https://garagehq.deuxfleurs.fr/documentation/operations/durability-repairs/)
 
 ---
 
