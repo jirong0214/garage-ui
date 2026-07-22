@@ -333,6 +333,21 @@ export const objectsApi = {
     return response.data;
   },
 
+  getThumbnail: async (bucket: string, key: string, version: string, size = 96, signal?: AbortSignal): Promise<Blob> => {
+    const params = new URLSearchParams({size: String(size), v: version});
+    const token = localStorage.getItem('auth-token');
+    const response = await fetch(
+      `/api/v1/buckets/${encodeURIComponent(bucket)}/objects/${encodeObjectKey(key)}/thumbnail?${params}`,
+      {
+        credentials: 'same-origin',
+        headers: token ? {Authorization: `Bearer ${token}`} : undefined,
+        signal,
+      },
+    );
+    if (!response.ok) throw new Error(`Thumbnail request failed: ${response.status}`);
+    return response.blob();
+  },
+
   getMetadata: async (bucket: string, key: string): Promise<ObjectMetadata> => {
     const response = await api.get(`/v1/buckets/${bucket}/objects/${encodeObjectKey(key)}/metadata`);
     const data = response.data.data;

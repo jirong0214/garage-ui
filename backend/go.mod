@@ -14,7 +14,9 @@ require (
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/viper v1.21.0
 	github.com/swaggo/swag v1.16.6
+	golang.org/x/image v0.32.0
 	golang.org/x/oauth2 v0.36.0
+	golang.org/x/sync v0.20.0
 )
 
 require (
@@ -74,7 +76,6 @@ require (
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect

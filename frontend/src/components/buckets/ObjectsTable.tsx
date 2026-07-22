@@ -12,13 +12,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {ChevronLeft, ChevronRight, Copy, Download, Eye, FileIcon, FolderIcon, Link2, Loader2, MoreVertical, Trash2} from 'lucide-react';
+import {ChevronLeft, ChevronRight, Copy, Download, Eye, FolderIcon, Link2, Loader2, MoreVertical, Trash2} from 'lucide-react';
 import {Select, SelectOption} from '@/components/ui/select';
 import {downloadObject, formatBytes, formatObjectModifiedTime} from '@/lib/file-utils';
 import type {S3Object} from '@/types';
 import {buildPublicObjectUrl, copyText} from '@/lib/utils';
 import {toast} from 'sonner';
 import {ShareObjectDialog} from './ShareObjectDialog';
+import {ObjectThumbnail} from './ObjectThumbnail';
 
 interface ObjectsTableProps {
   bucketName: string;
@@ -362,11 +363,7 @@ export function ObjectsTable({
               )}
               <TableCell>
                 <div className="flex items-center gap-2">
-                  {obj.isFolder ? (
-                    <FolderIcon className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <FileIcon className="h-4 w-4 text-muted-foreground" />
-                  )}
+                  <ObjectThumbnail bucketName={bucketName} object={obj} />
                   {obj.isFolder ? (
                     <button
                       onClick={() => onNavigateToFolder(obj.key)}

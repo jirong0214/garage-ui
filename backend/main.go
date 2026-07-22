@@ -155,6 +155,13 @@ func main() {
 	bucketHandler := handlers.NewBucketHandler(adminService, s3Service, cfg.Garage.PublicURLs)
 	bucketHandler.SetPublicWebRouting(cfg.Garage.WebProtocol, cfg.Garage.WebRootDomain)
 	objectHandler := handlers.NewObjectHandler(s3Service, authService)
+	if cfg.Thumbnail.Enabled {
+		thumbnailService, err := services.NewThumbnailService(s3Service, cfg.Thumbnail)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to initialize thumbnail service")
+		}
+		objectHandler.SetThumbnailProvider(thumbnailService)
+	}
 	userHandler := handlers.NewUserHandler(adminService)
 	clusterHandler := handlers.NewClusterHandler(adminService)
 	monitoringHandler := handlers.NewMonitoringHandler(adminService, s3Service)

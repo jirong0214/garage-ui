@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/url"
 	"path"
@@ -73,6 +75,10 @@ type PreviewTokenMinter interface {
 	MintPreviewToken(bucket, key string, ttl time.Duration) (string, time.Time, error)
 }
 
+type ThumbnailProvider interface {
+	Get(ctx context.Context, bucket, key string, size int) (*services.ThumbnailResult, error)
+}
+
 // previewTokenTTL is long enough that seeking mid-playback keeps working.
 // The frontend mints a fresh URL when a token expires.
 const previewTokenTTL = time.Hour
@@ -81,6 +87,66 @@ const previewTokenTTL = time.Hour
 type ObjectHandler struct {
 	s3Service     services.S3Storage
 	previewTokens PreviewTokenMinter
+	thumbnails    ThumbnailProvider
+}
+
+func (h *ObjectHandler) SetThumbnailProvider(provider ThumbnailProvider) {
+	h.thumbnails = provider
+}
+
+// GetThumbnail returns an on-demand, disk-cached PNG thumbnail.
+func (h *ObjectHandler) GetThumbnail(c fiber.Ctx) error {
+	if h.thumbnails == nil {
+		return c.Status(fiber.StatusNotImplemented).JSON(
+			models.ErrorResponse(models.ErrCodeInternalError, "Thumbnail generation is disabled"),
+		)
+	}
+	bucket := c.Params("bucket")
+	key, _ := c.Locals("objectKey").(string)
+	if bucket == "" || key == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.ErrorResponse(models.ErrCodeBadRequest, "Bucket name and object key are required"),
+		)
+	}
+	size, err := strconv.Atoi(c.Query("size", "96"))
+	if err != nil || size < 32 || size > 512 {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.ErrorResponse(models.ErrCodeBadRequest, "Thumbnail size must be between 32 and 512 pixels"),
+		)
+	}
+
+	result, err := h.thumbnails.Get(c.Context(), bucket, key, size)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrThumbnailUnsupported):
+			return c.Status(fiber.StatusUnsupportedMediaType).JSON(
+				models.ErrorResponse(models.ErrCodeBadRequest, "Object is not a supported image"),
+			)
+		case errors.Is(err, services.ErrThumbnailTooManyPixels), errors.Is(err, services.ErrThumbnailSourceTooLarge):
+			return c.Status(fiber.StatusRequestEntityTooLarge).JSON(
+				models.ErrorResponse(models.ErrCodeBadRequest, err.Error()),
+			)
+		default:
+			return c.Status(fiber.StatusInternalServerError).JSON(
+				models.ErrorResponse(models.ErrCodeInternalError, "Failed to generate thumbnail: "+err.Error()),
+			)
+		}
+	}
+
+	etag := `"` + result.ETag + `"`
+	if c.Get("If-None-Match") == etag {
+		return c.SendStatus(fiber.StatusNotModified)
+	}
+	c.Set("Content-Type", "image/png")
+	c.Set("Content-Length", strconv.Itoa(len(result.Data)))
+	if c.Query("v") != "" {
+		c.Set("Cache-Control", "private, max-age=31536000, immutable")
+	} else {
+		c.Set("Cache-Control", "private, no-cache")
+	}
+	c.Set("ETag", etag)
+	c.Set("X-Content-Type-Options", "nosniff")
+	return c.Send(result.Data)
 }
 
 // NewObjectHandler creates a new object handler.

@@ -175,6 +175,22 @@ legacy per-bucket fallback when no web root domain is configured. The presign
 endpoint host is part of the S3 signature and must be reachable by recipients
 of the URL.
 
+Object-list thumbnails are generated on demand and cached on disk. Mount
+`/var/cache/garage-ui` on persistent storage so container recreation does not
+discard the cache. Defaults allow four concurrent generators, reject images
+above 40 million pixels or source objects above 50 MiB, retain entries for 30
+days, and cap the cache at 2 GiB. These can be overridden with:
+
+```bash
+GARAGE_UI_THUMBNAIL_ENABLED=true
+GARAGE_UI_THUMBNAIL_CACHE_DIR=/var/cache/garage-ui/thumbnails
+GARAGE_UI_THUMBNAIL_CONCURRENCY=4
+GARAGE_UI_THUMBNAIL_MAX_PIXELS=40000000
+GARAGE_UI_THUMBNAIL_MAX_SOURCE_SIZE=52428800
+GARAGE_UI_THUMBNAIL_CACHE_MAX_SIZE=2147483648
+GARAGE_UI_THUMBNAIL_CACHE_MAX_AGE=720h
+```
+
 #### Loading sensitive values from files (`_FILE` suffix)
 
 For Docker and Kubernetes secrets, sensitive env vars can be read from files instead of plain values. Set `{VAR}_FILE=/path/to/file` and garage-ui uses the file's contents (trailing CR/LF trimmed) as the value. If both `{VAR}` and `{VAR}_FILE` are set, `_FILE` wins and a warning is logged. A missing or unreadable file stops startup.

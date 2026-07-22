@@ -25,6 +25,14 @@ type mintStub struct {
 	fn func(bucket, key string, ttl time.Duration) (string, time.Time, error)
 }
 
+type thumbnailProviderStub struct {
+	fn func(ctx context.Context, bucket, key string, size int) (*services.ThumbnailResult, error)
+}
+
+func (s *thumbnailProviderStub) Get(ctx context.Context, bucket, key string, size int) (*services.ThumbnailResult, error) {
+	return s.fn(ctx, bucket, key, size)
+}
+
 func (m *mintStub) MintPreviewToken(bucket, key string, ttl time.Duration) (string, time.Time, error) {
 	if m.fn == nil {
 		return "test-token", time.Now().Add(ttl), nil
@@ -56,6 +64,60 @@ func newObjectsTestAppWithMinter(t *testing.T) (*fiber.App, *mocks.S3Mock, *mint
 	app.Get("/buckets/:bucket/objects/:key/preview-url", h.GetPreviewURL)
 	app.Delete("/buckets/:bucket/objects/:key", h.DeleteObject)
 	return app, s3, minter
+}
+
+func TestGetThumbnail_ReturnsCachedPNG(t *testing.T) {
+	h := NewObjectHandler(&mocks.S3Mock{}, &mintStub{})
+	h.SetThumbnailProvider(&thumbnailProviderStub{fn: func(_ context.Context, bucket, key string, size int) (*services.ThumbnailResult, error) {
+		if bucket != "photos" || key != "folder/photo.jpg" || size != 96 {
+			t.Fatalf("thumbnail args = (%q, %q, %d)", bucket, key, size)
+		}
+		return &services.ThumbnailResult{Data: []byte("png-data"), ETag: "thumb-etag"}, nil
+	}})
+	app := fiber.New()
+	app.Get("/buckets/:bucket/thumbnail", func(c fiber.Ctx) error {
+		c.Locals("objectKey", "folder/photo.jpg")
+		return h.GetThumbnail(c)
+	})
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/buckets/photos/thumbnail?size=96&v=source-etag", nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Content-Type"); got != "image/png" {
+		t.Fatalf("Content-Type = %q", got)
+	}
+	if got := resp.Header.Get("ETag"); got != `"thumb-etag"` {
+		t.Fatalf("ETag = %q", got)
+	}
+	if got := resp.Header.Get("Cache-Control"); !strings.Contains(got, "immutable") {
+		t.Fatalf("Cache-Control = %q", got)
+	}
+}
+
+func TestGetThumbnail_MapsGenerationLimits(t *testing.T) {
+	h := NewObjectHandler(&mocks.S3Mock{}, &mintStub{})
+	h.SetThumbnailProvider(&thumbnailProviderStub{fn: func(context.Context, string, string, int) (*services.ThumbnailResult, error) {
+		return nil, services.ErrThumbnailTooManyPixels
+	}})
+	app := fiber.New()
+	app.Get("/buckets/:bucket/thumbnail", func(c fiber.Ctx) error {
+		c.Locals("objectKey", "huge.png")
+		return h.GetThumbnail(c)
+	})
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/buckets/photos/thumbnail", nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413", resp.StatusCode)
+	}
 }
 
 // --- ListObjects ---

@@ -107,6 +107,9 @@ func SetupRoutes(
 	objectWildcardHandler := func(c fiber.Ctx) error {
 		path := decodeObjectKey(c)
 		switch {
+		case strings.HasSuffix(path, "/thumbnail"):
+			c.Locals("objectKey", strings.TrimSuffix(path, "/thumbnail"))
+			return objectHandler.GetThumbnail(c)
 		case strings.HasSuffix(path, "/metadata"):
 			c.Locals("objectKey", strings.TrimSuffix(path, "/metadata"))
 			return objectHandler.GetObjectMetadata(c)

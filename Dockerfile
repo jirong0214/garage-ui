@@ -45,7 +45,9 @@ WORKDIR /app
 RUN apk --no-cache add ca-certificates wget
 
 RUN addgroup -g 1000 garageui && \
-    adduser -D -u 1000 -G garageui garageui
+    adduser -D -u 1000 -G garageui garageui && \
+    mkdir -p /var/cache/garage-ui/thumbnails && \
+    chown -R garageui:garageui /var/cache/garage-ui
 
 COPY --from=backend-builder --chown=garageui:garageui /app/garage-ui .
 COPY --from=frontend-builder --chown=garageui:garageui /app/frontend/dist ./frontend/dist

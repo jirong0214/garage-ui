@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -18,10 +19,22 @@ import (
 type Config struct {
 	Server        ServerConfig         `mapstructure:"server"`
 	Garage        GarageConfig         `mapstructure:"garage"`
+	Thumbnail     ThumbnailConfig      `mapstructure:"thumbnail"`
 	Auth          AuthConfig           `mapstructure:"auth"`
 	CORS          CORSConfig           `mapstructure:"cors"`
 	Logging       LoggingConfig        `mapstructure:"logging"`
 	AccessControl *AccessControlConfig `mapstructure:"access_control"`
+}
+
+// ThumbnailConfig controls on-demand object thumbnail generation and caching.
+type ThumbnailConfig struct {
+	Enabled       bool          `mapstructure:"enabled"`
+	CacheDir      string        `mapstructure:"cache_dir"`
+	Concurrency   int           `mapstructure:"concurrency"`
+	MaxPixels     int64         `mapstructure:"max_pixels"`
+	MaxSourceSize int64         `mapstructure:"max_source_size"`
+	CacheMaxSize  int64         `mapstructure:"cache_max_size"`
+	CacheMaxAge   time.Duration `mapstructure:"cache_max_age"`
 }
 
 // ServerConfig contains server-related configuration
@@ -203,6 +216,13 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	viper.SetDefault("server.environment", "production")
 	viper.SetDefault("garage.force_path_style", true)
 	viper.SetDefault("garage.web_protocol", "http")
+	viper.SetDefault("thumbnail.enabled", true)
+	viper.SetDefault("thumbnail.cache_dir", "/tmp/garage-ui/thumbnails")
+	viper.SetDefault("thumbnail.concurrency", 4)
+	viper.SetDefault("thumbnail.max_pixels", 40_000_000)
+	viper.SetDefault("thumbnail.max_source_size", 50*1024*1024)
+	viper.SetDefault("thumbnail.cache_max_size", 2*1024*1024*1024)
+	viper.SetDefault("thumbnail.cache_max_age", 30*24*time.Hour)
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("logging.format", "text")
 	viper.SetDefault("auth.oidc.cookie_name", "garage_session")
@@ -300,6 +320,15 @@ func bindEnvVars() {
 	viper.BindEnv("garage.force_path_style", "GARAGE_UI_GARAGE_FORCE_PATH_STYLE")
 	viper.BindEnv("garage.admin_endpoint", "GARAGE_UI_GARAGE_ADMIN_ENDPOINT")
 	viper.BindEnv("garage.admin_token", "GARAGE_UI_GARAGE_ADMIN_TOKEN")
+
+	// Thumbnail config
+	viper.BindEnv("thumbnail.enabled", "GARAGE_UI_THUMBNAIL_ENABLED")
+	viper.BindEnv("thumbnail.cache_dir", "GARAGE_UI_THUMBNAIL_CACHE_DIR")
+	viper.BindEnv("thumbnail.concurrency", "GARAGE_UI_THUMBNAIL_CONCURRENCY")
+	viper.BindEnv("thumbnail.max_pixels", "GARAGE_UI_THUMBNAIL_MAX_PIXELS")
+	viper.BindEnv("thumbnail.max_source_size", "GARAGE_UI_THUMBNAIL_MAX_SOURCE_SIZE")
+	viper.BindEnv("thumbnail.cache_max_size", "GARAGE_UI_THUMBNAIL_CACHE_MAX_SIZE")
+	viper.BindEnv("thumbnail.cache_max_age", "GARAGE_UI_THUMBNAIL_CACHE_MAX_AGE")
 
 	// Auth config
 	viper.BindEnv("auth.admin.enabled", "GARAGE_UI_AUTH_ADMIN_ENABLED")
@@ -459,6 +488,27 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("invalid garage public_urls entry for bucket %q: %w", bucket, err)
 		}
 		c.Garage.PublicURLs[bucket] = parsed
+	}
+
+	if c.Thumbnail.Enabled {
+		if strings.TrimSpace(c.Thumbnail.CacheDir) == "" {
+			return fmt.Errorf("thumbnail cache_dir is required when thumbnails are enabled")
+		}
+		if c.Thumbnail.Concurrency <= 0 {
+			return fmt.Errorf("thumbnail concurrency must be greater than zero")
+		}
+		if c.Thumbnail.MaxPixels <= 0 {
+			return fmt.Errorf("thumbnail max_pixels must be greater than zero")
+		}
+		if c.Thumbnail.MaxSourceSize <= 0 {
+			return fmt.Errorf("thumbnail max_source_size must be greater than zero")
+		}
+		if c.Thumbnail.CacheMaxSize <= 0 {
+			return fmt.Errorf("thumbnail cache_max_size must be greater than zero")
+		}
+		if c.Thumbnail.CacheMaxAge <= 0 {
+			return fmt.Errorf("thumbnail cache_max_age must be greater than zero")
+		}
 	}
 
 	// Validate admin auth if enabled

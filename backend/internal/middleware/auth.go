@@ -174,7 +174,7 @@ func previewObjectKey(c fiber.Ctx) string {
 	if err != nil {
 		decoded = raw
 	}
-	for _, suffix := range []string{"/metadata", "/presign", "/preview-url"} {
+	for _, suffix := range []string{"/metadata", "/presign", "/preview-url", "/thumbnail"} {
 		if strings.HasSuffix(decoded, suffix) {
 			return ""
 		}

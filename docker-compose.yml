@@ -21,6 +21,7 @@ services:
     volumes:
       - ./config.yaml:/app/config.yaml
       - ./garage.toml:/etc/garage-ui/garage.toml:ro
+      - garage-ui-thumbnail-cache:/var/cache/garage-ui
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
@@ -31,6 +32,11 @@ services:
       GARAGE_UI_GARAGE_ADMIN_ENDPOINT: "http://garage:3903"
       GARAGE_UI_GARAGE_TOML: "/etc/garage-ui/garage.toml"
       GARAGE_UI_GARAGE_WEB_PROTOCOL: "https"
+
+      # On-demand object thumbnails
+      GARAGE_UI_THUMBNAIL_CACHE_DIR: "/var/cache/garage-ui/thumbnails"
+      GARAGE_UI_THUMBNAIL_CONCURRENCY: "4"
+      GARAGE_UI_THUMBNAIL_MAX_PIXELS: "40000000"
 
       # Server Configuration
       GARAGE_UI_SERVER_HOST: "0.0.0.0"
@@ -44,3 +50,6 @@ services:
         -----BEGIN PRIVATE KEY-----
         MC4CAQAwBQYDK2VwBCIEIH0ZHqIV7MEyVsxNYc5TA/a0qaBxgq3ntlFS3w1F03MS
         -----END PRIVATE KEY-----
+
+volumes:
+  garage-ui-thumbnail-cache:
