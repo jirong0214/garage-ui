@@ -20,6 +20,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./config.yaml:/app/config.yaml
+      - garage-ui-settings:/data
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
@@ -28,6 +29,7 @@ services:
       # Garage S3 Configuration
       GARAGE_UI_GARAGE_ENDPOINT: "garage:3900"
       GARAGE_UI_GARAGE_ADMIN_ENDPOINT: "http://garage:3903"
+      GARAGE_UI_GARAGE_PUBLIC_URL_TEMPLATE: "https://{bucket}.example.com"
 
       # Server Configuration
       GARAGE_UI_SERVER_HOST: "0.0.0.0"
@@ -41,3 +43,6 @@ services:
         -----BEGIN PRIVATE KEY-----
         MC4CAQAwBQYDK2VwBCIEIH0ZHqIV7MEyVsxNYc5TA/a0qaBxgq3ntlFS3w1F03MS
         -----END PRIVATE KEY-----
+
+volumes:
+  garage-ui-settings:

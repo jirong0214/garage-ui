@@ -13,6 +13,7 @@ import {BucketWebsite} from '@/pages/BucketWebsite';
 import {BucketSettings} from '@/pages/BucketSettings';
 import {Cluster} from '@/pages/Cluster';
 import {AccessControl} from '@/pages/AccessControl';
+import {PublicURLSettings} from '@/pages/PublicURLSettings';
 import {Login} from '@/pages/Login';
 import {Toaster} from 'sonner';
 import {queryClient} from '@/lib/query-client';
@@ -77,6 +78,7 @@ function App() {
               <Route path="buckets/:bucketName/objects/*" element={<ObjectDetailsView />} />
               <Route path="cluster" element={<Cluster />} />
               <Route path="access" element={<AccessControl />} />
+              <Route path="settings/public-urls" element={<PublicURLSettings />} />
             </Route>
           </Routes>
         </BrowserRouter>

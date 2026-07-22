@@ -159,16 +159,22 @@ GARAGE_UI_GARAGE_ADMIN_TOKEN=your-token
 
 Object sharing can use a separate public S3 endpoint for presigned URLs while
 keeping normal data-plane traffic on the internal Garage endpoint. Stable
-website URLs are configured per bucket alias:
+website URLs can use a shared bucket template with optional per-bucket overrides:
 
 ```bash
 GARAGE_UI_GARAGE_PRESIGN_ENDPOINT=https://s3-api.example.com
+GARAGE_UI_GARAGE_PUBLIC_URL_TEMPLATE='https://{bucket}.example.com'
 GARAGE_UI_GARAGE_PUBLIC_URLS='{"photos":"https://cdn.example.com"}'
+GARAGE_UI_GARAGE_PUBLIC_URL_SETTINGS_FILE=/data/public-urls.json
 ```
 
-`GARAGE_UI_GARAGE_PUBLIC_URLS` must be a JSON object. Public URLs are only
-returned for buckets with website access enabled. The presign endpoint host is
-part of the S3 signature and must be reachable by recipients of the URL.
+The template must contain `{bucket}` exactly once. `GARAGE_UI_GARAGE_PUBLIC_URLS`
+is an optional JSON object used to seed per-bucket overrides. Settings changed
+in the UI are persisted to `GARAGE_UI_GARAGE_PUBLIC_URL_SETTINGS_FILE` and take
+precedence over startup values. Mount `/data` as a persistent volume. Public
+URLs are only returned for buckets with website access enabled. The presign
+endpoint host is part of the S3 signature and must be reachable by recipients
+of the URL.
 
 #### Loading sensitive values from files (`_FILE` suffix)
 

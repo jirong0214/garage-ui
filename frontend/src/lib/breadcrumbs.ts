@@ -25,6 +25,7 @@ export function buildAppBreadcrumbs(pathname: string, search = ''): BreadcrumbIt
   if (pathname === '/') return [{ label: 'Dashboard' }];
   if (pathname === '/cluster') return [{ label: 'Cluster' }];
   if (pathname === '/access') return [{ label: 'Access Control' }];
+  if (pathname === '/settings/public-urls') return [{ label: 'Public URLs' }];
   if (pathname === '/buckets') return [{ label: 'Buckets' }];
 
   const pathParts = pathname.split('/').filter(Boolean);

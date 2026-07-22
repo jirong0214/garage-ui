@@ -44,4 +44,9 @@ export const queryKeys = {
     all: ['capabilities'] as const,
     get: () => [...queryKeys.capabilities.all, 'get'] as const,
   },
+  settings: {
+    all: ['settings'] as const,
+    publicURLs: () => [...queryKeys.settings.all, 'public-urls'] as const,
+    bucketPublicURL: (bucket: string) => [...queryKeys.settings.publicURLs(), bucket] as const,
+  },
 };

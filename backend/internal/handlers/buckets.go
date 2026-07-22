@@ -4,15 +4,29 @@ import (
 	"Noooste/garage-ui/internal/authz"
 	"Noooste/garage-ui/internal/models"
 	"Noooste/garage-ui/internal/services"
+	appsettings "Noooste/garage-ui/internal/settings"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 // BucketHandler handles bucket-related HTTP requests.
 type BucketHandler struct {
-	adminService services.AdminService
-	s3Service    services.S3Storage
-	publicURLs   map[string]string
+	adminService      services.AdminService
+	s3Service         services.S3Storage
+	publicURLs        map[string]string
+	publicURLResolver appsettings.PublicURLResolver
+}
+
+// SetPublicURLResolver replaces the startup-only URL map with a live settings resolver.
+func (h *BucketHandler) SetPublicURLResolver(resolver appsettings.PublicURLResolver) {
+	h.publicURLResolver = resolver
+}
+
+func (h *BucketHandler) resolvePublicURL(bucket string) string {
+	if h.publicURLResolver != nil {
+		return h.publicURLResolver.Resolve(bucket)
+	}
+	return h.publicURLs[bucket]
 }
 
 // NewBucketHandler creates a new bucket handler.
@@ -80,7 +94,7 @@ func (h *BucketHandler) ListBuckets(c fiber.Ctx) error {
 			Quotas:        detailedInfo.Quotas,
 		}
 		if detailedInfo.WebsiteAccess {
-			bucketInfo.PublicURL = h.publicURLs[bucketName]
+			bucketInfo.PublicURL = h.resolvePublicURL(bucketName)
 		}
 
 		buckets = append(buckets, bucketInfo)

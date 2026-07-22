@@ -41,14 +41,16 @@ type ServerConfig struct {
 
 // GarageConfig contains Garage S3 connection settings
 type GarageConfig struct {
-	Endpoint        string            `mapstructure:"endpoint"`
-	PresignEndpoint string            `mapstructure:"presign_endpoint"`
-	PublicURLs      map[string]string `mapstructure:"public_urls"`
-	Region          string            `mapstructure:"region"`
-	UseSSL          bool              `mapstructure:"use_ssl"`
-	ForcePathStyle  bool              `mapstructure:"force_path_style"`
-	AdminEndpoint   string            `mapstructure:"admin_endpoint"`
-	AdminToken      string            `mapstructure:"admin_token"`
+	Endpoint              string            `mapstructure:"endpoint"`
+	PresignEndpoint       string            `mapstructure:"presign_endpoint"`
+	PublicURLs            map[string]string `mapstructure:"public_urls"`
+	PublicURLTemplate     string            `mapstructure:"public_url_template"`
+	PublicURLSettingsFile string            `mapstructure:"public_url_settings_file"`
+	Region                string            `mapstructure:"region"`
+	UseSSL                bool              `mapstructure:"use_ssl"`
+	ForcePathStyle        bool              `mapstructure:"force_path_style"`
+	AdminEndpoint         string            `mapstructure:"admin_endpoint"`
+	AdminToken            string            `mapstructure:"admin_token"`
 }
 
 // AuthConfig contains authentication configuration
@@ -200,6 +202,7 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.environment", "production")
 	viper.SetDefault("garage.force_path_style", true)
+	viper.SetDefault("garage.public_url_settings_file", "/data/public-urls.json")
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("logging.format", "text")
 	viper.SetDefault("auth.oidc.cookie_name", "garage_session")
@@ -289,6 +292,8 @@ func bindEnvVars() {
 	// Garage config
 	viper.BindEnv("garage.endpoint", "GARAGE_UI_GARAGE_ENDPOINT")
 	viper.BindEnv("garage.presign_endpoint", "GARAGE_UI_GARAGE_PRESIGN_ENDPOINT")
+	viper.BindEnv("garage.public_url_template", "GARAGE_UI_GARAGE_PUBLIC_URL_TEMPLATE")
+	viper.BindEnv("garage.public_url_settings_file", "GARAGE_UI_GARAGE_PUBLIC_URL_SETTINGS_FILE")
 	viper.BindEnv("garage.region", "GARAGE_UI_GARAGE_REGION")
 	viper.BindEnv("garage.use_ssl", "GARAGE_UI_GARAGE_USE_SSL")
 	viper.BindEnv("garage.force_path_style", "GARAGE_UI_GARAGE_FORCE_PATH_STYLE")

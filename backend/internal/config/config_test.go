@@ -123,6 +123,8 @@ func TestLoad_SharingEndpointsFromYAMLAndEnv(t *testing.T) {
     photos: https://old.example.com/
 `)
 	t.Setenv("GARAGE_UI_GARAGE_PUBLIC_URLS", `{"photos":"https://cdn.example.com/","docs":"https://example.com/files/"}`)
+	t.Setenv("GARAGE_UI_GARAGE_PUBLIC_URL_TEMPLATE", `https://{bucket}.storage.example.com`)
+	t.Setenv("GARAGE_UI_GARAGE_PUBLIC_URL_SETTINGS_FILE", `/state/public-urls.json`)
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -136,6 +138,12 @@ func TestLoad_SharingEndpointsFromYAMLAndEnv(t *testing.T) {
 	}
 	if got := cfg.Garage.PublicURLs["docs"]; got != "https://example.com/files" {
 		t.Errorf("docs public URL = %q", got)
+	}
+	if cfg.Garage.PublicURLTemplate != "https://{bucket}.storage.example.com" {
+		t.Errorf("PublicURLTemplate = %q", cfg.Garage.PublicURLTemplate)
+	}
+	if cfg.Garage.PublicURLSettingsFile != "/state/public-urls.json" {
+		t.Errorf("PublicURLSettingsFile = %q", cfg.Garage.PublicURLSettingsFile)
 	}
 }
 

@@ -5,6 +5,8 @@ import type {
   ApiResponse,
   Bucket,
   BucketDetails,
+  BucketPublicURLMode,
+  BucketPublicURLSettings,
   ClusterHealth,
   ClusterStatistics,
   ClusterStatus,
@@ -14,6 +16,7 @@ import type {
   MultiNodeStatisticsResponse,
   ObjectListResponse,
   ObjectMetadata,
+  PublicURLSettings,
   S3Object,
   StorageMetrics,
 } from '@/types';
@@ -235,6 +238,24 @@ export const bucketsApi = {
     return response.data.data;
   },
 
+  getPublicURL: async (name: string): Promise<BucketPublicURLSettings> => {
+    const response = await api.get<ApiResponse<BucketPublicURLSettings>>(
+      `/v1/buckets/${encodeURIComponent(name)}/public-url`
+    );
+    return response.data.data as BucketPublicURLSettings;
+  },
+
+  updatePublicURL: async (
+    name: string,
+    payload: { mode: BucketPublicURLMode; url?: string }
+  ): Promise<BucketPublicURLSettings> => {
+    const response = await api.put<ApiResponse<BucketPublicURLSettings>>(
+      `/v1/buckets/${encodeURIComponent(name)}/public-url`,
+      payload
+    );
+    return response.data.data as BucketPublicURLSettings;
+  },
+
   updateBucketQuotas: async (
     name: string,
     payload: { maxSize: number | null; maxObjects: number | null }
@@ -249,6 +270,18 @@ export const bucketsApi = {
       body
     );
     return response.data.data;
+  },
+};
+
+export const settingsApi = {
+  getPublicURLs: async (): Promise<PublicURLSettings> => {
+    const response = await api.get<ApiResponse<PublicURLSettings>>('/v1/settings/public-urls');
+    return response.data.data as PublicURLSettings;
+  },
+
+  updatePublicURLs: async (settings: PublicURLSettings): Promise<PublicURLSettings> => {
+    const response = await api.put<ApiResponse<PublicURLSettings>>('/v1/settings/public-urls', settings);
+    return response.data.data as PublicURLSettings;
   },
 };
 
