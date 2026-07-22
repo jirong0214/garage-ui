@@ -1,4 +1,4 @@
-import {act, render, waitFor} from '@testing-library/react';
+import {render, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {objectsApi} from '@/lib/api';
 import {ObjectThumbnail} from './ObjectThumbnail';
@@ -8,21 +8,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 describe('ObjectThumbnail', () => {
-  let intersectionCallback: IntersectionObserverCallback;
-
   beforeEach(() => {
-    vi.stubGlobal('IntersectionObserver', class {
-      constructor(callback: IntersectionObserverCallback) {
-        intersectionCallback = callback;
-      }
-      observe() {}
-      disconnect() {}
-      unobserve() {}
-      takeRecords() { return []; }
-      root = null;
-      rootMargin = '';
-      thresholds = [];
-    });
     vi.stubGlobal('URL', {
       ...URL,
       createObjectURL: vi.fn(() => 'blob:thumbnail'),
@@ -35,7 +21,7 @@ describe('ObjectThumbnail', () => {
     vi.clearAllMocks();
   });
 
-  it('requests an image only after its row approaches the viewport', async () => {
+  it('requests an image as soon as the paginated row is rendered', async () => {
     vi.mocked(objectsApi.getThumbnail).mockResolvedValue(new Blob(['png'], {type: 'image/png'}));
     const {container} = render(
       <ObjectThumbnail
@@ -43,11 +29,6 @@ describe('ObjectThumbnail', () => {
         object={{key: 'folder/photo.jpg', size: 10, lastModified: '2026-07-22T00:00:00Z', contentType: 'image/jpeg'}}
       />,
     );
-
-    expect(objectsApi.getThumbnail).not.toHaveBeenCalled();
-    act(() => {
-      intersectionCallback([{isIntersecting: true}] as IntersectionObserverEntry[], {} as IntersectionObserver);
-    });
 
     await waitFor(() => {
       expect(objectsApi.getThumbnail).toHaveBeenCalledWith(
@@ -59,6 +40,22 @@ describe('ObjectThumbnail', () => {
       );
       expect(container.querySelector('img')).toHaveAttribute('src', 'blob:thumbnail');
     });
+  });
+
+  it.each([
+    ['photo.webp', 'image/webp'],
+    ['scan.bmp', 'image/bmp'],
+    ['scan.tif', 'image/tiff'],
+    ['scan.tiff', 'application/octet-stream'],
+  ])('requests supported format %s', async (key, contentType) => {
+    vi.mocked(objectsApi.getThumbnail).mockResolvedValue(new Blob(['png'], {type: 'image/png'}));
+    render(
+      <ObjectThumbnail
+        bucketName="pics"
+        object={{key, size: 10, lastModified: '2026-07-22T00:00:00Z', contentType}}
+      />,
+    );
+    await waitFor(() => expect(objectsApi.getThumbnail).toHaveBeenCalled());
   });
 
   it('does not request unsupported file types', () => {

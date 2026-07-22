@@ -339,6 +339,7 @@ export const objectsApi = {
     const response = await fetch(
       `/api/v1/buckets/${encodeURIComponent(bucket)}/objects/${encodeObjectKey(key)}/thumbnail?${params}`,
       {
+        cache: 'force-cache',
         credentials: 'same-origin',
         headers: token ? {Authorization: `Bearer ${token}`} : undefined,
         signal,

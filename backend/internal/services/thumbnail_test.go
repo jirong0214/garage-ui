@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"image"
 	"image/color"
 	"image/png"
@@ -13,6 +14,9 @@ import (
 
 	"Noooste/garage-ui/internal/config"
 	"Noooste/garage-ui/internal/models"
+
+	"golang.org/x/image/bmp"
+	"golang.org/x/image/tiff"
 )
 
 type thumbnailStoreStub struct {
@@ -134,6 +138,57 @@ func TestThumbnailService_RejectsImagesAbovePixelLimit(t *testing.T) {
 	}
 	if _, err := service.Get(context.Background(), "photos", "large.png", 96); err != ErrThumbnailTooManyPixels {
 		t.Fatalf("Get error = %v, want ErrThumbnailTooManyPixels", err)
+	}
+}
+
+func TestThumbnailService_SupportsWebPBMPTIFF(t *testing.T) {
+	img := image.NewNRGBA(image.Rect(0, 0, 20, 12))
+	for y := 0; y < 12; y++ {
+		for x := 0; x < 20; x++ {
+			img.Set(x, y, color.NRGBA{R: uint8(x * 10), G: uint8(y * 15), B: 120, A: 255})
+		}
+	}
+	encode := func(fn func(io.Writer, image.Image) error) []byte {
+		var buffer bytes.Buffer
+		if err := fn(&buffer, img); err != nil {
+			t.Fatalf("encode fixture: %v", err)
+		}
+		return buffer.Bytes()
+	}
+	webpData, err := base64.StdEncoding.DecodeString("UklGRrIBAABXRUJQVlA4TKUBAAAvSsAYAA8w//M///MfeJAkbXvaSG7m8Q3GfYSBJekwQztm/IcZlgwnmWImn2BK7aFmBtnVir6q//8VOkFE/xm4baTIu8c48ArEo6+B3zFKYln3pqClSCKX0begFTAXFOLXHSyF8cCNcZEG4OywuA4KVVfJCiArU7GAgJI8+lJP/OKMT/fBAjevg1cYB7YVkFuWga2lyPi5I0HFy5YTpWIHg0RZpkniRVW9odHAKOwosWuOGdxIyn2OvaCDvhg/we6TwadPBPbqBV58MsLmMJ8yZnOWk8SRz4N+QoyPL+MnamzMvcE1rHNEr91F9GKZPVUcS9w7PhhH36suB9qPeYb/oLk6cuTiJ0wOK3m5h1cKjW6EVZCYMK7dxcKCBdgP9HkKr9gkAO2P8GKZGWVdIAatQa+1IDpt6qyorVwdy01xdW8Jkfk6xjEXmVQQ+HQdFr6OKhIN34dXWq0+0qr6EJSCeeVLH9+gvGTLyqM65PQ44ihzlTXxQKjKbAvshXgir7Lil9w4L2bvMycmjQcqXaMCO6BlY28i+FOLzbfI1vEqxAhotocAAA==")
+	if err != nil {
+		t.Fatalf("decode WebP fixture: %v", err)
+	}
+
+	cases := map[string][]byte{
+		"image.webp": webpData,
+		"image.bmp": encode(func(w io.Writer, source image.Image) error {
+			return bmp.Encode(w, source)
+		}),
+		"image.tiff": encode(func(w io.Writer, source image.Image) error {
+			return tiff.Encode(w, source, nil)
+		}),
+	}
+	for key, data := range cases {
+		t.Run(key, func(t *testing.T) {
+			store := &thumbnailStoreStub{
+				data: data,
+				metadata: func(key string) *models.ObjectInfo {
+					return &models.ObjectInfo{Key: key, Size: int64(len(data)), ETag: "etag-" + key}
+				},
+			}
+			service, err := NewThumbnailService(store, thumbnailTestConfig(t))
+			if err != nil {
+				t.Fatalf("NewThumbnailService: %v", err)
+			}
+			result, err := service.Get(context.Background(), "photos", key, 96)
+			if err != nil {
+				t.Fatalf("Get: %v", err)
+			}
+			if _, err := png.Decode(bytes.NewReader(result.Data)); err != nil {
+				t.Fatalf("thumbnail is not PNG: %v", err)
+			}
+		})
 	}
 }
 

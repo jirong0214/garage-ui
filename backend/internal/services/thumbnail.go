@@ -23,7 +23,10 @@ import (
 	"Noooste/garage-ui/internal/config"
 	"Noooste/garage-ui/internal/models"
 
+	_ "golang.org/x/image/bmp"
 	"golang.org/x/image/draw"
+	_ "golang.org/x/image/tiff"
+	_ "golang.org/x/image/webp"
 	"golang.org/x/sync/singleflight"
 )
 
