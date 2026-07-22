@@ -68,8 +68,8 @@ var Vocabulary = map[string]PermSpec{
 
 	// S3 data plane (object browser), no Garage admin endpoint.
 	"object.list":   {Scope: ScopePrefix, Endpoints: []string{"S3:ListObjectsV2"}},
-	"object.read":   {Scope: ScopePrefix, Endpoints: []string{"S3:GetObject", "S3:HeadObject", "S3:PresignGet"}},
-	"object.write":  {Scope: ScopePrefix, Endpoints: []string{"S3:PutObject"}},
+	"object.read":   {Scope: ScopePrefix, Endpoints: []string{"S3:GetObject", "S3:HeadObject", "S3:PresignGet", "S3:CopyObjectSource"}},
+	"object.write":  {Scope: ScopePrefix, Endpoints: []string{"S3:PutObject", "S3:CopyObjectDestination"}},
 	"object.delete": {Scope: ScopePrefix, Endpoints: []string{"S3:DeleteObject", "S3:DeleteObjects"}},
 
 	"permission.allow_bucket_key": {Scope: ScopePrefix, Endpoints: []string{"AllowBucketKey"}},

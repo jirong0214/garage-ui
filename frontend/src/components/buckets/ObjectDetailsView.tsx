@@ -4,18 +4,20 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { objectsApi } from '@/lib/api';
 import { useBuckets } from '@/hooks/useApi';
 import { useBucketCan } from '@/hooks/usePermissions';
-import type { ObjectMetadata } from '@/types';
-import { Button } from '@/components/ui/button';
+import type { ObjectMetadata, ObjectTransferResult } from '@/types';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { IconTile } from '@/components/ui/icon-tile';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ObjectPreview } from '@/components/buckets/ObjectPreview';
-import { ArrowLeft, Copy, Download, File, Info, Link2, Loader2, Maximize2, Minimize2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Download, File, Info, Link2, Loader2, Maximize2, Minimize2, MoreVertical, MoveRight, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadObject, formatBytes, formatLocalDateTime, formatRelativeTime, formatUTCDateTime } from '@/lib/file-utils';
 import { buildPublicObjectUrl, cn, copyText } from '@/lib/utils';
 import { ShareObjectDialog } from '@/components/buckets/ShareObjectDialog';
+import { ObjectTransferDialog, type ObjectTransferMode } from '@/components/buckets/ObjectTransferDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 function CardSection({
   title,
@@ -101,6 +103,13 @@ export function ObjectDetailsView() {
   const canBucket = useBucketCan();
   const canDelete = canBucket(bucket, 'object.delete');
   const canRead = canBucket(bucket, 'object.read');
+  const transferDestinationBuckets = canRead
+    ? buckets.filter((candidate) =>
+        canBucket(candidate, 'object.read') && canBucket(candidate, 'object.write'),
+      )
+    : [];
+  const canMove = canRead && canDelete && transferDestinationBuckets.length > 0;
+  const canRename = canMove && transferDestinationBuckets.some((candidate) => candidate.name === bucketName);
 
   const [metadata, setMetadata] = useState<ObjectMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -108,6 +117,7 @@ export function ObjectDetailsView() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [transferMode, setTransferMode] = useState<ObjectTransferMode | null>(null);
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
 
   useEffect(() => {
@@ -170,6 +180,12 @@ export function ObjectDetailsView() {
     } finally {
       setDeleting(false);
       setDeleteOpen(false);
+    }
+  };
+
+  const handleTransferCompleted = (result: ObjectTransferResult) => {
+    if (result.operation === 'move') {
+      navigate(`/buckets/${encodeURIComponent(result.destinationBucket)}/objects/${encodeURIComponent(result.destinationKey)}`);
     }
   };
 
@@ -275,6 +291,32 @@ export function ObjectDetailsView() {
           <Button variant="secondary" onClick={handleDownload}>
             <Download className="h-4 w-4" /> Download
           </Button>
+          {transferDestinationBuckets.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={buttonVariants({variant: 'secondary', size: 'icon'})}
+                aria-label="Object actions"
+                title="Object actions"
+              >
+                <MoreVertical />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {canRename && (
+                  <DropdownMenuItem onClick={() => setTransferMode('rename')}>
+                    <Pencil className="h-4 w-4" /> Rename…
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => setTransferMode('copy')}>
+                  <Copy className="h-4 w-4" /> Copy…
+                </DropdownMenuItem>
+                {canMove && (
+                  <DropdownMenuItem onClick={() => setTransferMode('move')}>
+                    <MoveRight className="h-4 w-4" /> Move…
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {canDelete && (
             <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
               <Trash2 className="h-4 w-4" /> Delete
@@ -334,12 +376,23 @@ export function ObjectDetailsView() {
         onConfirm={handleDelete}
       />
       {bucketName && objectKey && (
-        <ShareObjectDialog
-          open={shareOpen}
-          onOpenChange={setShareOpen}
-          bucketName={bucketName}
-          objectKey={objectKey}
-        />
+        <>
+          <ShareObjectDialog
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            bucketName={bucketName}
+            objectKey={objectKey}
+          />
+          <ObjectTransferDialog
+            open={transferMode !== null}
+            onOpenChange={(open) => { if (!open) setTransferMode(null); }}
+            mode={transferMode ?? 'copy'}
+            sourceBucket={bucketName}
+            sourceKey={objectKey}
+            destinationBuckets={transferDestinationBuckets}
+            onCompleted={handleTransferCompleted}
+          />
+        </>
       )}
     </div>
   );

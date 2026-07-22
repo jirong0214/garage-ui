@@ -56,6 +56,8 @@ func newObjectsTestAppWithMinter(t *testing.T) (*fiber.App, *mocks.S3Mock, *mint
 	app.Post("/buckets/:bucket/directories", h.CreateDirectory)
 	app.Post("/buckets/:bucket/objects/upload-multiple", h.UploadMultipleObjects)
 	app.Post("/buckets/:bucket/objects/delete-multiple", h.DeleteMultipleObjects)
+	app.Post("/buckets/:bucket/objects/copy", h.CopyObject)
+	app.Post("/buckets/:bucket/objects/move", h.MoveObject)
 	// Wildcard endpoints. Mount under :key for tests. Handlers prefer
 	// c.Locals("objectKey") but fall back to c.Params("key"), so :key works.
 	app.Get("/buckets/:bucket/objects/:key", h.GetObject)
@@ -183,6 +185,88 @@ func TestListObjects_InvalidMaxKeys400(t *testing.T) {
 				t.Fatalf("status = %d, want 400", resp.StatusCode)
 			}
 		})
+	}
+}
+
+func TestCopyObject_Success(t *testing.T) {
+	app, s3 := newObjectsTestApp(t)
+	s3.CopyObjectFn = func(_ context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error) {
+		if sourceBucket != "source" || sourceKey != "folder/a.jpg" || destinationBucket != "pics" || destinationKey != "archive/a.jpg" || overwrite {
+			t.Fatalf("unexpected transfer args: %q %q %q %q %v", sourceBucket, sourceKey, destinationBucket, destinationKey, overwrite)
+		}
+		return &models.ObjectTransferResponse{
+			Operation: "copy", SourceBucket: sourceBucket, SourceKey: sourceKey,
+			DestinationBucket: destinationBucket, DestinationKey: destinationKey, ETag: "etag",
+		}, nil
+	}
+	body := `{"sourceKey":"folder/a.jpg","destinationBucket":"pics","destinationKey":"archive/a.jpg","overwrite":false}`
+	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/buckets/source/objects/copy", strings.NewReader(body)))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", resp.StatusCode)
+	}
+	var result struct {
+		Data models.ObjectTransferResponse `json:"data"`
+	}
+	decodeJSON(t, resp.Body, &result)
+	if result.Data.DestinationBucket != "pics" || result.Data.DestinationKey != "archive/a.jpg" {
+		t.Fatalf("response = %+v", result.Data)
+	}
+}
+
+func TestCopyObject_Conflict(t *testing.T) {
+	app, s3 := newObjectsTestApp(t)
+	s3.CopyObjectFn = func(context.Context, string, string, string, string, bool) (*models.ObjectTransferResponse, error) {
+		return nil, services.ErrTransferDestinationExists
+	}
+	body := `{"sourceKey":"a","destinationBucket":"b","destinationKey":"a"}`
+	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/buckets/source/objects/copy", strings.NewReader(body)))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("status = %d, want 409", resp.StatusCode)
+	}
+}
+
+func TestMoveObject_PartialFailureReportsDestination(t *testing.T) {
+	app, s3 := newObjectsTestApp(t)
+	s3.MoveObjectFn = func(_ context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error) {
+		result := &models.ObjectTransferResponse{
+			Operation: "move", SourceBucket: sourceBucket, SourceKey: sourceKey,
+			DestinationBucket: destinationBucket, DestinationKey: destinationKey,
+		}
+		return result, &services.PartialMoveError{Err: errors.New("delete denied")}
+	}
+	body := `{"sourceKey":"a","destinationBucket":"b","destinationKey":"a"}`
+	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/buckets/source/objects/move", strings.NewReader(body)))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", resp.StatusCode)
+	}
+	var result models.APIResponse
+	decodeJSON(t, resp.Body, &result)
+	if result.Error == nil || result.Error.Code != models.ErrCodeMovePartial {
+		t.Fatalf("error = %+v, want %s", result.Error, models.ErrCodeMovePartial)
+	}
+}
+
+func TestTransferObject_ValidatesRequiredFields(t *testing.T) {
+	app, _ := newObjectsTestApp(t)
+	resp, err := app.Test(httptest.NewRequest(http.MethodPost, "/buckets/source/objects/copy", strings.NewReader(`{"sourceKey":"a"}`)))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
 }
 

@@ -14,6 +14,8 @@ import type {
   MultiNodeStatisticsResponse,
   ObjectListResponse,
   ObjectMetadata,
+  ObjectTransferRequest,
+  ObjectTransferResult,
   S3Object,
   StorageMetrics,
 } from '@/types';
@@ -403,6 +405,22 @@ export const objectsApi = {
   deleteMultiple: async (bucket: string, keys: string[], prefixes: string[] = []): Promise<void> => {
     const payload = { keys, ...(prefixes.length > 0 && { prefixes }) };
     await api.post(`/v1/buckets/${bucket}/objects/delete-multiple`, payload);
+  },
+
+  copy: async (sourceBucket: string, request: ObjectTransferRequest): Promise<ObjectTransferResult> => {
+    const response = await api.post(
+      `/v1/buckets/${encodeURIComponent(sourceBucket)}/objects/copy`,
+      request,
+    );
+    return response.data.data;
+  },
+
+  move: async (sourceBucket: string, request: ObjectTransferRequest): Promise<ObjectTransferResult> => {
+    const response = await api.post(
+      `/v1/buckets/${encodeURIComponent(sourceBucket)}/objects/move`,
+      request,
+    );
+    return response.data.data;
   },
 
   getPresignedUrl: async (bucket: string, key: string, expiresIn: number = 3600): Promise<string> => {

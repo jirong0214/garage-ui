@@ -46,6 +46,9 @@ func newTestApp(m *Middleware, userInfo *auth.UserInfo) *fiber.App {
 	app.Post("/api/v1/buckets", m.Require(BucketFromBody(), PermBucketCreate), func(c fiber.Ctx) error {
 		return c.SendString("created")
 	})
+	app.Post("/api/v1/transfer", m.Require(DestinationBucketFromBody(), PermObjectRead), func(c fiber.Ctx) error {
+		return c.SendString("allowed")
+	})
 	app.Get("/api/v1/cluster/status", m.Require(ScopeNone, PermClusterStatus), func(c fiber.Ctx) error {
 		return c.SendString("ok")
 	})
@@ -96,6 +99,17 @@ func TestRequireBucketFromBody(t *testing.T) {
 	}
 	if code := doReq(t, app, "POST", "/api/v1/buckets", `{"name":"other-new"}`); code != 403 {
 		t.Errorf("create with foreign prefix: status %d, want 403", code)
+	}
+}
+
+func TestRequireDestinationBucketFromBody(t *testing.T) {
+	m := middlewareFixture(t)
+	app := newTestApp(m, &auth.UserInfo{Email: "a@x", AuthMethod: "oidc", Teams: []string{"g-backend"}})
+	if code := doReq(t, app, "POST", "/api/v1/transfer", `{"destinationBucket":"backend-archive"}`); code != 200 {
+		t.Errorf("matching destination: status %d, want 200", code)
+	}
+	if code := doReq(t, app, "POST", "/api/v1/transfer", `{"destinationBucket":"other-archive"}`); code != 403 {
+		t.Errorf("foreign destination: status %d, want 403", code)
 	}
 }
 

@@ -339,6 +339,110 @@ func (h *ObjectHandler) CreateDirectory(c fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(models.SuccessResponse(result))
 }
 
+// CopyObject copies one object within a bucket or between buckets.
+//
+//	@Summary		Copy an object
+//	@Description	Copies one object to a destination bucket and key using S3 server-side copy.
+//	@Tags			Objects
+//	@Accept			json
+//	@Produce		json
+//	@Param			bucket	path		string										true	"Source bucket"
+//	@Param			request	body		models.ObjectTransferRequest					true	"Copy destination"
+//	@Success		201		{object}	models.APIResponse{data=models.ObjectTransferResponse}	"Object copied"
+//	@Failure		400		{object}	models.APIResponse{error=models.APIError}
+//	@Failure		404		{object}	models.APIResponse{error=models.APIError}
+//	@Failure		409		{object}	models.APIResponse{error=models.APIError}
+//	@Failure		500		{object}	models.APIResponse{error=models.APIError}
+//	@Router			/api/v1/buckets/{bucket}/objects/copy [post]
+func (h *ObjectHandler) CopyObject(c fiber.Ctx) error {
+	return h.transferObject(c, false)
+}
+
+// MoveObject copies one object and deletes the source after the copy succeeds.
+//
+//	@Summary		Move or rename an object
+//	@Description	Moves one object to a destination bucket and key. A same-bucket move is a rename.
+//	@Tags			Objects
+//	@Accept			json
+//	@Produce		json
+//	@Param			bucket	path		string										true	"Source bucket"
+//	@Param			request	body		models.ObjectTransferRequest					true	"Move destination"
+//	@Success		200		{object}	models.APIResponse{data=models.ObjectTransferResponse}	"Object moved"
+//	@Failure		400		{object}	models.APIResponse{error=models.APIError}
+//	@Failure		404		{object}	models.APIResponse{error=models.APIError}
+//	@Failure		409		{object}	models.APIResponse{error=models.APIError}
+//	@Failure		500		{object}	models.APIResponse{error=models.APIError}
+//	@Router			/api/v1/buckets/{bucket}/objects/move [post]
+func (h *ObjectHandler) MoveObject(c fiber.Ctx) error {
+	return h.transferObject(c, true)
+}
+
+func (h *ObjectHandler) transferObject(c fiber.Ctx, move bool) error {
+	sourceBucket := c.Params("bucket")
+	var req models.ObjectTransferRequest
+	if err := c.Bind().JSON(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.ErrorResponse(models.ErrCodeBadRequest, "Invalid request body: "+err.Error()),
+		)
+	}
+	if sourceBucket == "" || req.SourceKey == "" || req.DestinationBucket == "" || req.DestinationKey == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.ErrorResponse(models.ErrCodeBadRequest, "Source key, destination bucket, and destination key are required"),
+		)
+	}
+	if strings.ContainsRune(req.SourceKey, '\x00') || strings.ContainsRune(req.DestinationKey, '\x00') {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.ErrorResponse(models.ErrCodeInvalidObjectKey, "Object keys cannot contain null bytes"),
+		)
+	}
+
+	var (
+		result *models.ObjectTransferResponse
+		err    error
+	)
+	if move {
+		result, err = h.s3Service.MoveObject(c.Context(), sourceBucket, req.SourceKey, req.DestinationBucket, req.DestinationKey, req.Overwrite)
+	} else {
+		result, err = h.s3Service.CopyObject(c.Context(), sourceBucket, req.SourceKey, req.DestinationBucket, req.DestinationKey, req.Overwrite)
+	}
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrTransferSameObject):
+			return c.Status(fiber.StatusBadRequest).JSON(
+				models.ErrorResponse(models.ErrCodeBadRequest, "Source and destination must be different"),
+			)
+		case errors.Is(err, services.ErrTransferDestinationExists):
+			return c.Status(fiber.StatusConflict).JSON(
+				models.ErrorResponse(models.ErrCodeConflict, "An object already exists at the destination"),
+			)
+		case errors.Is(err, services.ErrTransferSourceNotFound):
+			return c.Status(fiber.StatusNotFound).JSON(
+				models.ErrorResponse(models.ErrCodeObjectNotFound, "Source object not found"),
+			)
+		}
+		var partial *services.PartialMoveError
+		if errors.As(err, &partial) {
+			return c.Status(fiber.StatusInternalServerError).JSON(models.APIResponse{
+				Success: false,
+				Data:    result,
+				Error: &models.APIError{
+					Code:    models.ErrCodeMovePartial,
+					Message: partial.Error(),
+				},
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(
+			models.ErrorResponse(models.ErrCodeTransferFailed, err.Error()),
+		)
+	}
+
+	status := fiber.StatusCreated
+	if move {
+		status = fiber.StatusOK
+	}
+	return c.Status(status).JSON(models.SuccessResponse(result))
+}
+
 // GetObject retrieves an object from a bucket
 //
 //	@Summary		Get object from bucket

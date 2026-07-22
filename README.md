@@ -30,6 +30,7 @@ A modern web interface to manage <a href="https://garagehq.deuxfleurs.fr/">Garag
 
 - Browse bucket prefixes as folders with breadcrumbs and bounded back/forward navigation
 - Upload one or many files, create directory markers, download, and batch-delete objects
+- Copy objects within or between buckets, move them, and rename them in place
 - Search recursively by object name and remember table sorting locally
 - Preview images, video, PDF, and text; expand the complete preview card into an in-app fullscreen view
 - Generate cached thumbnails on demand for JPEG, PNG, GIF, WebP, BMP, and TIFF images
@@ -342,7 +343,7 @@ to discuss the workflow and safety model before implementation.
 - [x] **Object sharing**: public URL mappings and time-limited presigned download links
 - [x] **Image thumbnails**: bounded, cached thumbnail generation with configurable concurrency and pixel limits
 - [x] **Separated runtime**: independently replaceable Web and API containers with a private backend network
-- [ ] **Object copy, move, and rename**: use S3 server-side copy with conflict handling and explicit delete-after-copy semantics
+- [x] **Single-object copy, move, and rename**: S3 server-side copy with overwrite protection and explicit delete-after-copy semantics
 - [ ] **Bucket CORS editor**: view, validate, update, and remove S3 CORS rules
 - [ ] **Lifecycle editor**: object expiration and incomplete multipart-upload cleanup rules supported by Garage
 - [ ] **Multipart upload manager**: resumable uploads plus inspection, resume, abort, and cleanup of incomplete sessions

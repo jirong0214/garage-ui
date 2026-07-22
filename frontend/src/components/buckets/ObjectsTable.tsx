@@ -12,19 +12,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {ChevronLeft, ChevronRight, Copy, Download, Eye, FolderIcon, Link2, Loader2, MoreVertical, Trash2} from 'lucide-react';
+import {ChevronLeft, ChevronRight, Copy, Download, Eye, FolderIcon, Link2, Loader2, MoreVertical, MoveRight, Pencil, Trash2} from 'lucide-react';
 import {Select, SelectOption} from '@/components/ui/select';
 import {downloadObject, formatBytes, formatObjectModifiedTime} from '@/lib/file-utils';
-import type {S3Object} from '@/types';
+import type {Bucket, S3Object} from '@/types';
 import {buildPublicObjectUrl, copyText} from '@/lib/utils';
 import {toast} from 'sonner';
 import {ShareObjectDialog} from './ShareObjectDialog';
 import {ObjectThumbnail} from './ObjectThumbnail';
+import {ObjectTransferDialog, type ObjectTransferMode} from './ObjectTransferDialog';
 
 interface ObjectsTableProps {
   bucketName: string;
   publicBaseURL?: string;
   canShare: boolean;
+  transferDestinationBuckets?: Bucket[];
+  canMove?: boolean;
+  canRename?: boolean;
   objects: S3Object[];
   currentPath: string;
   searchQuery: string;
@@ -49,6 +53,7 @@ interface ObjectsTableProps {
   onSelectAll: (fileKeys: string[], folderKeys: string[]) => void;
   onPageChange: (token?: string) => void;
   onItemsPerPageChange: (count: number) => void;
+  onTransferComplete?: () => Promise<void>;
   initialPageToken?: string;
   initialItemsPerPage?: number;
 }
@@ -92,6 +97,9 @@ export function ObjectsTable({
   bucketName,
   publicBaseURL,
   canShare,
+  transferDestinationBuckets = [],
+  canMove = false,
+  canRename = false,
   objects,
   currentPath,
   searchQuery,
@@ -112,6 +120,7 @@ export function ObjectsTable({
   onSelectAll,
   onPageChange,
   onItemsPerPageChange,
+  onTransferComplete,
   initialPageToken,
   initialItemsPerPage,
 }: ObjectsTableProps) {
@@ -124,6 +133,7 @@ export function ObjectsTable({
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [initialized, setInitialized] = useState(false);
   const [shareObject, setShareObject] = useState<S3Object | null>(null);
+  const [transfer, setTransfer] = useState<{object: S3Object; mode: ObjectTransferMode} | null>(null);
 
   const copyPublicURL = async (key: string) => {
     if (!publicBaseURL) return;
@@ -458,6 +468,24 @@ export function ObjectsTable({
                         <Download className="h-4 w-4" />
                         Download
                       </DropdownMenuItem>
+                      {canRename && (
+                        <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'rename'})}>
+                          <Pencil className="h-4 w-4" />
+                          Rename…
+                        </DropdownMenuItem>
+                      )}
+                      {transferDestinationBuckets.length > 0 && (
+                        <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'copy'})}>
+                          <Copy className="h-4 w-4" />
+                          Copy…
+                        </DropdownMenuItem>
+                      )}
+                      {canMove && (
+                        <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'move'})}>
+                          <MoveRight className="h-4 w-4" />
+                          Move…
+                        </DropdownMenuItem>
+                      )}
                       {canShare && (
                         <DropdownMenuItem onClick={() => setShareObject(obj)}>
                           <Link2 className="h-4 w-4" />
@@ -543,6 +571,15 @@ export function ObjectsTable({
       onOpenChange={(open) => { if (!open) setShareObject(null); }}
       bucketName={bucketName}
       objectKey={shareObject?.key ?? ''}
+    />
+    <ObjectTransferDialog
+      open={transfer !== null}
+      onOpenChange={(open) => { if (!open) setTransfer(null); }}
+      mode={transfer?.mode ?? 'copy'}
+      sourceBucket={bucketName}
+      sourceKey={transfer?.object.key ?? ''}
+      destinationBuckets={transferDestinationBuckets}
+      onCompleted={() => { void onTransferComplete?.(); }}
     />
     </>
   );

@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -24,6 +25,25 @@ type S3Service struct {
 	config       *config.GarageConfig
 	adminService AdminService
 }
+
+var (
+	ErrTransferDestinationExists = errors.New("destination object already exists")
+	ErrTransferSameObject        = errors.New("source and destination are the same object")
+	ErrTransferSourceNotFound    = errors.New("source object not found")
+)
+
+// PartialMoveError means CopyObject succeeded but deleting the source failed.
+// The destination must not be rolled back automatically because it may be the
+// only good copy by the time the error is handled.
+type PartialMoveError struct {
+	Err error
+}
+
+func (e *PartialMoveError) Error() string {
+	return "object was copied but the source could not be deleted: " + e.Err.Error()
+}
+
+func (e *PartialMoveError) Unwrap() error { return e.Err }
 
 // NewS3Service creates a new S3 service instance using MinIO SDK
 func NewS3Service(cfg *config.GarageConfig, adminService AdminService) *S3Service {
@@ -143,6 +163,55 @@ func (s *S3Service) getMinioClient(ctx context.Context, bucketName string, op Op
 	}
 
 	return client, nil
+}
+
+// getTransferClient returns a client signed by one key that can read the
+// source and write the destination. S3 CopyObject is one request, so separate
+// per-bucket credentials cannot be combined.
+func (s *S3Service) getTransferClient(ctx context.Context, sourceBucket, destinationBucket string) (*minio.Client, error) {
+	if sourceBucket == destinationBucket {
+		return s.getMinioClient(ctx, sourceBucket, OpRead|OpWrite)
+	}
+
+	sourceInfo, err := s.adminService.GetBucketInfoByAlias(ctx, sourceBucket)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get source bucket info: %w", err)
+	}
+	destinationInfo, err := s.adminService.GetBucketInfoByAlias(ctx, destinationBucket)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get destination bucket info: %w", err)
+	}
+
+	destinationWriters := make(map[string]struct{}, len(destinationInfo.Keys))
+	for _, key := range destinationInfo.Keys {
+		if key.Permissions.Write {
+			destinationWriters[key.AccessKeyID] = struct{}{}
+		}
+	}
+	for _, key := range sourceInfo.Keys {
+		if !key.Permissions.Read {
+			continue
+		}
+		if _, ok := destinationWriters[key.AccessKeyID]; !ok {
+			continue
+		}
+		details, err := s.adminService.GetKeyInfo(ctx, key.AccessKeyID, true)
+		if err != nil || details.Expired || details.SecretAccessKey == nil {
+			continue
+		}
+		creds := credentials.NewStaticV4(details.AccessKeyID, *details.SecretAccessKey, "")
+		options := &minio.Options{Creds: creds, Secure: s.config.UseSSL, Region: s.config.Region}
+		if s.config.ForcePathStyle {
+			options.BucketLookup = minio.BucketLookupPath
+		}
+		client, err := minio.New(s.config.Endpoint, options)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create transfer client: %w", err)
+		}
+		return client, nil
+	}
+
+	return nil, fmt.Errorf("no single S3 access key can read bucket %s and write bucket %s", sourceBucket, destinationBucket)
 }
 
 func (s *S3Service) getPresignClient(ctx context.Context, bucketName string) (*minio.Client, error) {
@@ -623,12 +692,76 @@ func (s *S3Service) ObjectExists(ctx context.Context, bucketName, key string) (b
 	if err != nil {
 		// Check if error is "object not found"
 		errResponse := minio.ToErrorResponse(err)
-		if errResponse.Code == "NoSuchKey" {
+		if errResponse.Code == "NoSuchKey" || errResponse.Code == "NoSuchObject" {
 			return false, nil
 		}
 		return false, fmt.Errorf("failed to check if object exists: %w", err)
 	}
 	return true, nil
+}
+
+// CopyObject copies one object using Garage's server-side S3 CopyObject API.
+func (s *S3Service) CopyObject(ctx context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error) {
+	if sourceBucket == destinationBucket && sourceKey == destinationKey {
+		return nil, ErrTransferSameObject
+	}
+	if !overwrite {
+		exists, err := s.ObjectExists(ctx, destinationBucket, destinationKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check destination object: %w", err)
+		}
+		if exists {
+			return nil, ErrTransferDestinationExists
+		}
+	}
+
+	client, err := s.getTransferClient(ctx, sourceBucket, destinationBucket)
+	if err != nil {
+		return nil, err
+	}
+
+	destination := minio.CopyDestOptions{Bucket: destinationBucket, Object: destinationKey}
+	source := minio.CopySrcOptions{Bucket: sourceBucket, Object: sourceKey}
+	var info minio.UploadInfo
+	retryConfig := utils.DefaultRetryConfig()
+	err = utils.RetryWithBackoff(ctx, retryConfig, func() error {
+		var copyErr error
+		info, copyErr = client.CopyObject(ctx, destination, source)
+		return copyErr
+	})
+	if err != nil {
+		response := minio.ToErrorResponse(err)
+		if response.Code == "NoSuchKey" || response.Code == "NoSuchObject" {
+			return nil, fmt.Errorf("%w: %s/%s", ErrTransferSourceNotFound, sourceBucket, sourceKey)
+		}
+		return nil, fmt.Errorf("failed to copy %s/%s to %s/%s: %w", sourceBucket, sourceKey, destinationBucket, destinationKey, err)
+	}
+
+	return &models.ObjectTransferResponse{
+		Operation:         "copy",
+		SourceBucket:      sourceBucket,
+		SourceKey:         sourceKey,
+		DestinationBucket: destinationBucket,
+		DestinationKey:    destinationKey,
+		ETag:              info.ETag,
+		SourceDeleted:     false,
+	}, nil
+}
+
+// MoveObject copies first and deletes the source only after CopyObject has
+// succeeded. A deletion failure is returned as PartialMoveError with the
+// successful destination in the result.
+func (s *S3Service) MoveObject(ctx context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error) {
+	result, err := s.CopyObject(ctx, sourceBucket, sourceKey, destinationBucket, destinationKey, overwrite)
+	if err != nil {
+		return nil, err
+	}
+	result.Operation = "move"
+	if err := s.DeleteObject(ctx, sourceBucket, sourceKey); err != nil {
+		return result, &PartialMoveError{Err: err}
+	}
+	result.SourceDeleted = true
+	return result, nil
 }
 
 // GetObjectMetadata retrieves metadata for an object without downloading it

@@ -470,6 +470,59 @@ func TestGetBucketCredentials_AdminErrorPropagates(t *testing.T) {
 	}
 }
 
+func TestGetTransferClient_UsesKeySharedBySourceAndDestination(t *testing.T) {
+	secret := "shared-secret"
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/GetBucketInfo", func(w http.ResponseWriter, r *http.Request) {
+		var info models.GarageBucketInfo
+		switch r.URL.Query().Get("globalAlias") {
+		case "source":
+			info.Keys = []models.BucketKeyInfo{
+				{AccessKeyID: "SOURCE-ONLY", Permissions: models.BucketKeyPermission{Read: true}},
+				{AccessKeyID: "SHARED", Permissions: models.BucketKeyPermission{Read: true}},
+			}
+		case "destination":
+			info.Keys = []models.BucketKeyInfo{
+				{AccessKeyID: "DEST-ONLY", Permissions: models.BucketKeyPermission{Write: true}},
+				{AccessKeyID: "SHARED", Permissions: models.BucketKeyPermission{Write: true}},
+			}
+		default:
+			t.Fatalf("unexpected bucket alias %q", r.URL.Query().Get("globalAlias"))
+		}
+		_ = json.NewEncoder(w).Encode(&info)
+	})
+	mux.HandleFunc("/v2/GetKeyInfo", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("id") != "SHARED" || r.URL.Query().Get("showSecretKey") != "true" {
+			t.Fatalf("unexpected GetKeyInfo query %q", r.URL.RawQuery)
+		}
+		_ = json.NewEncoder(w).Encode(&models.GarageKeyInfo{AccessKeyID: "SHARED", SecretAccessKey: &secret})
+	})
+	s3, _ := adminBackedS3(t, mux)
+	client, err := s3.getTransferClient(context.Background(), "source", "destination")
+	if err != nil {
+		t.Fatalf("getTransferClient: %v", err)
+	}
+	if client == nil {
+		t.Fatal("client is nil")
+	}
+}
+
+func TestGetTransferClient_RejectsBucketsWithoutSharedKey(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v2/GetBucketInfo", func(w http.ResponseWriter, r *http.Request) {
+		key := models.BucketKeyInfo{AccessKeyID: "B", Permissions: models.BucketKeyPermission{Write: true}}
+		if r.URL.Query().Get("globalAlias") == "source" {
+			key = models.BucketKeyInfo{AccessKeyID: "A", Permissions: models.BucketKeyPermission{Read: true}}
+		}
+		_ = json.NewEncoder(w).Encode(&models.GarageBucketInfo{Keys: []models.BucketKeyInfo{key}})
+	})
+	s3, _ := adminBackedS3(t, mux)
+	_, err := s3.getTransferClient(context.Background(), "source", "destination")
+	if err == nil || !strings.Contains(err.Error(), "no single S3 access key") {
+		t.Fatalf("error = %v, want shared-key error", err)
+	}
+}
+
 func TestGetBucketStatistics_HappyPath(t *testing.T) {
 	bucket := uniqueBucket(t)
 

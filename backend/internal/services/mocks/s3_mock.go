@@ -30,6 +30,8 @@ type S3Mock struct {
 	GetObjectFn             func(ctx context.Context, bucketName, key string) (io.ReadCloser, *models.ObjectInfo, error)
 	GetObjectRangeFn        func(ctx context.Context, bucketName, key string, start, end int64) (io.ReadCloser, error)
 	ObjectExistsFn          func(ctx context.Context, bucketName, key string) (bool, error)
+	CopyObjectFn            func(ctx context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error)
+	MoveObjectFn            func(ctx context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error)
 	DeleteObjectFn          func(ctx context.Context, bucketName, key string) error
 	GetObjectMetadataFn     func(ctx context.Context, bucketName, key string) (*models.ObjectInfo, error)
 	GetPresignedURLFn       func(ctx context.Context, bucketName, key string, expiresIn time.Duration) (string, error)
@@ -105,6 +107,22 @@ func (m *S3Mock) ObjectExists(ctx context.Context, bucketName, key string) (bool
 		return false, s3NotConfigured("ObjectExists")
 	}
 	return m.ObjectExistsFn(ctx, bucketName, key)
+}
+
+func (m *S3Mock) CopyObject(ctx context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error) {
+	m.record("CopyObject", sourceBucket, sourceKey, destinationBucket, destinationKey, overwrite)
+	if m.CopyObjectFn == nil {
+		return nil, s3NotConfigured("CopyObject")
+	}
+	return m.CopyObjectFn(ctx, sourceBucket, sourceKey, destinationBucket, destinationKey, overwrite)
+}
+
+func (m *S3Mock) MoveObject(ctx context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error) {
+	m.record("MoveObject", sourceBucket, sourceKey, destinationBucket, destinationKey, overwrite)
+	if m.MoveObjectFn == nil {
+		return nil, s3NotConfigured("MoveObject")
+	}
+	return m.MoveObjectFn(ctx, sourceBucket, sourceKey, destinationBucket, destinationKey, overwrite)
 }
 
 func (m *S3Mock) DeleteObject(ctx context.Context, bucketName, key string) error {

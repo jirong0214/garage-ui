@@ -15,6 +15,13 @@ export function BucketObjects() {
   const canWrite = canBucket(bucket, 'object.write');
   const canDelete = canBucket(bucket, 'object.delete');
   const canRead = canBucket(bucket, 'object.read');
+  const transferDestinationBuckets = canRead
+    ? buckets.filter((candidate) =>
+        canBucket(candidate, 'object.read') && canBucket(candidate, 'object.write'),
+      )
+    : [];
+  const canMove = canRead && canDelete && transferDestinationBuckets.length > 0;
+  const canRename = canMove && transferDestinationBuckets.some((candidate) => candidate.name === bucketName);
 
   const [currentPath, setCurrentPath] = useState(searchParams.get('prefix') ?? '');
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,6 +117,9 @@ export function BucketObjects() {
         bucketName={bucketName}
         publicBaseURL={bucket?.publicUrl}
         canShare={canRead}
+        transferDestinationBuckets={transferDestinationBuckets}
+        canMove={canMove}
+        canRename={canRename}
         objects={objects}
         currentPath={currentPath}
         searchQuery={searchQuery}
@@ -128,6 +138,7 @@ export function BucketObjects() {
         onDeleteMultipleObjects={canDelete ? deleteMultipleObjects : undefined}
         onCreateDirectory={canWrite ? createDirectory : undefined}
         onRefresh={handleRefresh}
+        onTransferComplete={handleRefresh}
         onPageChange={handlePageChange}
         onItemsPerPageChange={handleItemsPerPageChange}
         isRefreshing={isRefreshing}

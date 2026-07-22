@@ -37,3 +37,13 @@ type UpdateBucketQuotasRequest struct {
 	MaxSize    *int64 `json:"maxSize,omitempty"`
 	MaxObjects *int64 `json:"maxObjects,omitempty"`
 }
+
+// ObjectTransferRequest describes the destination of a copy or move. The
+// source bucket is the route parameter so authorization can scope it without
+// trusting a duplicate value in the body.
+type ObjectTransferRequest struct {
+	SourceKey         string `json:"sourceKey"`
+	DestinationBucket string `json:"destinationBucket"`
+	DestinationKey    string `json:"destinationKey"`
+	Overwrite         bool   `json:"overwrite"`
+}

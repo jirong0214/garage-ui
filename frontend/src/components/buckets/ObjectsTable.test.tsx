@@ -107,4 +107,38 @@ describe('ObjectsTable', () => {
     );
     expect(objectButtons.map((button) => button.textContent)).toEqual(['newer.jpg', 'older.jpg']);
   });
+
+  it('shows copy, move, and rename actions when transfer permissions are available', () => {
+    render(
+      <MemoryRouter>
+        <ObjectsTable
+          bucketName="pics"
+          canShare={false}
+          transferDestinationBuckets={[{name: 'pics', creationDate: '2026-01-01T00:00:00Z', websiteAccess: false}]}
+          canMove
+          canRename
+          objects={[{key: 'photo.jpg', size: 100, lastModified: '2026-07-20T12:00:00Z'}]}
+          currentPath=""
+          searchQuery=""
+          filterQuery=""
+          deepSearch={false}
+          selectedFileKeys={new Set()}
+          selectedFolderKeys={new Set()}
+          isDragActive={false}
+          itemsPerPage={25}
+          onNavigateToFolder={vi.fn()}
+          onToggleFileSelection={vi.fn()}
+          onToggleFolderSelection={vi.fn()}
+          onSelectAll={vi.fn()}
+          onPageChange={vi.fn()}
+          onItemsPerPageChange={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: 'Actions for photo.jpg'}));
+    expect(screen.getByText('Rename…')).toBeInTheDocument();
+    expect(screen.getByText('Copy…')).toBeInTheDocument();
+    expect(screen.getByText('Move…')).toBeInTheDocument();
+  });
 });

@@ -54,6 +54,8 @@ type S3Storage interface {
 	GetObject(ctx context.Context, bucketName, key string) (io.ReadCloser, *models.ObjectInfo, error)
 	GetObjectRange(ctx context.Context, bucketName, key string, start, end int64) (io.ReadCloser, error)
 	ObjectExists(ctx context.Context, bucketName, key string) (bool, error)
+	CopyObject(ctx context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error)
+	MoveObject(ctx context.Context, sourceBucket, sourceKey, destinationBucket, destinationKey string, overwrite bool) (*models.ObjectTransferResponse, error)
 	DeleteObject(ctx context.Context, bucketName, key string) error
 	GetObjectMetadata(ctx context.Context, bucketName, key string) (*models.ObjectInfo, error)
 	GetPresignedURL(ctx context.Context, bucketName, key string, expiresIn time.Duration) (string, error)

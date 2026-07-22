@@ -82,6 +82,21 @@ func BucketFromBody() ScopeResolver {
 	}
 }
 
+// DestinationBucketFromBody reads the destination bucket used by object
+// transfer requests. Fiber buffers request bodies, so the handler can bind the
+// same JSON again after authorization succeeds.
+func DestinationBucketFromBody() ScopeResolver {
+	return func(c fiber.Ctx) Resource {
+		var req struct {
+			DestinationBucket string `json:"destinationBucket"`
+		}
+		if err := c.Bind().JSON(&req); err != nil {
+			return Resource{}
+		}
+		return Resource{Bucket: req.DestinationBucket}
+	}
+}
+
 // Require gates a route on the caller holding ALL of perms for the resolved
 // resource. One structured decision log line is emitted per check: denies at
 // warn, allows at debug.

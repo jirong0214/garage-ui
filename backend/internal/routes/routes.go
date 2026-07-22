@@ -89,6 +89,16 @@ func SetupRoutes(
 		objects.Post("/", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectWrite), objectHandler.UploadObject)                          // Upload object (multipart)
 		objects.Post("/upload-multiple", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectWrite), objectHandler.UploadMultipleObjects)  // Upload multiple objects
 		objects.Post("/delete-multiple", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectDelete), objectHandler.DeleteMultipleObjects) // Delete multiple objects
+		objects.Post("/copy",
+			az.Require(authz.BucketFromParam("bucket"), authz.PermObjectRead),
+			az.Require(authz.DestinationBucketFromBody(), authz.PermObjectRead, authz.PermObjectWrite),
+			objectHandler.CopyObject,
+		)
+		objects.Post("/move",
+			az.Require(authz.BucketFromParam("bucket"), authz.PermObjectRead, authz.PermObjectDelete),
+			az.Require(authz.DestinationBucketFromBody(), authz.PermObjectRead, authz.PermObjectWrite),
+			objectHandler.MoveObject,
+		)
 	}
 
 	// Directory routes (zero-byte directory markers)

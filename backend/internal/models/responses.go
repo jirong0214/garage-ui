@@ -123,6 +123,17 @@ type ObjectDeleteResponse struct {
 	Deleted bool   `json:"deleted"`
 }
 
+// ObjectTransferResponse records both sides of a completed copy or move.
+type ObjectTransferResponse struct {
+	Operation         string `json:"operation"`
+	SourceBucket      string `json:"sourceBucket"`
+	SourceKey         string `json:"sourceKey"`
+	DestinationBucket string `json:"destinationBucket"`
+	DestinationKey    string `json:"destinationKey"`
+	ETag              string `json:"etag,omitempty"`
+	SourceDeleted     bool   `json:"sourceDeleted"`
+}
+
 // UserInfo represents information about a Garage user (key pair)
 type UserInfo struct {
 	AccessKeyID       string             `json:"accessKeyId"`
@@ -209,4 +220,6 @@ const (
 	ErrCodeDeleteFailed      = "DELETE_FAILED"
 	ErrCodeListFailed        = "LIST_FAILED"
 	ErrCodeUnsupported       = "UNSUPPORTED"
+	ErrCodeTransferFailed    = "TRANSFER_FAILED"
+	ErrCodeMovePartial       = "MOVE_PARTIAL_FAILURE"
 )

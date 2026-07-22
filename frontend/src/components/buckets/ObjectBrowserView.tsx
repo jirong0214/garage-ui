@@ -8,12 +8,15 @@ import {DeleteObjectDialog} from './DeleteObjectDialog';
 import {ConfirmDialog} from '@/components/ui/confirm-dialog';
 import {UploadProgress} from './UploadProgress';
 import {FolderPlus, RotateCwIcon, ScanSearch, Search, Trash, Upload} from 'lucide-react';
-import type {S3Object, UploadTask} from '@/types';
+import type {Bucket, S3Object, UploadTask} from '@/types';
 
 interface ObjectBrowserViewProps {
   bucketName: string;
   publicBaseURL?: string;
   canShare: boolean;
+  transferDestinationBuckets: Bucket[];
+  canMove: boolean;
+  canRename: boolean;
   objects: S3Object[];
   currentPath: string;
   searchQuery: string;
@@ -32,6 +35,7 @@ interface ObjectBrowserViewProps {
   onDeleteMultipleObjects?: (keys: string[], prefixes?: string[]) => Promise<boolean>;
   onCreateDirectory?: (name: string) => Promise<boolean>;
   onRefresh: () => Promise<void>;
+  onTransferComplete: () => Promise<void>;
   onPageChange: (token?: string) => void;
   onItemsPerPageChange: (count: number) => void;
   isRefreshing: boolean;
@@ -44,6 +48,9 @@ export function ObjectBrowserView({
   bucketName,
   publicBaseURL,
   canShare,
+  transferDestinationBuckets,
+  canMove,
+  canRename,
   objects,
   currentPath,
   searchQuery,
@@ -62,6 +69,7 @@ export function ObjectBrowserView({
   onDeleteMultipleObjects,
   onCreateDirectory,
   onRefresh,
+  onTransferComplete,
   onPageChange,
   onItemsPerPageChange,
   isRefreshing,
@@ -417,6 +425,9 @@ export function ObjectBrowserView({
             bucketName={bucketName}
             publicBaseURL={publicBaseURL}
             canShare={canShare}
+            transferDestinationBuckets={transferDestinationBuckets}
+            canMove={canMove}
+            canRename={canRename}
             objects={objects}
             currentPath={currentPath}
             searchQuery={searchQuery}
@@ -440,6 +451,7 @@ export function ObjectBrowserView({
             onSelectAll={handleSelectAll}
             onPageChange={onPageChange}
             onItemsPerPageChange={onItemsPerPageChange}
+            onTransferComplete={onTransferComplete}
             initialPageToken={initialPageToken}
             initialItemsPerPage={initialItemsPerPage}
           />

@@ -71,6 +71,23 @@ export interface ObjectMetadata {
   versionId?: string;
 }
 
+export interface ObjectTransferRequest {
+  sourceKey: string;
+  destinationBucket: string;
+  destinationKey: string;
+  overwrite: boolean;
+}
+
+export interface ObjectTransferResult {
+  operation: 'copy' | 'move';
+  sourceBucket: string;
+  sourceKey: string;
+  destinationBucket: string;
+  destinationKey: string;
+  etag?: string;
+  sourceDeleted: boolean;
+}
+
 // Access Control types
 export interface AccessKey {
   accessKeyId: string;
