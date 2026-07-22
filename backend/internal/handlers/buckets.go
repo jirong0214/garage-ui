@@ -1,30 +1,34 @@
 package handlers
 
 import (
+	"fmt"
+	"strings"
+
 	"Noooste/garage-ui/internal/authz"
 	"Noooste/garage-ui/internal/models"
 	"Noooste/garage-ui/internal/services"
-	appsettings "Noooste/garage-ui/internal/settings"
 
 	"github.com/gofiber/fiber/v3"
 )
 
 // BucketHandler handles bucket-related HTTP requests.
 type BucketHandler struct {
-	adminService      services.AdminService
-	s3Service         services.S3Storage
-	publicURLs        map[string]string
-	publicURLResolver appsettings.PublicURLResolver
+	adminService  services.AdminService
+	s3Service     services.S3Storage
+	publicURLs    map[string]string
+	webProtocol   string
+	webRootDomain string
 }
 
-// SetPublicURLResolver replaces the startup-only URL map with a live settings resolver.
-func (h *BucketHandler) SetPublicURLResolver(resolver appsettings.PublicURLResolver) {
-	h.publicURLResolver = resolver
+// SetPublicWebRouting configures URL generation from Garage's s3_web root domain.
+func (h *BucketHandler) SetPublicWebRouting(protocol, rootDomain string) {
+	h.webProtocol = strings.TrimSuffix(strings.TrimSpace(protocol), "://")
+	h.webRootDomain = strings.TrimPrefix(strings.TrimSpace(rootDomain), ".")
 }
 
 func (h *BucketHandler) resolvePublicURL(bucket string) string {
-	if h.publicURLResolver != nil {
-		return h.publicURLResolver.Resolve(bucket)
+	if h.webProtocol != "" && h.webRootDomain != "" {
+		return fmt.Sprintf("%s://%s.%s", h.webProtocol, bucket, h.webRootDomain)
 	}
 	return h.publicURLs[bucket]
 }

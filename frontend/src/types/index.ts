@@ -27,19 +27,6 @@ export interface BucketDetails extends Bucket {
   lifecycleRules?: LifecycleRule[];
 }
 
-export interface PublicURLSettings {
-  template: string;
-  overrides: Record<string, string>;
-}
-
-export type BucketPublicURLMode = 'inherit' | 'custom' | 'disabled';
-
-export interface BucketPublicURLSettings {
-  mode: BucketPublicURLMode;
-  url?: string;
-  effectiveUrl?: string;
-}
-
 export interface LifecycleRule {
   id: string;
   enabled: boolean;

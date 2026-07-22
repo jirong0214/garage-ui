@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Globe } from 'lucide-react';
 import { useBuckets } from '@/hooks/useApi';
 import { bucketsApi } from '@/lib/api';
@@ -10,26 +10,16 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
-import { queryKeys } from '@/lib/query-client';
-import { Select, SelectOption } from '@/components/ui/select';
-import type { BucketPublicURLMode } from '@/types';
 
 export function BucketWebsite() {
   const { bucketName = '' } = useParams<{ bucketName: string }>();
   const queryClient = useQueryClient();
   const { data: buckets = [], isLoading } = useBuckets();
   const bucket = buckets.find((b) => b.name === bucketName);
-  const { data: publicURLSettings, isLoading: publicURLLoading } = useQuery({
-    queryKey: queryKeys.settings.bucketPublicURL(bucketName),
-    queryFn: () => bucketsApi.getPublicURL(bucketName),
-    enabled: !!bucketName && !!bucket,
-  });
 
   const [enabled, setEnabled] = useState(false);
   const [indexDocument, setIndexDocument] = useState('index.html');
   const [errorDocument, setErrorDocument] = useState('');
-  const [publicURLMode, setPublicURLMode] = useState<BucketPublicURLMode>('inherit');
-  const [customPublicURL, setCustomPublicURL] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Sync local form state whenever the underlying bucket changes.
@@ -39,12 +29,6 @@ export function BucketWebsite() {
     setIndexDocument(bucket.websiteConfig?.indexDocument ?? 'index.html');
     setErrorDocument(bucket.websiteConfig?.errorDocument ?? '');
   }, [bucket]);
-
-  useEffect(() => {
-    if (!publicURLSettings) return;
-    setPublicURLMode(publicURLSettings.mode);
-    setCustomPublicURL(publicURLSettings.url ?? '');
-  }, [publicURLSettings]);
 
   if (isLoading) {
     return <div className="px-7 py-6 text-[13.5px] text-[var(--muted-foreground)]">Loading…</div>;
@@ -69,24 +53,17 @@ export function BucketWebsite() {
     setEnabled(bucket.websiteAccess);
     setIndexDocument(bucket.websiteConfig?.indexDocument ?? 'index.html');
     setErrorDocument(bucket.websiteConfig?.errorDocument ?? '');
-    setPublicURLMode(publicURLSettings?.mode ?? 'inherit');
-    setCustomPublicURL(publicURLSettings?.url ?? '');
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await bucketsApi.updatePublicURL(bucketName, {
-        mode: publicURLMode,
-        url: publicURLMode === 'custom' ? customPublicURL : undefined,
-      });
       await bucketsApi.updateBucketWebsite(bucketName, {
         enabled,
         indexDocument: enabled ? indexDocument : undefined,
         errorDocument: enabled && errorDocument ? errorDocument : undefined,
       });
       await queryClient.invalidateQueries({ queryKey: ['buckets'] });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.settings.publicURLs() });
       toast.success(disabling ? 'Website disabled' : 'Website configuration updated');
     } catch {
       // error toast handled by axios interceptor
@@ -95,12 +72,7 @@ export function BucketWebsite() {
     }
   };
 
-  const saveDisabled = saving || publicURLLoading || (enabled && !indexDocument) || (publicURLMode === 'custom' && !customPublicURL.trim());
-  const effectivePublicURL = publicURLMode === 'custom'
-    ? customPublicURL
-    : publicURLMode === 'inherit'
-      ? publicURLSettings?.effectiveUrl ?? ''
-      : '';
+  const saveDisabled = saving || (enabled && !indexDocument);
 
   return (
     <div className="px-7 py-6">
@@ -155,36 +127,10 @@ export function BucketWebsite() {
               </div>
 
               <div className="border-t border-[var(--border)] pt-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-[13.5px] font-medium">Public URL mode</label>
-                    <Select
-                      value={publicURLMode}
-                      onChange={(value) => setPublicURLMode(value as BucketPublicURLMode)}
-                      disabled={publicURLLoading}
-                    >
-                      <SelectOption value="inherit">Use default template</SelectOption>
-                      <SelectOption value="custom">Custom URL</SelectOption>
-                      <SelectOption value="disabled">Do not generate URLs</SelectOption>
-                    </Select>
-                  </div>
-                  {publicURLMode === 'custom' && (
-                    <div className="space-y-2">
-                      <label htmlFor="custom-public-url" className="text-[13.5px] font-medium">Custom URL</label>
-                      <Input
-                        id="custom-public-url"
-                        value={customPublicURL}
-                        onChange={(event) => setCustomPublicURL(event.target.value)}
-                        placeholder="https://files.example.com"
-                      />
-                    </div>
-                  )}
-                </div>
-                {effectivePublicURL && (
-                  <p className="mt-3 break-all text-[12.5px] text-[var(--muted-foreground)]">
-                    {effectivePublicURL}
-                  </p>
-                )}
+                <p className="text-[13.5px] font-medium">Public URL</p>
+                <p className="mt-1 break-all text-[12.5px] text-[var(--muted-foreground)]">
+                  {bucket.publicUrl || 'Available after website access is enabled'}
+                </p>
               </div>
             </div>
           )}

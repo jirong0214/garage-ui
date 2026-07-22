@@ -41,16 +41,16 @@ type ServerConfig struct {
 
 // GarageConfig contains Garage S3 connection settings
 type GarageConfig struct {
-	Endpoint              string            `mapstructure:"endpoint"`
-	PresignEndpoint       string            `mapstructure:"presign_endpoint"`
-	PublicURLs            map[string]string `mapstructure:"public_urls"`
-	PublicURLTemplate     string            `mapstructure:"public_url_template"`
-	PublicURLSettingsFile string            `mapstructure:"public_url_settings_file"`
-	Region                string            `mapstructure:"region"`
-	UseSSL                bool              `mapstructure:"use_ssl"`
-	ForcePathStyle        bool              `mapstructure:"force_path_style"`
-	AdminEndpoint         string            `mapstructure:"admin_endpoint"`
-	AdminToken            string            `mapstructure:"admin_token"`
+	Endpoint        string            `mapstructure:"endpoint"`
+	PresignEndpoint string            `mapstructure:"presign_endpoint"`
+	PublicURLs      map[string]string `mapstructure:"public_urls"`
+	WebRootDomain   string            `mapstructure:"web_root_domain"`
+	WebProtocol     string            `mapstructure:"web_protocol"`
+	Region          string            `mapstructure:"region"`
+	UseSSL          bool              `mapstructure:"use_ssl"`
+	ForcePathStyle  bool              `mapstructure:"force_path_style"`
+	AdminEndpoint   string            `mapstructure:"admin_endpoint"`
+	AdminToken      string            `mapstructure:"admin_token"`
 }
 
 // AuthConfig contains authentication configuration
@@ -202,7 +202,7 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.environment", "production")
 	viper.SetDefault("garage.force_path_style", true)
-	viper.SetDefault("garage.public_url_settings_file", "/data/public-urls.json")
+	viper.SetDefault("garage.web_protocol", "http")
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("logging.format", "text")
 	viper.SetDefault("auth.oidc.cookie_name", "garage_session")
@@ -222,6 +222,7 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 		viper.SetDefault("garage.admin_endpoint", tomlResult.AdminEndpoint)
 		viper.SetDefault("garage.admin_token", tomlResult.AdminToken)
 		viper.SetDefault("garage.region", tomlResult.Region)
+		viper.SetDefault("garage.web_root_domain", tomlResult.WebRootDomain)
 	}
 
 	// Allow environment variables to override config values
@@ -292,8 +293,8 @@ func bindEnvVars() {
 	// Garage config
 	viper.BindEnv("garage.endpoint", "GARAGE_UI_GARAGE_ENDPOINT")
 	viper.BindEnv("garage.presign_endpoint", "GARAGE_UI_GARAGE_PRESIGN_ENDPOINT")
-	viper.BindEnv("garage.public_url_template", "GARAGE_UI_GARAGE_PUBLIC_URL_TEMPLATE")
-	viper.BindEnv("garage.public_url_settings_file", "GARAGE_UI_GARAGE_PUBLIC_URL_SETTINGS_FILE")
+	viper.BindEnv("garage.web_root_domain", "GARAGE_UI_GARAGE_WEB_ROOT_DOMAIN")
+	viper.BindEnv("garage.web_protocol", "GARAGE_UI_GARAGE_WEB_PROTOCOL")
 	viper.BindEnv("garage.region", "GARAGE_UI_GARAGE_REGION")
 	viper.BindEnv("garage.use_ssl", "GARAGE_UI_GARAGE_USE_SSL")
 	viper.BindEnv("garage.force_path_style", "GARAGE_UI_GARAGE_FORCE_PATH_STYLE")
@@ -426,6 +427,21 @@ func (c *Config) Validate() error {
 	}
 	if c.Garage.AdminToken == "" {
 		return fmt.Errorf("garage admin_token is required")
+	}
+	c.Garage.WebProtocol = strings.ToLower(strings.TrimSpace(c.Garage.WebProtocol))
+	if c.Garage.WebProtocol == "" {
+		c.Garage.WebProtocol = "http"
+	}
+	if c.Garage.WebProtocol != "http" && c.Garage.WebProtocol != "https" {
+		return fmt.Errorf("garage web_protocol must be http or https")
+	}
+	c.Garage.WebRootDomain = strings.TrimSpace(c.Garage.WebRootDomain)
+	if c.Garage.WebRootDomain != "" {
+		host := strings.Trim(c.Garage.WebRootDomain, ".")
+		if host == "" || strings.ContainsAny(host, "/?#@:") {
+			return fmt.Errorf("invalid garage web_root_domain: %q", c.Garage.WebRootDomain)
+		}
+		c.Garage.WebRootDomain = "." + host
 	}
 	if c.Garage.PresignEndpoint != "" {
 		parsed, err := validateHTTPURL(c.Garage.PresignEndpoint, false)

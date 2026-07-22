@@ -77,7 +77,6 @@ func newTestApp(t *testing.T, cfgMutator func(*config.Config)) *routeFixture {
 		handlers.NewMonitoringHandler(admin, s3),
 		handlers.NewCapabilitiesHandler("v2", services.CapabilitiesV2(), false),
 		az,
-		nil,
 	)
 
 	return &routeFixture{App: app, Admin: admin, S3: s3, Auth: svc, Cfg: cfg}

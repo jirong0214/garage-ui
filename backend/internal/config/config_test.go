@@ -123,8 +123,8 @@ func TestLoad_SharingEndpointsFromYAMLAndEnv(t *testing.T) {
     photos: https://old.example.com/
 `)
 	t.Setenv("GARAGE_UI_GARAGE_PUBLIC_URLS", `{"photos":"https://cdn.example.com/","docs":"https://example.com/files/"}`)
-	t.Setenv("GARAGE_UI_GARAGE_PUBLIC_URL_TEMPLATE", `https://{bucket}.storage.example.com`)
-	t.Setenv("GARAGE_UI_GARAGE_PUBLIC_URL_SETTINGS_FILE", `/state/public-urls.json`)
+	t.Setenv("GARAGE_UI_GARAGE_WEB_ROOT_DOMAIN", `.storage.example.com`)
+	t.Setenv("GARAGE_UI_GARAGE_WEB_PROTOCOL", `https`)
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -139,11 +139,11 @@ func TestLoad_SharingEndpointsFromYAMLAndEnv(t *testing.T) {
 	if got := cfg.Garage.PublicURLs["docs"]; got != "https://example.com/files" {
 		t.Errorf("docs public URL = %q", got)
 	}
-	if cfg.Garage.PublicURLTemplate != "https://{bucket}.storage.example.com" {
-		t.Errorf("PublicURLTemplate = %q", cfg.Garage.PublicURLTemplate)
+	if cfg.Garage.WebRootDomain != ".storage.example.com" {
+		t.Errorf("WebRootDomain = %q", cfg.Garage.WebRootDomain)
 	}
-	if cfg.Garage.PublicURLSettingsFile != "/state/public-urls.json" {
-		t.Errorf("PublicURLSettingsFile = %q", cfg.Garage.PublicURLSettingsFile)
+	if cfg.Garage.WebProtocol != "https" {
+		t.Errorf("WebProtocol = %q", cfg.Garage.WebProtocol)
 	}
 }
 
@@ -498,6 +498,10 @@ admin_token = "toml-token"
 [s3_api]
 api_bind_addr = "[::]:3900"
 s3_region = "garage"
+
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".web.example.com"
 `
 
 func TestLoad_GarageTomlOnly(t *testing.T) {
@@ -520,6 +524,32 @@ func TestLoad_GarageTomlOnly(t *testing.T) {
 	}
 	if cfg.Garage.Region != "garage" {
 		t.Errorf("Region = %q, want garage", cfg.Garage.Region)
+	}
+	if cfg.Garage.WebRootDomain != ".web.example.com" {
+		t.Errorf("WebRootDomain = %q, want .web.example.com", cfg.Garage.WebRootDomain)
+	}
+}
+
+func TestValidate_RejectsInvalidWebRouting(t *testing.T) {
+	tests := []struct {
+		name       string
+		protocol   string
+		rootDomain string
+	}{
+		{name: "protocol", protocol: "ftp", rootDomain: ".example.com"},
+		{name: "path", protocol: "https", rootDomain: ".example.com/path"},
+		{name: "port", protocol: "https", rootDomain: ".example.com:443"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resetViper(t)
+			path := writeConfigFile(t, minimalValidYAML+"\n")
+			t.Setenv("GARAGE_UI_GARAGE_WEB_PROTOCOL", tc.protocol)
+			t.Setenv("GARAGE_UI_GARAGE_WEB_ROOT_DOMAIN", tc.rootDomain)
+			if _, err := Load(path); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
 	}
 }
 

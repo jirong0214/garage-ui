@@ -17,7 +17,6 @@ import (
 	appmw "Noooste/garage-ui/internal/middleware"
 	"Noooste/garage-ui/internal/routes"
 	"Noooste/garage-ui/internal/services"
-	appsettings "Noooste/garage-ui/internal/settings"
 	"Noooste/garage-ui/pkg/logger"
 
 	"github.com/gofiber/fiber/v3"
@@ -153,17 +152,8 @@ func main() {
 
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler(version)
-	publicURLService, err := appsettings.NewPublicURLService(
-		cfg.Garage.PublicURLSettingsFile,
-		cfg.Garage.PublicURLTemplate,
-		cfg.Garage.PublicURLs,
-	)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to initialize public URL settings")
-	}
 	bucketHandler := handlers.NewBucketHandler(adminService, s3Service, cfg.Garage.PublicURLs)
-	bucketHandler.SetPublicURLResolver(publicURLService)
-	settingsHandler := handlers.NewSettingsHandler(publicURLService)
+	bucketHandler.SetPublicWebRouting(cfg.Garage.WebProtocol, cfg.Garage.WebRootDomain)
 	objectHandler := handlers.NewObjectHandler(s3Service, authService)
 	userHandler := handlers.NewUserHandler(adminService)
 	clusterHandler := handlers.NewClusterHandler(adminService)
@@ -234,7 +224,6 @@ func main() {
 		monitoringHandler,
 		capabilitiesHandler,
 		azMiddleware,
-		settingsHandler,
 	)
 
 	if err := authz.VerifyRouteCoverage(app); err != nil {

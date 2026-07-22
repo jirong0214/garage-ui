@@ -108,7 +108,6 @@ func newEnabledPolicyFixture(t *testing.T) (*routeFixture, string) {
 		handlers.NewMonitoringHandler(admin, s3),
 		handlers.NewCapabilitiesHandler("v2", services.CapabilitiesV2(), false),
 		az,
-		nil,
 	)
 
 	token, err := svc.GenerateSessionToken(&auth.UserInfo{

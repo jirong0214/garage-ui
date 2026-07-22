@@ -158,21 +158,20 @@ GARAGE_UI_GARAGE_ADMIN_TOKEN=your-token
 ```
 
 Object sharing can use a separate public S3 endpoint for presigned URLs while
-keeping normal data-plane traffic on the internal Garage endpoint. Stable
-website URLs can use a shared bucket template with optional per-bucket overrides:
+keeping normal data-plane traffic on the internal Garage endpoint. Website URLs
+are derived from Garage's `[s3_web].root_domain`; mount `garage.toml` read-only
+and configure the external protocol used by the reverse proxy:
 
 ```bash
 GARAGE_UI_GARAGE_PRESIGN_ENDPOINT=https://s3-api.example.com
-GARAGE_UI_GARAGE_PUBLIC_URL_TEMPLATE='https://{bucket}.example.com'
-GARAGE_UI_GARAGE_PUBLIC_URLS='{"photos":"https://cdn.example.com"}'
-GARAGE_UI_GARAGE_PUBLIC_URL_SETTINGS_FILE=/data/public-urls.json
+GARAGE_UI_GARAGE_TOML=/etc/garage-ui/garage.toml
+GARAGE_UI_GARAGE_WEB_PROTOCOL=https
 ```
 
-The template must contain `{bucket}` exactly once. `GARAGE_UI_GARAGE_PUBLIC_URLS`
-is an optional JSON object used to seed per-bucket overrides. Settings changed
-in the UI are persisted to `GARAGE_UI_GARAGE_PUBLIC_URL_SETTINGS_FILE` and take
-precedence over startup values. Mount `/data` as a persistent volume. Public
-URLs are only returned for buckets with website access enabled. The presign
+For example, `root_domain = ".example.com"` maps bucket `photos` to
+`https://photos.example.com`. Public URLs are only returned for buckets with
+website access enabled. `GARAGE_UI_GARAGE_PUBLIC_URLS` remains available as a
+legacy per-bucket fallback when no web root domain is configured. The presign
 endpoint host is part of the S3 signature and must be reachable by recipients
 of the URL.
 

@@ -32,7 +32,6 @@ func SetupRoutes(
 	monitoringHandler *handlers.MonitoringHandler,
 	capabilitiesHandler *handlers.CapabilitiesHandler,
 	az *authz.Middleware,
-	settingsHandler *handlers.SettingsHandler,
 ) {
 	// Apply CORS middleware globally
 	app.Use(middleware.CORSMiddleware(&cfg.CORS))
@@ -81,10 +80,6 @@ func SetupRoutes(
 		buckets.Post("/:name/permissions", az.Require(authz.BucketFromParam("name"), authz.PermAllowBucketKey, authz.PermDenyBucketKey), bucketHandler.GrantBucketPermission) // Grant bucket permissions (allow+deny)
 		buckets.Put("/:name/website", az.Require(authz.BucketFromParam("name"), authz.PermBucketUpdate), bucketHandler.UpdateBucketWebsite)                                   // Update bucket website configuration
 		buckets.Put("/:name/quotas", az.Require(authz.BucketFromParam("name"), authz.PermBucketUpdate), bucketHandler.UpdateBucketQuotas)                                     // Update bucket quotas
-		if settingsHandler != nil {
-			buckets.Get("/:name/public-url", az.Require(authz.BucketFromParam("name"), authz.PermBucketRead), settingsHandler.GetBucketPublicURL)
-			buckets.Put("/:name/public-url", az.Require(authz.BucketFromParam("name"), authz.PermBucketUpdate), settingsHandler.UpdateBucketPublicURL)
-		}
 	}
 
 	// Object routes
@@ -172,12 +167,6 @@ func SetupRoutes(
 		monitoring.Get("/metrics", az.Require(authz.ScopeNone, authz.PermClusterStatistics), monitoringHandler.GetMetrics)            // Get Prometheus metrics
 		monitoring.Get("/admin-health", az.Require(authz.ScopeNone, authz.PermClusterHealth), monitoringHandler.CheckAdminHealth)     // Check Admin API health
 		monitoring.Get("/dashboard", az.Require(authz.ScopeNone, authz.PermClusterStatistics), monitoringHandler.GetDashboardMetrics) // Get dashboard metrics
-	}
-
-	if settingsHandler != nil {
-		settingsRoutes := api.Group("/settings")
-		settingsRoutes.Get("/public-urls", az.Require(authz.ScopeNone, authz.PermSettingsRead), settingsHandler.GetPublicURLs)
-		settingsRoutes.Put("/public-urls", az.Require(authz.ScopeNone, authz.PermSettingsUpdate), settingsHandler.UpdatePublicURLs)
 	}
 
 	// Admin auth login endpoint (only if admin is enabled)

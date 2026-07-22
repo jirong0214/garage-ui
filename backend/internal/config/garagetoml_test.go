@@ -58,6 +58,9 @@ func TestParseGarageToml_ValidFile(t *testing.T) {
 	if result.Region != "garage" {
 		t.Errorf("Region = %q, want garage", result.Region)
 	}
+	if result.WebRootDomain != ".web.garage" {
+		t.Errorf("WebRootDomain = %q, want .web.garage", result.WebRootDomain)
+	}
 }
 
 func TestParseGarageToml_MissingAdminToken(t *testing.T) {

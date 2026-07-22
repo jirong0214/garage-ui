@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { BookOpen, Database, Globe2, HardDrive, Key, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Server } from 'lucide-react';
+import { BookOpen, Database, HardDrive, Key, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Server } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useQuery } from '@tanstack/react-query';
 import { healthApi, garageApi } from '@/lib/api';
@@ -34,7 +34,6 @@ const navGroups: NavGroup[] = [
     items: [
       { title: 'Cluster', href: '/cluster', icon: Server, visible: (p) => p.hasAnyClusterAccess },
       { title: 'Access Control', href: '/access', icon: Key, visible: (p) => p.hasClusterPerm('key.list') },
-      { title: 'Public URLs', href: '/settings/public-urls', icon: Globe2, visible: (p) => p.hasClusterPerm('settings.read') },
     ],
   },
 ];

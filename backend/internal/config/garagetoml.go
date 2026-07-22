@@ -15,6 +15,7 @@ type GarageTomlResult struct {
 	AdminEndpoint string
 	AdminToken    string
 	Region        string
+	WebRootDomain string
 }
 
 // garageTomlFile represents the subset of garage.toml we care about.
@@ -23,6 +24,9 @@ type garageTomlFile struct {
 		APIBindAddr string `toml:"api_bind_addr"`
 		S3Region    string `toml:"s3_region"`
 	} `toml:"s3_api"`
+	S3Web struct {
+		RootDomain string `toml:"root_domain"`
+	} `toml:"s3_web"`
 	Admin struct {
 		APIBindAddr string `toml:"api_bind_addr"`
 		AdminToken  string `toml:"admin_token"`
@@ -72,6 +76,7 @@ func ParseGarageToml(path string) (*GarageTomlResult, error) {
 		AdminEndpoint: adminEndpoint,
 		AdminToken:    f.Admin.AdminToken,
 		Region:        region,
+		WebRootDomain: f.S3Web.RootDomain,
 	}, nil
 }
 

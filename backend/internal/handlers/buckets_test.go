@@ -135,6 +135,33 @@ func TestListBuckets_ExposesConfiguredPublicURLOnlyForWebsiteBuckets(t *testing.
 	}
 }
 
+func TestListBuckets_DerivesPublicURLFromWebRootDomain(t *testing.T) {
+	admin := &mocks.AdminMock{}
+	h := NewBucketHandler(admin, nil, nil)
+	h.SetPublicWebRouting("https", ".storage.example.com")
+	app := fiber.New()
+	app.Get("/buckets", h.ListBuckets)
+	admin.ListBucketsFn = func(context.Context) ([]models.ListBucketsResponseItem, error) {
+		return []models.ListBucketsResponseItem{{ID: "1", GlobalAliases: []string{"photos"}}}, nil
+	}
+	admin.GetBucketInfoByAliasFn = func(context.Context, string) (*models.GarageBucketInfo, error) {
+		return &models.GarageBucketInfo{ID: "1", WebsiteAccess: true}, nil
+	}
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/buckets", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var body struct {
+		Data models.BucketListResponse `json:"data"`
+	}
+	decodeJSON(t, resp.Body, &body)
+	if got := body.Data.Buckets[0].PublicURL; got != "https://photos.storage.example.com" {
+		t.Fatalf("PublicURL = %q", got)
+	}
+}
+
 func TestListBuckets_AdminErrorReturns500(t *testing.T) {
 	app, admin := newBucketsTestApp(t)
 	admin.ListBucketsFn = func(_ context.Context) ([]models.ListBucketsResponseItem, error) {
