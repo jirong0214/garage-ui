@@ -31,7 +31,7 @@ A modern web interface to manage <a href="https://garagehq.deuxfleurs.fr/">Garag
 - **Cluster overview** - monitor node status, layout configuration, and storage usage
 - **Flexible authentication** - no auth, basic credentials, or OIDC (Keycloak, Authentik, etc.)
 - **Multi-user access control** - optional OIDC-team-based permissions, see [docs/access-control.md](docs/access-control.md)
-- **Easy deployment** - single Docker image or Helm chart, configure with one YAML file
+- **Easy deployment** - separate Web and API containers with Docker Compose, or a Helm chart
 - **Preview common file types** - images, video, PDF, and text without downloading
 
 ## Quick Start
@@ -54,20 +54,24 @@ Edit `config.yaml` with your Garage endpoints and admin token (from `garage.toml
 ### 2. Start
 
 ```bash
-docker compose up -d garage-ui
+docker compose up -d garage-ui-web
 ```
 
 Access at http://localhost:8080
 
 ## Deployment
 
-### Docker
+### Docker Compose
 
 ```bash
-docker run -d -p 8080:8080 \
-  -v $(pwd)/config.yaml:/app/config.yaml \
-  noooste/garage-ui:latest
+docker compose up -d garage-ui-api garage-ui-web
 ```
+
+The browser only connects to `garage-ui-web`. It serves the SPA and proxies API,
+authentication, documentation, health, and metrics requests to the private
+`garage-ui-api` service, so no CORS or separate public API endpoint is required.
+Garage credentials, configuration, and the thumbnail cache are mounted only in
+the API container.
 
 ### Kubernetes
 

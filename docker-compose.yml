@@ -14,16 +14,19 @@ services:
       - "3902:3903"
       - "3903:3903"
 
-  garage-ui:
-    image: noooste/garage-ui:latest
-    container_name: garage-ui
+  garage-ui-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: garage-ui-api:local
+    container_name: garage-ui-api
     restart: unless-stopped
     volumes:
       - ./config.yaml:/app/config.yaml
       - ./garage.toml:/etc/garage-ui/garage.toml:ro
       - garage-ui-thumbnail-cache:/var/cache/garage-ui
-    ports:
-      - "127.0.0.1:8080:8080"
+    expose:
+      - "8080"
     depends_on:
       - garage
     environment:
@@ -50,6 +53,19 @@ services:
         -----BEGIN PRIVATE KEY-----
         MC4CAQAwBQYDK2VwBCIEIH0ZHqIV7MEyVsxNYc5TA/a0qaBxgq3ntlFS3w1F03MS
         -----END PRIVATE KEY-----
+
+  garage-ui-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    image: garage-ui-web:local
+    container_name: garage-ui-web
+    restart: unless-stopped
+    depends_on:
+      garage-ui-api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
 
 volumes:
   garage-ui-thumbnail-cache:
