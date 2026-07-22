@@ -170,7 +170,7 @@ func (h *BucketHandler) CreateBucket(c fiber.Ctx) error {
 // DeleteBucket deletes a bucket
 //
 //	@Summary		Delete a bucket
-//	@Description	Deletes an existing bucket from the Garage storage system. The bucket must be empty before deletion.
+//	@Description	Deletes an existing bucket from the Garage storage system. Set recursive=true to empty it first.
 //	@Tags			Buckets
 //	@Accept			json
 //	@Produce		json
@@ -179,6 +179,7 @@ func (h *BucketHandler) CreateBucket(c fiber.Ctx) error {
 //	@Failure		400		{object}	models.APIResponse{error=models.APIError}						"Bucket name is required"
 //	@Failure		404		{object}	models.APIResponse{error=models.APIError}						"Bucket does not exist"
 //	@Failure		500		{object}	models.APIResponse{error=models.APIError}						"Failed to delete bucket"
+//	@Param			recursive	query	bool	false	"Delete every object before deleting the bucket"
 //	@Router			/api/v1/buckets/{name} [delete]
 func (h *BucketHandler) DeleteBucket(c fiber.Ctx) error {
 	ctx := c.Context()
@@ -205,6 +206,16 @@ func (h *BucketHandler) DeleteBucket(c fiber.Ctx) error {
 		)
 	}
 
+	deletedObjects := 0
+	if c.Query("recursive") == "true" {
+		deletedObjects, err = h.s3Service.DeleteAllObjects(ctx, bucketName)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(
+				models.ErrorResponse(models.ErrCodeDeleteFailed, "Failed to empty bucket: "+err.Error()),
+			)
+		}
+	}
+
 	// Delete the bucket
 	if err := h.adminService.DeleteBucket(ctx, bucketInfo.ID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
@@ -214,8 +225,9 @@ func (h *BucketHandler) DeleteBucket(c fiber.Ctx) error {
 
 	// Return success response
 	response := map[string]interface{}{
-		"bucket":  bucketName,
-		"message": "Bucket deleted successfully",
+		"bucket":         bucketName,
+		"deletedObjects": deletedObjects,
+		"message":        "Bucket deleted successfully",
 	}
 
 	return c.JSON(models.SuccessResponse(response))

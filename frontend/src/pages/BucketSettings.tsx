@@ -325,7 +325,7 @@ export function BucketSettings() {
           if (!o && !deleting) setDeleteOpen(false);
         }}
         title={`Delete bucket "${bucket.name}"?`}
-        description="This action cannot be undone."
+        description={`${bucket.objectCount ?? 0} object${bucket.objectCount === 1 ? '' : 's'} in this bucket will be permanently removed.`}
         confirmationText={bucket.name}
         confirmLabel="Delete bucket"
         loading={deleting}

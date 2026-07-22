@@ -38,7 +38,7 @@ export function useDeleteBucket() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (name: string) => bucketsApi.delete(name),
+    mutationFn: (name: string) => bucketsApi.delete(name, true),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });

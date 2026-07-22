@@ -80,7 +80,9 @@ export function Buckets() {
         open={!!deleteTarget}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
         title={deleteTarget ? `Delete bucket "${deleteTarget.name}"?` : ''}
-        description="All objects in this bucket will be permanently removed."
+        description={deleteTarget
+          ? `${deleteTarget.objectCount ?? 0} object${deleteTarget.objectCount === 1 ? '' : 's'} in this bucket will be permanently removed.`
+          : undefined}
         confirmationText={deleteTarget?.name ?? ''}
         confirmLabel="Delete bucket"
         loading={deleting}

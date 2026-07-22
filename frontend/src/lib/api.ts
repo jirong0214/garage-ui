@@ -205,8 +205,8 @@ export const bucketsApi = {
     await api.post('/v1/buckets', { name: bucketName, region: bucketRegion });
   },
 
-  delete: async (name: string): Promise<void> => {
-    await api.delete(`/v1/buckets/${name}`);
+  delete: async (name: string, recursive = false): Promise<void> => {
+    await api.delete(`/v1/buckets/${name}`, { params: { recursive } });
   },
 
   grantPermission: async (

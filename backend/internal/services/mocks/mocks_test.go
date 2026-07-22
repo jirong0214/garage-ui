@@ -69,9 +69,9 @@ func TestAdminMock_ConfiguredFnsAreInvoked(t *testing.T) {
 		ListKeysFn: func(ctx context.Context) ([]models.ListKeysResponseItem, error) {
 			return []models.ListKeysResponseItem{{ID: "k1"}}, nil
 		},
-		DeleteKeyFn:  func(ctx context.Context, id string) error { return nil },
+		DeleteKeyFn:   func(ctx context.Context, id string) error { return nil },
 		HealthCheckFn: func(ctx context.Context) error { return nil },
-		GetMetricsFn: func(ctx context.Context) (string, error) { return "metric 1", nil },
+		GetMetricsFn:  func(ctx context.Context) (string, error) { return "metric 1", nil },
 	}
 	if got, err := m.ListKeys(ctx); err != nil || len(got) != 1 {
 		t.Errorf("ListKeys = (%v, %v), want one item", got, err)
@@ -117,6 +117,9 @@ func TestS3Mock_UnconfiguredMethodsReturnSentinel(t *testing.T) {
 	}
 	if _, err := m.DeleteMultipleObjects(ctx, "b", []string{"k"}); err == nil {
 		t.Error("DeleteMultipleObjects: want error")
+	}
+	if _, err := m.DeleteAllObjects(ctx, "b"); err == nil {
+		t.Error("DeleteAllObjects: want error")
 	}
 	// UploadMultipleObjects has no error channel; it must return a result slice
 	// with one failed entry per input file.

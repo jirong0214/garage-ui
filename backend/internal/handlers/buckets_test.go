@@ -21,7 +21,14 @@ import (
 func newBucketsTestApp(t *testing.T) (*fiber.App, *mocks.AdminMock) {
 	t.Helper()
 	admin := &mocks.AdminMock{}
-	h := NewBucketHandler(admin, nil, nil) // s3 unused in this handler
+	app, _ := newBucketsTestAppWithS3(t, admin)
+	return app, admin
+}
+
+func newBucketsTestAppWithS3(t *testing.T, admin *mocks.AdminMock) (*fiber.App, *mocks.S3Mock) {
+	t.Helper()
+	s3 := &mocks.S3Mock{}
+	h := NewBucketHandler(admin, s3, nil)
 	app := fiber.New()
 	app.Get("/buckets", h.ListBuckets)
 	app.Post("/buckets", h.CreateBucket)
@@ -30,7 +37,7 @@ func newBucketsTestApp(t *testing.T) (*fiber.App, *mocks.AdminMock) {
 	app.Post("/buckets/:name/permissions", h.GrantBucketPermission)
 	app.Put("/buckets/:name/website", h.UpdateBucketWebsite)
 	app.Put("/buckets/:name/quotas", h.UpdateBucketQuotas)
-	return app, admin
+	return app, s3
 }
 
 func decodeJSON(t *testing.T, r io.Reader, v any) {
@@ -314,6 +321,68 @@ func TestDeleteBucket_Success(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+}
+
+func TestDeleteBucket_RecursiveEmptiesBucketFirst(t *testing.T) {
+	admin := &mocks.AdminMock{}
+	app, s3 := newBucketsTestAppWithS3(t, admin)
+	admin.GetBucketInfoByAliasFn = func(_ context.Context, _ string) (*models.GarageBucketInfo, error) {
+		return &models.GarageBucketInfo{ID: "id-1"}, nil
+	}
+	s3.DeleteAllObjectsFn = func(_ context.Context, bucket string) (int, error) {
+		if bucket != "alpha" {
+			t.Errorf("DeleteAllObjects bucket = %q, want alpha", bucket)
+		}
+		return 19, nil
+	}
+	admin.DeleteBucketFn = func(_ context.Context, _ string) error {
+		if len(s3.Calls) != 1 || s3.Calls[0].Method != "DeleteAllObjects" {
+			t.Errorf("DeleteBucket called before bucket contents were removed")
+		}
+		return nil
+	}
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodDelete, "/buckets/alpha?recursive=true", nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var body struct {
+		Data struct {
+			DeletedObjects int `json:"deletedObjects"`
+		} `json:"data"`
+	}
+	decodeJSON(t, resp.Body, &body)
+	if body.Data.DeletedObjects != 19 {
+		t.Fatalf("deletedObjects = %d, want 19", body.Data.DeletedObjects)
+	}
+}
+
+func TestDeleteBucket_RecursiveStopsWhenEmptyingFails(t *testing.T) {
+	admin := &mocks.AdminMock{}
+	app, s3 := newBucketsTestAppWithS3(t, admin)
+	admin.GetBucketInfoByAliasFn = func(_ context.Context, _ string) (*models.GarageBucketInfo, error) {
+		return &models.GarageBucketInfo{ID: "id-1"}, nil
+	}
+	s3.DeleteAllObjectsFn = func(_ context.Context, _ string) (int, error) {
+		return 0, errors.New("cannot list objects")
+	}
+	admin.DeleteBucketFn = func(_ context.Context, _ string) error {
+		t.Fatal("DeleteBucket must not run after emptying fails")
+		return nil
+	}
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodDelete, "/buckets/alpha?recursive=true", nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want 500", resp.StatusCode)
 	}
 }
 

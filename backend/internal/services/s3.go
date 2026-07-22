@@ -725,6 +725,17 @@ func (s *S3Service) DeleteObjectsByPrefix(ctx context.Context, bucketName, prefi
 	if prefix == "" {
 		return 0, fmt.Errorf("prefix is required for recursive delete")
 	}
+	return s.deleteObjectsMatchingPrefix(ctx, bucketName, prefix)
+}
+
+// DeleteAllObjects recursively deletes every object in a bucket. It is kept
+// separate from DeleteObjectsByPrefix so a missing folder prefix can never
+// accidentally turn a folder deletion into a bucket-wide deletion.
+func (s *S3Service) DeleteAllObjects(ctx context.Context, bucketName string) (int, error) {
+	return s.deleteObjectsMatchingPrefix(ctx, bucketName, "")
+}
+
+func (s *S3Service) deleteObjectsMatchingPrefix(ctx context.Context, bucketName, prefix string) (int, error) {
 
 	// Get bucket-specific MinIO client
 	client, err := s.getMinioClient(ctx, bucketName, OpWrite)
@@ -740,7 +751,7 @@ func (s *S3Service) DeleteObjectsByPrefix(ctx context.Context, bucketName, prefi
 		Recursive: true,
 	}) {
 		if obj.Err != nil {
-			return 0, fmt.Errorf("failed to list objects under prefix %s in bucket %s: %w", prefix, bucketName, obj.Err)
+			return 0, fmt.Errorf("failed to list objects in bucket %s: %w", bucketName, obj.Err)
 		}
 		keys = append(keys, obj.Key)
 	}
