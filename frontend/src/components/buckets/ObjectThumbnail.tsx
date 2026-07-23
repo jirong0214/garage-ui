@@ -93,7 +93,7 @@ export function ObjectThumbnail({bucketName, object}: ObjectThumbnailProps) {
       {objectURL ? (
         <img src={objectURL} alt="" className="h-full w-full rounded object-cover" loading="lazy" />
       ) : (
-        <FallbackIcon className="h-5 w-5 text-muted-foreground" data-file-kind={fileKind} />
+        <FallbackIcon className="h-7 w-7 text-muted-foreground" data-file-kind={fileKind} />
       )}
     </div>
   );
