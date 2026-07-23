@@ -14,6 +14,8 @@ import {BucketSettings} from '@/pages/BucketSettings';
 import {Cluster} from '@/pages/Cluster';
 import {AccessControl} from '@/pages/AccessControl';
 import {Login} from '@/pages/Login';
+import {SetupAdmin} from '@/pages/SetupAdmin';
+import {Account} from '@/pages/Account';
 import {Toaster} from 'sonner';
 import {queryClient} from '@/lib/query-client';
 import {useAuthStore} from '@/store/auth-store';
@@ -56,6 +58,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/setup" element={<SetupAdmin />} />
 
             <Route
               path="/"
@@ -77,6 +80,7 @@ function App() {
               <Route path="buckets/:bucketName/objects/*" element={<ObjectDetailsView />} />
               <Route path="cluster" element={<Cluster />} />
               <Route path="access" element={<AccessControl />} />
+              <Route path="account" element={<Account />} />
             </Route>
           </Routes>
         </BrowserRouter>

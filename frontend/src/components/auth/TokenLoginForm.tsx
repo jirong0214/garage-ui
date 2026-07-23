@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export function TokenLoginForm() {
+export function TokenLoginForm({ bootstrap = false }: { bootstrap?: boolean }) {
   const [token, setToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchParams] = useSearchParams();
@@ -20,7 +20,7 @@ export function TokenLoginForm() {
 
     try {
       await loginToken(token);
-      navigate(decodeURIComponent(returnUrl));
+      navigate(bootstrap ? '/setup' : decodeURIComponent(returnUrl));
     } catch (error) {
       console.error('Login failed:', error);
     } finally {
@@ -39,7 +39,7 @@ export function TokenLoginForm() {
           />
         </div>
         <CardTitle className="text-2xl text-center">
-          Welcome to Garage UI
+          {bootstrap ? 'Set up Garage UI' : 'Welcome to Garage UI'}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -57,6 +57,11 @@ export function TokenLoginForm() {
               autoComplete="off"
             />
           </div>
+          {bootstrap && (
+            <p className="text-sm leading-6 text-muted-foreground">
+              Use the Garage admin token once to create the local Garage UI administrator.
+            </p>
+          )}
           <Button
             type="submit"
             className="w-full"

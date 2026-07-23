@@ -288,6 +288,24 @@ When `auth.jwt_private_key` is empty, the backend atomically creates
 starts. An explicitly configured PEM key or
 `GARAGE_UI_AUTH_JWT_PRIVATE_KEY_FILE` continues to take precedence.
 
+#### First-run administrator setup
+
+With the default local administrator authentication enabled and no existing
+local account, the login page first asks for the Garage `admin_token`. This is
+a one-time bootstrap check: after it succeeds, create a Garage UI username and
+password. The password is stored only as a bcrypt hash in
+`<data_dir>/state/admin-auth.json`, and the admin-token login is disabled.
+Any JWT issued for this one-time bootstrap is revoked as soon as the local
+administrator is created. If `auth.token.enabled` is explicitly enabled,
+regular admin-token sessions use a separate `token` session type and remain
+valid alongside password login.
+
+The user menu's **Account** page can subsequently change the local username or
+password after confirming the current password. `GARAGE_UI_AUTH_ADMIN_USERNAME`
+and `GARAGE_UI_AUTH_ADMIN_PASSWORD(_FILE)` remain supported only to migrate an
+existing environment-backed login; after signing in, use **Account** once and
+remove those variables.
+
 #### Loading sensitive values from files (`_FILE` suffix)
 
 For Docker and Kubernetes secrets, sensitive env vars can be read from files instead of plain values. Set `{VAR}_FILE=/path/to/file` and garage-ui uses the file's contents (trailing CR/LF trimmed) as the value. If both `{VAR}` and `{VAR}_FILE` are set, `_FILE` wins and a warning is logged. A missing or unreadable file stops startup.

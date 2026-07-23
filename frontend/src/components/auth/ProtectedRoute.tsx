@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, config } = useAuthStore();
+  const { isAuthenticated, isLoading, config, user } = useAuthStore();
   const location = useLocation();
 
   if (isLoading) {
@@ -23,6 +23,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (!isAuthenticated) {
     const returnUrl = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />;
+  }
+
+  if (config?.admin.bootstrap_required && user?.auth_method === 'bootstrap-token') {
+    return <Navigate to="/setup" replace />;
   }
 
   return <>{children}</>;

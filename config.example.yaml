@@ -61,11 +61,15 @@ auth:
 
   # Admin Authentication (username/password)
   admin:
-    # Enabled by default. Set GARAGE_UI_AUTH_ADMIN_ENABLED=false (or set this
-    # value to false) when using OIDC or admin-token authentication instead.
+    # Enabled by default. On its first run, Garage UI asks for the Garage
+    # admin token once, then stores a bcrypt-hashed local UI administrator at
+    # <data_dir>/state/admin-auth.json. The fields below are optional only for
+    # migrating an existing environment-based login.
+    # Set GARAGE_UI_AUTH_ADMIN_ENABLED=false (or set this value to false) when
+    # using OIDC or admin-token authentication instead.
     enabled: true
-    username: "admin"
-    password: "changeme"
+    # username: "admin"
+    # password: "change-this-password"
 
   # Admin Token Authentication
   # When enabled, users can log in using the Garage admin token

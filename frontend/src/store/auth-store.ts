@@ -17,6 +17,8 @@ interface AuthStore extends AuthState {
   initialize: () => Promise<void>;
   loginAdmin: (username: string, password: string) => Promise<void>;
   loginToken: (token: string) => Promise<void>;
+  setupAdmin: (username: string, password: string) => Promise<void>;
+  updateAdminCredentials: (username: string, currentPassword: string, newPassword: string) => Promise<void>;
   loginOIDC: () => void;
   logout: () => Promise<void>;
 }
@@ -44,6 +46,27 @@ export const useAuthStore = create<AuthStore>()(
           const configResponse = await authApi.getConfig();
           const config = configResponse.data as AuthConfig;
           set({ config });
+
+          // During first-run setup, preserve only a session issued by the
+          // Garage admin-token bootstrap. This keeps setup resumable after a
+          // refresh while rejecting stale local-admin sessions from upgrades.
+          if (config.admin.bootstrap_required) {
+            if (localStorage.getItem('auth-token')) {
+              try {
+                const userResponse = await authApi.me();
+                const user = userResponse.data.user;
+                if (user.auth_method === 'bootstrap-token') {
+                  set({ user, isAuthenticated: true, isLoading: false });
+                  return;
+                }
+              } catch {
+                // Invalid or expired bootstrap session; fall through to login.
+              }
+            }
+            localStorage.removeItem('auth-token');
+            set({ user: null, isAuthenticated: false, isLoading: false });
+            return;
+          }
 
           // If no auth is enabled, mark as authenticated immediately
           if (!config.admin.enabled && !config.oidc.enabled && !config.token.enabled) {
@@ -142,6 +165,20 @@ export const useAuthStore = create<AuthStore>()(
           });
           throw error;
         }
+      },
+
+      setupAdmin: async (username, password) => {
+        const response = await authApi.setupAdmin(username, password);
+        const { token, user } = response.data;
+        localStorage.setItem('auth-token', token);
+        set({ user, isAuthenticated: true, error: null });
+      },
+
+      updateAdminCredentials: async (username, currentPassword, newPassword) => {
+        const response = await authApi.updateAdminCredentials(username, currentPassword, newPassword);
+        const { token, user } = response.data;
+        localStorage.setItem('auth-token', token);
+        set({ user, isAuthenticated: true, error: null });
       },
 
       loginOIDC: () => {

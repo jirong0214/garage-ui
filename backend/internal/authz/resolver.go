@@ -32,7 +32,7 @@ func (r *configTeamResolver) Resolve(userInfo *auth.UserInfo) Subject {
 	// Trust only signed claims, never the transport channel: the auth method
 	// is a JWT claim stamped at login. Legacy sessions ("") resolve like OIDC
 	// so a replayed cookie can never escalate.
-	if userInfo.AuthMethod == "admin" || userInfo.AuthMethod == "token" {
+	if userInfo.AuthMethod == "admin" || userInfo.AuthMethod == "token" || userInfo.AuthMethod == "bootstrap-token" {
 		return AdminSubject(id)
 	}
 

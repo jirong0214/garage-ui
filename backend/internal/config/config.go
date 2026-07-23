@@ -566,11 +566,11 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// Validate admin auth if enabled
-	if c.Auth.Admin.Enabled {
-		if c.Auth.Admin.Username == "" || c.Auth.Admin.Password == "" {
-			return fmt.Errorf("admin auth username and password are required when admin auth is enabled")
-		}
+	// Local administrator credentials are persisted under data_dir/state on the
+	// first-run bootstrap flow. Username/password env vars remain an optional
+	// migration path and must be supplied as a pair when used.
+	if (c.Auth.Admin.Username == "") != (c.Auth.Admin.Password == "") {
+		return fmt.Errorf("admin auth username and password are required when either is configured")
 	}
 
 	// Validate OIDC config if enabled

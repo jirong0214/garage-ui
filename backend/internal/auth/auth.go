@@ -35,7 +35,7 @@ type UserInfo struct {
 	Name       string
 	Roles      []string
 	Teams      []string // raw team claim values (team_attribute_path), OIDC only
-	AuthMethod string   // "oidc" | "admin" | "token"; "" on legacy sessions
+	AuthMethod string   // "oidc" | "admin" | "token" | "bootstrap-token"; "" on legacy sessions
 }
 
 // NewAuthService creates a new authentication service
