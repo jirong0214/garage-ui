@@ -54,7 +54,8 @@ and the corresponding Garage endpoint must be exposed by your infrastructure.
 
 - Dashboard for cluster health, bucket storage usage, and recent buckets
 - Read-only cluster and node status, statistics, partition health, disk usage, and version details
-- No-auth, administrator password, Garage admin-token, and OIDC login modes
+- Administrator password, Garage admin-token, and OIDC login modes, with
+  no-auth mode restricted to development
 - Optional OIDC-team authorization with permissions scoped to buckets and object prefixes; see [access control](docs/access-control.md)
 - Light/dark themes, responsive object workflows, collapsible navigation, and mobile-compatible copy controls
 - Prometheus metrics endpoint, generated API documentation, file-backed secrets, and Garage v1/v2 Admin API compatibility
@@ -70,7 +71,7 @@ flowchart LR
     Web -->|/api, /auth, /docs,<br/>/health, /metrics| API[garage-ui-api<br/>Go service]
     API -->|S3 API :3900| Garage[Garage]
     API -->|Admin API :3903| Garage
-    API --> State[(Thumbnail cache<br/>Object job database)]
+    API --> State[(Thumbnail cache<br/>Object job database<br/>JWT signing key)]
     Public[Public S3 / website traffic] -.->|Configured separately| Garage
 ```
 
@@ -79,7 +80,9 @@ flowchart LR
 - Only the Web service publishes a host port. The API is reachable only on the Compose network.
 - Browser requests remain same-origin: Nginx proxies backend paths, avoiding a public API port and cross-origin cookie configuration.
 - Nginx re-resolves the API service through Docker DNS, so the API container can be replaced without restarting the Web container.
-- Thumbnail files and the embedded bbolt object-job database live in a backend-only persistent volume. No external database service is required.
+- Thumbnail files, the embedded bbolt object-job database, and the generated
+  JWT signing key live in a backend-only persistent volume. No external
+  database service is required.
 
 The repository retains the original all-in-one `Dockerfile` for the current Helm
 chart and compatibility deployments. Compose builds the separated images from
@@ -245,16 +248,18 @@ legacy per-bucket fallback when no web root domain is configured. The presign
 endpoint host is part of the S3 signature and must be reachable by recipients
 of the URL.
 
-Object-list thumbnails are generated on demand and cached on disk. Mount
-`/var/cache/garage-ui` on persistent storage so container recreation does not
-discard the cache. JPEG, PNG, GIF, WebP, BMP, and TIFF sources are supported.
+Object-list thumbnails are generated on demand and cached on disk. The split
+API image stores UI state under `/var/lib/garage-ui`; mount that directory on
+persistent storage so container recreation does not discard the cache, object
+jobs, or generated JWT signing key. JPEG, PNG, GIF, WebP, BMP, and TIFF sources
+are supported.
 Defaults allow four concurrent generators, reject images
 above 50 million pixels or source objects above 50 MiB, retain entries for 30
 days, and cap the cache at 2 GiB. These can be overridden with:
 
 ```bash
 GARAGE_UI_THUMBNAIL_ENABLED=true
-GARAGE_UI_THUMBNAIL_CACHE_DIR=/var/cache/garage-ui/thumbnails
+GARAGE_UI_THUMBNAIL_CACHE_DIR=/var/lib/garage-ui/cache/thumbnails
 GARAGE_UI_THUMBNAIL_CONCURRENCY=4
 GARAGE_UI_THUMBNAIL_MAX_PIXELS=50000000
 GARAGE_UI_THUMBNAIL_MAX_SOURCE_SIZE=52428800
@@ -269,7 +274,7 @@ on persistent storage so in-progress jobs can resume after a backend restart:
 
 ```bash
 GARAGE_UI_OBJECT_JOBS_ENABLED=true
-GARAGE_UI_OBJECT_JOBS_DATABASE_PATH=/var/cache/garage-ui/jobs.db
+GARAGE_UI_OBJECT_JOBS_DATABASE_PATH=/var/lib/garage-ui/cache/jobs.db
 GARAGE_UI_OBJECT_JOBS_CONCURRENCY=4
 GARAGE_UI_OBJECT_JOBS_MAX_ACTIVE=1
 GARAGE_UI_OBJECT_JOBS_RETENTION=72h
@@ -277,6 +282,11 @@ GARAGE_UI_OBJECT_JOBS_RETENTION=72h
 
 See [object jobs](docs/object-jobs.md) for API contracts, path mapping,
 authorization, conflict handling, and recovery semantics.
+
+When `auth.jwt_private_key` is empty, the backend atomically creates
+`<data_dir>/state/jwt-key.pem` with mode `0600` and reuses it on subsequent
+starts. An explicitly configured PEM key or
+`GARAGE_UI_AUTH_JWT_PRIVATE_KEY_FILE` continues to take precedence.
 
 #### Loading sensitive values from files (`_FILE` suffix)
 

@@ -24,7 +24,7 @@ services:
     volumes:
       - ./config.yaml:/app/config.yaml
       - ./garage.toml:/etc/garage-ui/garage.toml:ro
-      - garage-ui-thumbnail-cache:/var/cache/garage-ui
+      - garage-ui-data:/var/lib/garage-ui
     expose:
       - "8080"
     depends_on:
@@ -36,34 +36,14 @@ services:
       GARAGE_UI_GARAGE_TOML: "/etc/garage-ui/garage.toml"
       GARAGE_UI_GARAGE_WEB_PROTOCOL: "https"
 
-      # On-demand object thumbnails
-      GARAGE_UI_THUMBNAIL_CACHE_DIR: "/var/cache/garage-ui/thumbnails"
-      GARAGE_UI_THUMBNAIL_CONCURRENCY: "4"
-      GARAGE_UI_THUMBNAIL_MAX_PIXELS: "50000000"
-
-      # Durable recursive and multi-object operations
-      GARAGE_UI_OBJECT_JOBS_DATABASE_PATH: "/var/cache/garage-ui/jobs.db"
-      GARAGE_UI_OBJECT_JOBS_CONCURRENCY: "4"
-      GARAGE_UI_OBJECT_JOBS_MAX_ACTIVE: "1"
-
       # Server Configuration
       GARAGE_UI_SERVER_HOST: "0.0.0.0"
-      GARAGE_UI_SERVER_PORT: "8080"
-      GARAGE_UI_SERVER_ENVIRONMENT: "production"
 
       # Use the Garage admin token as the login credential in this example.
       # Admin username/password login is enabled by default, so disable it
       # explicitly when selecting token authentication instead.
       GARAGE_UI_AUTH_ADMIN_ENABLED: "false"
       GARAGE_UI_AUTH_TOKEN_ENABLED: "true"
-
-      # JWT Configuration
-      # IMPORTANT: Replace this with your own Ed25519 private key in production!
-      # Generate with: openssl genpkey -algorithm ED25519
-      GARAGE_UI_AUTH_JWT_PRIVATE_KEY: |
-        -----BEGIN PRIVATE KEY-----
-        MC4CAQAwBQYDK2VwBCIEIH0ZHqIV7MEyVsxNYc5TA/a0qaBxgq3ntlFS3w1F03MS
-        -----END PRIVATE KEY-----
 
   garage-ui-web:
     build:
@@ -79,4 +59,4 @@ services:
       - "127.0.0.1:8080:8080"
 
 volumes:
-  garage-ui-thumbnail-cache:
+  garage-ui-data:

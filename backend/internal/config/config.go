@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 
 // Config represents the application configuration
 type Config struct {
+	DataDir       string               `mapstructure:"data_dir"`
 	Server        ServerConfig         `mapstructure:"server"`
 	Garage        GarageConfig         `mapstructure:"garage"`
 	Thumbnail     ThumbnailConfig      `mapstructure:"thumbnail"`
@@ -82,6 +84,7 @@ type AuthConfig struct {
 	OIDC          OIDCConfig      `mapstructure:"oidc"`
 	Token         TokenAuthConfig `mapstructure:"token"`
 	JWTPrivKey    string          `mapstructure:"jwt_private_key"` // Ed25519 private key in PEM format for JWT signing (64 bytes)
+	JWTKeyPath    string          `mapstructure:"jwt_key_path"`    // Persistent Ed25519 key path used when jwt_private_key is empty
 	MetricsPublic bool            `mapstructure:"metrics_public"`  // Expose Prometheus metrics at top-level /metrics without auth
 }
 
@@ -221,20 +224,19 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	viper.SetConfigType("yaml")
 
 	// Built-in defaults (lowest priority)
+	viper.SetDefault("data_dir", "/tmp/garage-ui")
 	viper.SetDefault("server.host", "::")
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.environment", "production")
 	viper.SetDefault("garage.force_path_style", true)
 	viper.SetDefault("garage.web_protocol", "http")
 	viper.SetDefault("thumbnail.enabled", true)
-	viper.SetDefault("thumbnail.cache_dir", "/tmp/garage-ui/thumbnails")
 	viper.SetDefault("thumbnail.concurrency", 4)
 	viper.SetDefault("thumbnail.max_pixels", 50_000_000)
 	viper.SetDefault("thumbnail.max_source_size", 50*1024*1024)
 	viper.SetDefault("thumbnail.cache_max_size", 2*1024*1024*1024)
 	viper.SetDefault("thumbnail.cache_max_age", 30*24*time.Hour)
 	viper.SetDefault("object_jobs.enabled", true)
-	viper.SetDefault("object_jobs.database_path", "/tmp/garage-ui/jobs.db")
 	viper.SetDefault("object_jobs.concurrency", 4)
 	viper.SetDefault("object_jobs.max_active", 1)
 	viper.SetDefault("object_jobs.retention", 72*time.Hour)
@@ -289,6 +291,7 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
+	applyDataPathDefaults(&cfg)
 	if err := applyStructuredEnvVars(&cfg); err != nil {
 		return nil, fmt.Errorf("error resolving structured env vars: %w", err)
 	}
@@ -313,6 +316,8 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 
 // bindEnvVars binds all environment variables to their corresponding config keys
 func bindEnvVars() {
+	viper.BindEnv("data_dir", "GARAGE_UI_DATA_DIR")
+
 	// Server config
 	viper.BindEnv("server.host", "GARAGE_UI_SERVER_HOST")
 	viper.BindEnv("server.port", "GARAGE_UI_SERVER_PORT")
@@ -358,6 +363,7 @@ func bindEnvVars() {
 	viper.BindEnv("auth.admin.username", "GARAGE_UI_AUTH_ADMIN_USERNAME")
 	viper.BindEnv("auth.admin.password", "GARAGE_UI_AUTH_ADMIN_PASSWORD")
 	viper.BindEnv("auth.jwt_private_key", "GARAGE_UI_AUTH_JWT_PRIVATE_KEY")
+	viper.BindEnv("auth.jwt_key_path", "GARAGE_UI_AUTH_JWT_KEY_PATH")
 	viper.BindEnv("auth.metrics_public", "GARAGE_UI_AUTH_METRICS_PUBLIC")
 
 	// Token auth config
@@ -397,6 +403,18 @@ func bindEnvVars() {
 	// Logging config
 	viper.BindEnv("logging.level", "GARAGE_UI_LOGGING_LEVEL")
 	viper.BindEnv("logging.format", "GARAGE_UI_LOGGING_FORMAT")
+}
+
+func applyDataPathDefaults(cfg *Config) {
+	if cfg.Thumbnail.CacheDir == "" {
+		cfg.Thumbnail.CacheDir = filepath.Join(cfg.DataDir, "cache", "thumbnails")
+	}
+	if cfg.ObjectJobs.DatabasePath == "" {
+		cfg.ObjectJobs.DatabasePath = filepath.Join(cfg.DataDir, "cache", "jobs.db")
+	}
+	if cfg.Auth.JWTKeyPath == "" {
+		cfg.Auth.JWTKeyPath = filepath.Join(cfg.DataDir, "state", "jwt-key.pem")
+	}
 }
 
 // applyStructuredEnvVars handles values that cannot be decoded reliably from

@@ -150,8 +150,31 @@ func TestLoad_ThumbnailDefaultsAndEnvOverrides(t *testing.T) {
 	if cfg.Thumbnail.CacheMaxAge != 48*time.Hour {
 		t.Fatalf("CacheMaxAge = %s, want 48h", cfg.Thumbnail.CacheMaxAge)
 	}
-	if cfg.Thumbnail.CacheDir != "/tmp/garage-ui/thumbnails" {
+	if cfg.Thumbnail.CacheDir != "/tmp/garage-ui/cache/thumbnails" {
 		t.Fatalf("CacheDir = %q", cfg.Thumbnail.CacheDir)
+	}
+	if cfg.Auth.JWTKeyPath != "/tmp/garage-ui/state/jwt-key.pem" {
+		t.Fatalf("JWTKeyPath = %q", cfg.Auth.JWTKeyPath)
+	}
+}
+
+func TestLoad_DataDirDerivesStatePaths(t *testing.T) {
+	resetViper(t)
+	path := writeConfigFile(t, minimalValidYAML)
+	t.Setenv("GARAGE_UI_DATA_DIR", "/var/lib/garage-ui")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Thumbnail.CacheDir != "/var/lib/garage-ui/cache/thumbnails" {
+		t.Errorf("CacheDir = %q", cfg.Thumbnail.CacheDir)
+	}
+	if cfg.ObjectJobs.DatabasePath != "/var/lib/garage-ui/cache/jobs.db" {
+		t.Errorf("DatabasePath = %q", cfg.ObjectJobs.DatabasePath)
+	}
+	if cfg.Auth.JWTKeyPath != "/var/lib/garage-ui/state/jwt-key.pem" {
+		t.Errorf("JWTKeyPath = %q", cfg.Auth.JWTKeyPath)
 	}
 }
 

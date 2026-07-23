@@ -7,7 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -151,6 +154,94 @@ func TestNewJWTServiceWithKey_BadPEMReturnsWrappedError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "failed to parse Ed25519 private key") {
 		t.Errorf("expected wrapping error, got %v", err)
+	}
+}
+
+func TestNewJWTServiceWithKeyFile_CreatesAndReusesPersistentKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state", "jwt-key.pem")
+
+	first, err := NewJWTServiceWithKeyFile("", path)
+	if err != nil {
+		t.Fatalf("first startup: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat generated key: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("generated key mode = %o, want 600", got)
+	}
+
+	second, err := NewJWTServiceWithKeyFile("", path)
+	if err != nil {
+		t.Fatalf("second startup: %v", err)
+	}
+	if !first.privateKey.Equal(second.privateKey) {
+		t.Fatal("second startup did not reuse the persisted key")
+	}
+}
+
+func TestNewJWTServiceWithKeyFile_ExplicitKeyTakesPrecedence(t *testing.T) {
+	pemStr, want := generatePKCS8PEM(t)
+	path := filepath.Join(t.TempDir(), "state", "jwt-key.pem")
+
+	svc, err := NewJWTServiceWithKeyFile(pemStr, path)
+	if err != nil {
+		t.Fatalf("NewJWTServiceWithKeyFile: %v", err)
+	}
+	if !svc.privateKey.Equal(want) {
+		t.Fatal("explicit key was not used")
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("persistent key path was unexpectedly created: %v", err)
+	}
+}
+
+func TestNewJWTServiceWithKeyFile_RejectsCorruptPersistentKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "jwt-key.pem")
+	if err := os.WriteFile(path, []byte("not a private key"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := NewJWTServiceWithKeyFile("", path)
+	if err == nil || !strings.Contains(err.Error(), "failed to decode PEM block") {
+		t.Fatalf("error = %v, want corrupt-key error", err)
+	}
+}
+
+func TestNewJWTServiceWithKeyFile_ConcurrentCreationUsesOneKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state", "jwt-key.pem")
+	const workers = 8
+
+	var wg sync.WaitGroup
+	keys := make(chan string, workers)
+	errs := make(chan error, workers)
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			svc, err := NewJWTServiceWithKeyFile("", path)
+			if err != nil {
+				errs <- err
+				return
+			}
+			keys <- base64.RawURLEncoding.EncodeToString(svc.publicKey)
+		}()
+	}
+	wg.Wait()
+	close(keys)
+	close(errs)
+
+	for err := range errs {
+		t.Fatalf("concurrent startup: %v", err)
+	}
+	var first string
+	for key := range keys {
+		if first == "" {
+			first = key
+		} else if key != first {
+			t.Fatal("concurrent startups used different keys")
+		}
 	}
 }
 
