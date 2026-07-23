@@ -240,6 +240,7 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	viper.SetDefault("object_jobs.retention", 72*time.Hour)
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("logging.format", "text")
+	viper.SetDefault("auth.admin.enabled", true)
 	viper.SetDefault("auth.oidc.cookie_name", "garage_session")
 	viper.SetDefault("auth.oidc.cookie_http_only", true)
 	viper.SetDefault("auth.oidc.cookie_same_site", "lax")
@@ -578,6 +579,10 @@ func (c *Config) Validate() error {
 		if c.AccessControl != nil && len(c.AccessControl.Teams) > 0 && c.Auth.OIDC.TeamAttributePath == "" {
 			return fmt.Errorf("auth.oidc.team_attribute_path is required when access_control.teams is set: teams cannot be resolved without it")
 		}
+	}
+
+	if c.IsProduction() && !c.Auth.Admin.Enabled && !c.Auth.OIDC.Enabled && !c.Auth.Token.Enabled {
+		return fmt.Errorf("at least one authentication method is required in production")
 	}
 
 	return nil

@@ -56,15 +56,16 @@ auth:
 
   # Admin Authentication (username/password)
   admin:
-    enabled: false # Set to true to enable admin login
+    # Enabled by default. Set GARAGE_UI_AUTH_ADMIN_ENABLED=false (or set this
+    # value to false) when using OIDC or admin-token authentication instead.
+    enabled: true
     username: "admin"
     password: "changeme"
 
   # Admin Token Authentication
   # When enabled, users can log in using the Garage admin token
-  # Auto-enabled when no other auth method is configured (zero-config fallback)
   token:
-    enabled: false # Set to true to explicitly enable, or leave all auth disabled for auto-enable
+    enabled: false
 
   # OIDC Configuration
   # NOTE: When OIDC is enabled, server.root_url is required for OAuth2 redirects

@@ -91,6 +91,11 @@ config:
         name: ""
         key: "admin-password"
 
+    # Garage admin-token login. Enabled by default for the chart because admin
+    # username/password authentication above is explicitly disabled.
+    token:
+      enabled: true
+
     # OIDC authentication (Keycloak, Auth0, Okta, etc.)
     # NOTE: Requires server.root_url to be set
     oidc:

@@ -242,6 +242,18 @@
                 }
               }
             },
+            "token": {
+              "type": "object",
+              "description": "Garage admin-token authentication settings",
+              "required": ["enabled"],
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable or disable login using the Garage admin token",
+                  "default": true
+                }
+              }
+            },
             "oidc": {
               "type": "object",
               "description": "OpenID Connect (OIDC) configuration",

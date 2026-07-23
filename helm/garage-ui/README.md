@@ -27,7 +27,8 @@ Garage UI provides an intuitive web interface for managing your Garage S3 storag
 - **Object Operations** - Upload, download, and delete objects through the UI
 - **User Access Control** - Manage users, access keys, and permissions
 - **Cluster Monitoring** - View cluster health, status, and statistics
-- **Authentication** - Support for no auth, basic auth, and OIDC/SSO
+- **Authentication** - Admin-token, username/password, and OIDC/SSO support;
+  unauthenticated mode is limited to development
 
 ## Prerequisites
 
@@ -171,15 +172,21 @@ config:
 
 #### Authentication Configuration
 
-**No Authentication** (default, suitable for private networks):
+**Admin Token Authentication** (default):
 ```yaml
 config:
   auth:
     admin:
       enabled: false
+    token:
+      enabled: true
     oidc:
       enabled: false
 ```
+
+Production deployments must enable at least one authentication method. Running
+without authentication is supported only when
+`config.server.environment: development`.
 
 **Admin Authentication** (username/password with JWT):
 ```yaml

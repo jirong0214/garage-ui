@@ -150,7 +150,15 @@ If you already have a running Garage instance, you can point Garage UI straight 
 ./garage-ui --garage-toml /etc/garage.toml
 ```
 
-Garage UI reads the S3 endpoint, admin endpoint, admin token, and S3 region straight from the TOML file. When no authentication method is explicitly configured, **token auth auto-enables**: the login page asks for the Garage admin token, giving you a login wall with zero extra config.
+Garage UI reads the S3 endpoint, admin endpoint, admin token, and S3 region
+straight from the TOML file. Admin username/password authentication is enabled
+by default and requires credentials. To use the Garage admin token as the login
+credential instead, set `GARAGE_UI_AUTH_ADMIN_ENABLED=false` and
+`GARAGE_UI_AUTH_TOKEN_ENABLED=true`.
+
+Production startup is rejected when admin, token, and OIDC authentication are
+all disabled. Development mode may still run without authentication for local
+work.
 
 **Bind address handling:** Wildcard addresses like `0.0.0.0` or `[::]` are converted to `127.0.0.1` so the UI can reach Garage on localhost. Inside a container this won't work, so override the endpoints explicitly with environment variables or a config file.
 
@@ -188,6 +196,11 @@ garage:
   admin_endpoint: "http://garage:3903"
   admin_token: "your-admin-token"
   region: "garage"
+
+auth:
+  admin:
+    username: "admin"
+    password: "replace-with-a-strong-password"
 ```
 
 Server bind host is configured by `server.host` (default: `::`). IPv6 literals like `::` and `::1` are supported.
@@ -210,6 +223,8 @@ Override any config value with `GARAGE_UI_` prefix:
 GARAGE_UI_SERVER_PORT=8080
 GARAGE_UI_GARAGE_ENDPOINT=http://garage:3900
 GARAGE_UI_GARAGE_ADMIN_TOKEN=your-token
+GARAGE_UI_AUTH_ADMIN_USERNAME=admin
+GARAGE_UI_AUTH_ADMIN_PASSWORD=replace-with-a-strong-password
 ```
 
 Object sharing can use a separate public S3 endpoint for presigned URLs while
