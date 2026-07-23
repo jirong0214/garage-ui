@@ -395,7 +395,7 @@ export function ObjectsTable({
               </TableCell>
               <TableCell className="hidden w-[130px] sm:table-cell">
                 <span
-                  className="block truncate text-muted-foreground"
+                  className="line-clamp-2 break-all text-muted-foreground"
                   title={obj.isFolder ? 'Directory' : (obj.contentType || 'application/octet-stream')}
                 >
                   {obj.isFolder ? 'Directory' : (obj.contentType || 'application/octet-stream')}

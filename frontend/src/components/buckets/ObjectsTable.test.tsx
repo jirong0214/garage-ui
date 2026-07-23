@@ -31,7 +31,7 @@ describe('ObjectsTable', () => {
             key: 'summer/photo.jpg',
             size: 1024,
             lastModified: '2026-07-20T12:00:00Z',
-            contentType: 'image/jpeg',
+            contentType: 'application/x-apple-diskimage',
           }]}
           currentPath=""
           searchQuery=""
@@ -61,6 +61,7 @@ describe('ObjectsTable', () => {
     expect(screen.getByRole('button', {name: 'Create signed URL for summer/photo.jpg'})).toHaveTextContent('Share');
     expect(screen.getByRole('button', {name: 'Download summer/photo.jpg'})).toHaveTextContent('Download');
     expect(screen.getByText('summer/photo.jpg').closest('button')).toHaveClass('line-clamp-2');
+    expect(screen.getByText('application/x-apple-diskimage')).toHaveClass('line-clamp-2', 'break-all');
     expect(screen.queryByText('Storage Class')).not.toBeInTheDocument();
   });
 
