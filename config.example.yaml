@@ -6,7 +6,7 @@ data_dir: "/tmp/garage-ui"
 
 # Server configuration
 server:
-  host: "::" # IPv6 wildcard; dual-stack behavior depends on OS/runtime socket settings
+  host: "0.0.0.0" # IPv4 wildcard; override with :: for IPv6 binding
   port: 8080
   environment: "development" # development, production
   domain: "localhost" # Domain name for the application

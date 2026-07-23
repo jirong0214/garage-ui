@@ -225,11 +225,11 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 
 	// Built-in defaults (lowest priority)
 	viper.SetDefault("data_dir", "/tmp/garage-ui")
-	viper.SetDefault("server.host", "::")
+	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.environment", "production")
 	viper.SetDefault("garage.force_path_style", true)
-	viper.SetDefault("garage.web_protocol", "http")
+	viper.SetDefault("garage.web_protocol", "https")
 	viper.SetDefault("thumbnail.enabled", true)
 	viper.SetDefault("thumbnail.concurrency", 4)
 	viper.SetDefault("thumbnail.max_pixels", 50_000_000)
@@ -500,7 +500,7 @@ func (c *Config) Validate() error {
 	}
 	c.Garage.WebProtocol = strings.ToLower(strings.TrimSpace(c.Garage.WebProtocol))
 	if c.Garage.WebProtocol == "" {
-		c.Garage.WebProtocol = "http"
+		c.Garage.WebProtocol = "https"
 	}
 	if c.Garage.WebProtocol != "http" && c.Garage.WebProtocol != "https" {
 		return fmt.Errorf("garage web_protocol must be http or https")

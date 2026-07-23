@@ -122,8 +122,11 @@ func TestLoad_EnvOnly_MissingFile(t *testing.T) {
 	if cfg.Server.Port != 9090 {
 		t.Errorf("Server.Port = %d, want 9090 (from env)", cfg.Server.Port)
 	}
-	if cfg.Server.Host != "::" {
-		t.Errorf("Server.Host = %q, want :: (default)", cfg.Server.Host)
+	if cfg.Server.Host != "0.0.0.0" {
+		t.Errorf("Server.Host = %q, want 0.0.0.0 (default)", cfg.Server.Host)
+	}
+	if cfg.Garage.WebProtocol != "https" {
+		t.Errorf("WebProtocol = %q, want https (default)", cfg.Garage.WebProtocol)
 	}
 	if cfg.Garage.AdminToken != "env-token" {
 		t.Errorf("Garage.AdminToken = %q, want env-token", cfg.Garage.AdminToken)

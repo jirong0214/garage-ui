@@ -206,15 +206,15 @@ auth:
     password: "replace-with-a-strong-password"
 ```
 
-Server bind host is configured by `server.host` (default: `::`). IPv6 literals like `::` and `::1` are supported.
+Server bind host is configured by `server.host` (default: `0.0.0.0`). IPv6 literals like `::` and `::1` are also supported when explicitly configured.
 
 ```yaml
 server:
-  host: "::" # IPv6 wildcard (dual-stack-preferred)
+  host: "0.0.0.0" # IPv4 wildcard
   port: 8080
 ```
 
-If your environment needs explicit IPv4-only binding, set `server.host: "0.0.0.0"`.
+Set `server.host: "::"` when the environment requires IPv6 binding.
 
 See [config.example.yaml](config.example.yaml) for all options including authentication, CORS, and logging.
 

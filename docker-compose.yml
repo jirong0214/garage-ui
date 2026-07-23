@@ -34,11 +34,6 @@ services:
       GARAGE_UI_GARAGE_ENDPOINT: "garage:3900"
       GARAGE_UI_GARAGE_ADMIN_ENDPOINT: "http://garage:3903"
       GARAGE_UI_GARAGE_TOML: "/etc/garage-ui/garage.toml"
-      GARAGE_UI_GARAGE_WEB_PROTOCOL: "https"
-
-      # Server Configuration
-      GARAGE_UI_SERVER_HOST: "0.0.0.0"
-
       # Use the Garage admin token as the login credential in this example.
       # Admin username/password login is enabled by default, so disable it
       # explicitly when selecting token authentication instead.
