@@ -1,6 +1,23 @@
 import {useEffect, useState} from 'react';
-import {FileIcon, FolderIcon} from 'lucide-react';
+import {
+  FileArchive,
+  FileAudio,
+  FileBox,
+  FileCode,
+  FileIcon,
+  FileImage,
+  FileJson,
+  FileKey,
+  FileSpreadsheet,
+  FileText,
+  FileType,
+  FileVideo,
+  FolderIcon,
+  Presentation,
+  type LucideIcon,
+} from 'lucide-react';
 import {objectsApi} from '@/lib/api';
+import {getObjectFileKind, objectFileKindLabels, type ObjectFileKind} from '@/lib/object-file-type';
 import type {S3Object} from '@/types';
 
 interface ObjectThumbnailProps {
@@ -24,15 +41,34 @@ function supportsThumbnail(object: S3Object) {
   return supportedContentTypes.has(contentType ?? '') || supportedExtension.test(object.key);
 }
 
+const fileKindIcons: Record<ObjectFileKind, LucideIcon> = {
+  folder: FolderIcon,
+  image: FileImage,
+  video: FileVideo,
+  audio: FileAudio,
+  text: FileText,
+  code: FileCode,
+  json: FileJson,
+  document: FileText,
+  spreadsheet: FileSpreadsheet,
+  presentation: Presentation,
+  archive: FileArchive,
+  font: FileType,
+  key: FileKey,
+  binary: FileBox,
+  unknown: FileIcon,
+};
+
 export function ObjectThumbnail({bucketName, object}: ObjectThumbnailProps) {
-  const [objectURL, setObjectURL] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [thumbnail, setThumbnail] = useState<{requestKey: string; url: string} | null>(null);
   const supported = !object.isFolder && supportsThumbnail(object);
   const version = object.etag || `${object.lastModified}:${object.size}`;
+  const requestKey = `${bucketName}\0${object.key}\0${version}`;
+  const objectURL = thumbnail?.requestKey === requestKey ? thumbnail.url : null;
+  const fileKind = getObjectFileKind(object);
+  const FallbackIcon = fileKindIcons[fileKind];
 
   useEffect(() => {
-    setObjectURL(null);
-    setFailed(false);
     if (!supported) return;
     const controller = new AbortController();
     let url: string | null = null;
@@ -40,27 +76,24 @@ export function ObjectThumbnail({bucketName, object}: ObjectThumbnailProps) {
       .then((blob) => {
         if (controller.signal.aborted) return;
         url = URL.createObjectURL(blob);
-        setObjectURL(url);
+        setThumbnail({requestKey, url});
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setFailed(true);
-      });
+      .catch(() => undefined);
     return () => {
       controller.abort();
       if (url) URL.revokeObjectURL(url);
     };
-  }, [bucketName, object.key, supported, version]);
+  }, [bucketName, object.key, requestKey, supported, version]);
 
   return (
     <div
-      className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded border border-[var(--border)] bg-[var(--surface-sunken)]"
+      title={objectFileKindLabels[fileKind]}
+      className="flex size-10 shrink-0 items-center justify-center"
     >
-      {object.isFolder ? (
-        <FolderIcon className="h-4 w-4 text-muted-foreground" />
-      ) : objectURL && !failed ? (
-        <img src={objectURL} alt="" className="h-full w-full object-cover" loading="lazy" />
+      {objectURL ? (
+        <img src={objectURL} alt="" className="h-full w-full rounded object-cover" loading="lazy" />
       ) : (
-        <FileIcon className="h-4 w-4 text-muted-foreground" />
+        <FallbackIcon className="h-7 w-7 text-muted-foreground" data-file-kind={fileKind} />
       )}
     </div>
   );

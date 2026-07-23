@@ -1,5 +1,5 @@
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
-import {MemoryRouter} from 'react-router-dom';
+import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {copyText} from '@/lib/utils';
 import {ObjectsTable} from './ObjectsTable';
@@ -236,5 +236,54 @@ describe('ObjectsTable', () => {
 
     expect(screen.getByRole('checkbox', {name: 'Select file photo.jpg'})).toBeInTheDocument();
     expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+  });
+
+  it('passes the exact list URL to object details for return navigation', () => {
+    function DetailLocation() {
+      const location = useLocation();
+      const state = location.state as {objectListHref?: string} | null;
+      return <div data-testid="originating-list">{state?.objectListHref}</div>;
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/buckets/pics/objects?prefix=phone%2F&page=next&limit=50']}>
+        <Routes>
+          <Route
+            path="/buckets/:bucketName/objects"
+            element={(
+              <ObjectsTable
+                bucketName="pics"
+                canShare={false}
+                objects={[{
+                  key: 'phone/photo.jpg',
+                  size: 100,
+                  lastModified: '2026-07-20T12:00:00Z',
+                }]}
+                currentPath="phone/"
+                searchQuery=""
+                filterQuery=""
+                deepSearch={false}
+                selectedFileKeys={new Set()}
+                selectedFolderKeys={new Set()}
+                isDragActive={false}
+                itemsPerPage={50}
+                onNavigateToFolder={vi.fn()}
+                onToggleFileSelection={vi.fn()}
+                onToggleFolderSelection={vi.fn()}
+                onSelectAll={vi.fn()}
+                onPageChange={vi.fn()}
+                onItemsPerPageChange={vi.fn()}
+              />
+            )}
+          />
+          <Route path="/buckets/:bucketName/objects/*" element={<DetailLocation />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: 'photo.jpg'}));
+    expect(screen.getByTestId('originating-list')).toHaveTextContent(
+      '/buckets/pics/objects?prefix=phone%2F&page=next&limit=50',
+    );
   });
 });

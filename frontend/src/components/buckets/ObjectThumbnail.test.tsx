@@ -59,12 +59,39 @@ describe('ObjectThumbnail', () => {
   });
 
   it('does not request unsupported file types', () => {
-    render(
+    const {container} = render(
       <ObjectThumbnail
         bucketName="pics"
         object={{key: 'document.pdf', size: 10, lastModified: '2026-07-22T00:00:00Z', contentType: 'application/pdf'}}
       />,
     );
     expect(objectsApi.getThumbnail).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-file-kind="document"]')).toHaveClass('lucide-file-text');
+    expect(container.querySelector('[title="Document"]')).not.toHaveClass('border', 'bg-[var(--surface-sunken)]');
+  });
+
+  it('shows a MIME icon while a thumbnail is loading and when generation fails', async () => {
+    vi.mocked(objectsApi.getThumbnail).mockRejectedValue(new Error('unsupported image'));
+    const {container} = render(
+      <ObjectThumbnail
+        bucketName="pics"
+        object={{key: 'photo.jpg', size: 10, lastModified: '2026-07-22T00:00:00Z', contentType: 'image/jpeg'}}
+      />,
+    );
+
+    expect(container.querySelector('[data-file-kind="image"]')).toHaveClass('lucide-file-image');
+    await waitFor(() => expect(objectsApi.getThumbnail).toHaveBeenCalled());
+    expect(container.querySelector('[data-file-kind="image"]')).toHaveClass('lucide-file-image');
+  });
+
+  it('uses the extension when S3 reports a generic content type', () => {
+    const {container} = render(
+      <ObjectThumbnail
+        bucketName="pics"
+        object={{key: 'installer.dmg', size: 10, lastModified: '2026-07-22T00:00:00Z', contentType: 'application/octet-stream'}}
+      />,
+    );
+
+    expect(container.querySelector('[data-file-kind="binary"]')).toHaveClass('lucide-file-box');
   });
 });
