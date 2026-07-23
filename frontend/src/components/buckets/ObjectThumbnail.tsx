@@ -88,12 +88,12 @@ export function ObjectThumbnail({bucketName, object}: ObjectThumbnailProps) {
   return (
     <div
       title={objectFileKindLabels[fileKind]}
-      className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded border border-[var(--border)] bg-[var(--surface-sunken)]"
+      className="flex size-10 shrink-0 items-center justify-center"
     >
       {objectURL ? (
-        <img src={objectURL} alt="" className="h-full w-full object-cover" loading="lazy" />
+        <img src={objectURL} alt="" className="h-full w-full rounded object-cover" loading="lazy" />
       ) : (
-        <FallbackIcon className="h-4 w-4 text-muted-foreground" data-file-kind={fileKind} />
+        <FallbackIcon className="h-5 w-5 text-muted-foreground" data-file-kind={fileKind} />
       )}
     </div>
   );
