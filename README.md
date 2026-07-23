@@ -29,8 +29,9 @@ A modern web interface to manage <a href="https://garagehq.deuxfleurs.fr/">Garag
 ### Objects
 
 - Browse bucket prefixes as folders with breadcrumbs and bounded back/forward navigation
-- Upload one or many files, create directory markers, download, and batch-delete objects
-- Copy objects within or between buckets, move them, and rename them in place
+- Upload one or many files, create directory markers, download, and batch-select objects or folders
+- Copy or move selections within or between buckets, recursively copy/move/delete folders, and rename individual objects
+- Track durable background operations with discovery and object/byte progress, cancellation, restart recovery, and per-object failure details
 - Search recursively by object name and remember table sorting locally
 - Preview images, video, PDF, and text; expand the complete preview card into an in-app fullscreen view
 - Generate cached thumbnails on demand for JPEG, PNG, GIF, WebP, BMP, and TIFF images
@@ -69,7 +70,7 @@ flowchart LR
     Web -->|/api, /auth, /docs,<br/>/health, /metrics| API[garage-ui-api<br/>Go service]
     API -->|S3 API :3900| Garage[Garage]
     API -->|Admin API :3903| Garage
-    API --> Cache[(Thumbnail cache)]
+    API --> State[(Thumbnail cache<br/>Object job database)]
     Public[Public S3 / website traffic] -.->|Configured separately| Garage
 ```
 
@@ -78,7 +79,7 @@ flowchart LR
 - Only the Web service publishes a host port. The API is reachable only on the Compose network.
 - Browser requests remain same-origin: Nginx proxies backend paths, avoiding a public API port and cross-origin cookie configuration.
 - Nginx re-resolves the API service through Docker DNS, so the API container can be replaced without restarting the Web container.
-- The thumbnail cache is a backend-only persistent volume. No application database is required for the current feature set.
+- Thumbnail files and the embedded bbolt object-job database live in a backend-only persistent volume. No external database service is required.
 
 The repository retains the original all-in-one `Dockerfile` for the current Helm
 chart and compatibility deployments. Compose builds the separated images from
@@ -120,7 +121,7 @@ docker compose up -d garage-ui-api garage-ui-web
 The browser only connects to `garage-ui-web`. It serves the SPA and proxies API,
 authentication, documentation, health, and metrics requests to the private
 `garage-ui-api` service, so no CORS or separate public API endpoint is required.
-Garage credentials, configuration, and the thumbnail cache are mounted only in
+Garage credentials, configuration, thumbnails, and job state are mounted only in
 the API container.
 
 ### Kubernetes
@@ -246,6 +247,22 @@ GARAGE_UI_THUMBNAIL_CACHE_MAX_SIZE=2147483648
 GARAGE_UI_THUMBNAIL_CACHE_MAX_AGE=720h
 ```
 
+Recursive folder and multi-object operations run as durable background jobs.
+The backend first expands selected prefixes into concrete S3 object keys, then
+executes bounded concurrent copy, move, or delete requests. Keep the database
+on persistent storage so in-progress jobs can resume after a backend restart:
+
+```bash
+GARAGE_UI_OBJECT_JOBS_ENABLED=true
+GARAGE_UI_OBJECT_JOBS_DATABASE_PATH=/var/cache/garage-ui/jobs.db
+GARAGE_UI_OBJECT_JOBS_CONCURRENCY=4
+GARAGE_UI_OBJECT_JOBS_MAX_ACTIVE=1
+GARAGE_UI_OBJECT_JOBS_RETENTION=72h
+```
+
+See [object jobs](docs/object-jobs.md) for API contracts, path mapping,
+authorization, conflict handling, and recovery semantics.
+
 #### Loading sensitive values from files (`_FILE` suffix)
 
 For Docker and Kubernetes secrets, sensitive env vars can be read from files instead of plain values. Set `{VAR}_FILE=/path/to/file` and garage-ui uses the file's contents (trailing CR/LF trimmed) as the value. If both `{VAR}` and `{VAR}_FILE` are set, `_FILE` wins and a warning is logged. A missing or unreadable file stops startup.
@@ -344,6 +361,7 @@ to discuss the workflow and safety model before implementation.
 - [x] **Image thumbnails**: bounded, cached thumbnail generation with configurable concurrency and pixel limits
 - [x] **Separated runtime**: independently replaceable Web and API containers with a private backend network
 - [x] **Single-object copy, move, and rename**: S3 server-side copy with overwrite protection and explicit delete-after-copy semantics
+- [x] **Recursive and batch object jobs**: interactive destinations, multi-selection, durable progress, cancellation, and restart recovery
 - [ ] **Bucket CORS editor**: view, validate, update, and remove S3 CORS rules
 - [ ] **Lifecycle editor**: object expiration and incomplete multipart-upload cleanup rules supported by Garage
 - [ ] **Multipart upload manager**: resumable uploads plus inspection, resume, abort, and cleanup of incomplete sessions

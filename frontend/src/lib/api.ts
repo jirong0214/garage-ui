@@ -14,6 +14,9 @@ import type {
   MultiNodeStatisticsResponse,
   ObjectListResponse,
   ObjectMetadata,
+  ObjectJob,
+  ObjectJobFailure,
+  CreateObjectJobRequest,
   ObjectTransferRequest,
   ObjectTransferResult,
   S3Object,
@@ -434,6 +437,39 @@ export const objectsApi = {
     const response = await api.get(`/v1/buckets/${bucket}/objects/${encodeObjectKey(key)}/preview-url`);
     const data = response.data.data;
     return { url: data.url, expiresAt: data.expires_at };
+  },
+};
+
+export const objectJobsApi = {
+  create: async (request: CreateObjectJobRequest): Promise<ObjectJob> => {
+    const idempotencyKey = globalThis.crypto?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const response = await api.post('/v1/object-jobs', request, {
+      headers: {'Idempotency-Key': idempotencyKey},
+    });
+    return response.data.data;
+  },
+
+  get: async (id: string): Promise<ObjectJob> => {
+    const response = await api.get(`/v1/object-jobs/${encodeURIComponent(id)}`);
+    return response.data.data;
+  },
+
+  list: async (limit = 20): Promise<ObjectJob[]> => {
+    const response = await api.get('/v1/object-jobs', {params: {limit}});
+    return response.data.data.jobs ?? [];
+  },
+
+  cancel: async (id: string): Promise<ObjectJob> => {
+    const response = await api.post(`/v1/object-jobs/${encodeURIComponent(id)}/cancel`);
+    return response.data.data;
+  },
+
+  failures: async (id: string, offset = 0, limit = 50): Promise<{failures: ObjectJobFailure[]; total: number}> => {
+    const response = await api.get(`/v1/object-jobs/${encodeURIComponent(id)}/failures`, {
+      params: {offset, limit},
+    });
+    return response.data.data;
   },
 };
 

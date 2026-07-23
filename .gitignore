@@ -66,6 +66,7 @@ config.yaml
 docs/**/*.md
 !docs/garage-setup.md
 !docs/access-control.md
+!docs/object-jobs.md
 **/state**
 **/content**
 

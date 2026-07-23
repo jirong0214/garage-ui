@@ -88,6 +88,60 @@ export interface ObjectTransferResult {
   sourceDeleted: boolean;
 }
 
+export type ObjectJobOperation = 'copy' | 'move' | 'delete';
+export type ObjectJobStatus =
+  | 'queued'
+  | 'scanning'
+  | 'running'
+  | 'cancelling'
+  | 'completed'
+  | 'completed_with_errors'
+  | 'failed'
+  | 'cancelled';
+
+export interface CreateObjectJobRequest {
+  operation: ObjectJobOperation;
+  sourceBucket: string;
+  objects?: string[];
+  prefixes?: string[];
+  destinationBucket?: string;
+  destinationPrefix?: string;
+  conflictPolicy?: 'skip' | 'overwrite';
+}
+
+export interface ObjectJob {
+  id: string;
+  operation: ObjectJobOperation;
+  status: ObjectJobStatus;
+  phase: string;
+  sourceBucket: string;
+  objects?: string[];
+  prefixes?: string[];
+  destinationBucket?: string;
+  destinationPrefix?: string;
+  conflictPolicy?: 'skip' | 'overwrite';
+  discovered: number;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  bytesProcessed: number;
+  bytesTotal: number;
+  progress: number;
+  currentKey?: string;
+  error?: string;
+  cancelRequested?: boolean;
+  createdAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+}
+
+export interface ObjectJobFailure {
+  sourceKey: string;
+  destinationKey?: string;
+  error: string;
+}
+
 // Access Control types
 export interface AccessKey {
   accessKeyId: string;

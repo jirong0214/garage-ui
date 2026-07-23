@@ -54,7 +54,6 @@ export function BucketObjects() {
     uploadFiles,
     uploadTasks,
     deleteObject,
-    deleteMultipleObjects,
     createDirectory,
     fetchObjects,
   } = useBucketObjects(bucketName, currentPath, searchQuery, deepSearch);
@@ -135,7 +134,6 @@ export function BucketObjects() {
         onUploadFiles={canWrite ? uploadFiles : undefined}
         uploadTasks={uploadTasks}
         onDeleteObject={canDelete ? deleteObject : undefined}
-        onDeleteMultipleObjects={canDelete ? deleteMultipleObjects : undefined}
         onCreateDirectory={canWrite ? createDirectory : undefined}
         onRefresh={handleRefresh}
         onTransferComplete={handleRefresh}

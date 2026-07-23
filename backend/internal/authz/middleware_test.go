@@ -113,6 +113,40 @@ func TestRequireDestinationBucketFromBody(t *testing.T) {
 	}
 }
 
+func TestRequireObjectJobChecksOperationSpecificBuckets(t *testing.T) {
+	policy, err := CompilePolicy(&config.AccessControlConfig{Teams: []config.TeamConfig{{
+		Name: "jobs", ClaimValues: []string{"jobs"},
+		Bindings: []config.BindingConfig{
+			{BucketPrefixes: []string{"source"}, Permissions: []string{"object.list", "object.read", "object.delete"}},
+			{BucketPrefixes: []string{"destination"}, Permissions: []string{"object.read", "object.write"}},
+		},
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := NewMiddleware(policy, NewTeamResolver(policy, nil), NewAuthorizer())
+	app := fiber.New()
+	app.Use(func(c fiber.Ctx) error {
+		c.Locals("userInfo", &auth.UserInfo{Email: "a@x", AuthMethod: "oidc", Teams: []string{"jobs"}})
+		return c.Next()
+	})
+	app.Use(m.ResolveSubject())
+	app.Post("/api/v1/object-jobs", m.RequireObjectJob(), func(c fiber.Ctx) error { return c.SendStatus(202) })
+
+	copyBody := `{"operation":"copy","sourceBucket":"source","destinationBucket":"destination","objects":["a"]}`
+	if code := doReq(t, app, "POST", "/api/v1/object-jobs", copyBody); code != 202 {
+		t.Fatalf("copy status = %d", code)
+	}
+	moveBody := `{"operation":"move","sourceBucket":"source","destinationBucket":"destination","objects":["a"]}`
+	if code := doReq(t, app, "POST", "/api/v1/object-jobs", moveBody); code != 202 {
+		t.Fatalf("move status = %d", code)
+	}
+	foreign := `{"operation":"copy","sourceBucket":"source","destinationBucket":"foreign","objects":["a"]}`
+	if code := doReq(t, app, "POST", "/api/v1/object-jobs", foreign); code != 403 {
+		t.Fatalf("foreign destination status = %d", code)
+	}
+}
+
 func TestRequireDefaultDenyZeroTeamUser(t *testing.T) {
 	m := middlewareFixture(t)
 	app := newTestApp(m, &auth.UserInfo{Email: "z@x", AuthMethod: "oidc"})
@@ -198,6 +232,19 @@ func TestVerifyRouteCoverage(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "/api/v1/naked") {
 		t.Errorf("error should name the naked route: %v", err)
+	}
+}
+
+func TestVerifyRouteCoverageAcceptsDynamicObjectJobRequirement(t *testing.T) {
+	policy := &Policy{Enabled: true}
+	middleware := NewMiddleware(policy, nil, nil)
+	app := fiber.New()
+	app.Post("/api/v1/object-jobs/", middleware.RequireObjectJob(), func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusAccepted)
+	})
+
+	if err := VerifyRouteCoverage(app); err != nil {
+		t.Fatalf("VerifyRouteCoverage rejected RequireObjectJob: %v", err)
 	}
 }
 

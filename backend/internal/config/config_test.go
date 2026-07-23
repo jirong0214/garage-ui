@@ -117,6 +117,32 @@ func TestLoad_ThumbnailDefaultsAndEnvOverrides(t *testing.T) {
 	}
 }
 
+func TestLoad_ObjectJobDefaultsAndEnvOverrides(t *testing.T) {
+	resetViper(t)
+	path := writeConfigFile(t, minimalValidYAML)
+	t.Setenv("GARAGE_UI_OBJECT_JOBS_DATABASE_PATH", filepath.Join(t.TempDir(), "jobs.db"))
+	t.Setenv("GARAGE_UI_OBJECT_JOBS_CONCURRENCY", "8")
+	t.Setenv("GARAGE_UI_OBJECT_JOBS_MAX_ACTIVE", "2")
+	t.Setenv("GARAGE_UI_OBJECT_JOBS_RETENTION", "24h")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.ObjectJobs.Enabled {
+		t.Fatal("ObjectJobs.Enabled = false, want true")
+	}
+	if cfg.ObjectJobs.Concurrency != 8 || cfg.ObjectJobs.MaxActive != 2 {
+		t.Fatalf("object job concurrency = (%d, %d)", cfg.ObjectJobs.Concurrency, cfg.ObjectJobs.MaxActive)
+	}
+	if cfg.ObjectJobs.Retention != 24*time.Hour {
+		t.Fatalf("ObjectJobs.Retention = %s, want 24h", cfg.ObjectJobs.Retention)
+	}
+	if !strings.HasSuffix(cfg.ObjectJobs.DatabasePath, "jobs.db") {
+		t.Fatalf("ObjectJobs.DatabasePath = %q", cfg.ObjectJobs.DatabasePath)
+	}
+}
+
 func TestLoad_EnvOverridesYAML(t *testing.T) {
 	resetViper(t)
 	path := writeConfigFile(t, minimalValidYAML)

@@ -30,6 +30,14 @@ garage:
   admin_endpoint: "http://localhost:3903" # Garage Admin API endpoint
   admin_token: "changeme" # Admin API bearer token
 
+# Durable asynchronous copy, move, and recursive delete jobs
+object_jobs:
+  enabled: true
+  database_path: "/var/cache/garage-ui/jobs.db"
+  concurrency: 4 # Concurrent S3 object operations within one active job
+  max_active: 1 # Jobs executed concurrently; additional jobs remain queued
+  retention: 72h # Finished jobs and per-object failures retained on disk
+
 # Authentication Configuration
 # You can enable one or both authentication methods
 auth:
@@ -147,6 +155,7 @@ cors:
     - Content-Type
     - Accept
     - Authorization
+    - Idempotency-Key
   allow_credentials: false
   max_age: 3600
 

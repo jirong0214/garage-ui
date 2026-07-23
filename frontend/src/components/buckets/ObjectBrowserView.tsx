@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useCallback, useState} from 'react';
 import {useDropzone} from 'react-dropzone';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -7,8 +7,12 @@ import {CreateDirectoryDialog} from './CreateDirectoryDialog';
 import {DeleteObjectDialog} from './DeleteObjectDialog';
 import {ConfirmDialog} from '@/components/ui/confirm-dialog';
 import {UploadProgress} from './UploadProgress';
-import {FolderPlus, RotateCwIcon, ScanSearch, Search, Trash, Upload} from 'lucide-react';
-import type {Bucket, S3Object, UploadTask} from '@/types';
+import {Copy, FolderPlus, MoveRight, RotateCwIcon, ScanSearch, Search, Trash, Upload} from 'lucide-react';
+import type {Bucket, ObjectJob, S3Object, UploadTask} from '@/types';
+import {objectJobsApi} from '@/lib/api';
+import {toast} from 'sonner';
+import {ObjectJobDialog} from './ObjectJobDialog';
+import {ObjectJobProgressDialog} from './ObjectJobProgressDialog';
 
 interface ObjectBrowserViewProps {
   bucketName: string;
@@ -32,7 +36,6 @@ interface ObjectBrowserViewProps {
   onUploadFiles?: (files: File[]) => Promise<boolean>;
   uploadTasks: UploadTask[];
   onDeleteObject?: (key: string) => Promise<boolean>;
-  onDeleteMultipleObjects?: (keys: string[], prefixes?: string[]) => Promise<boolean>;
   onCreateDirectory?: (name: string) => Promise<boolean>;
   onRefresh: () => Promise<void>;
   onTransferComplete: () => Promise<void>;
@@ -66,7 +69,6 @@ export function ObjectBrowserView({
   onUploadFiles,
   uploadTasks,
   onDeleteObject,
-  onDeleteMultipleObjects,
   onCreateDirectory,
   onRefresh,
   onTransferComplete,
@@ -83,6 +85,18 @@ export function ObjectBrowserView({
   const [createDirDialogOpen, setCreateDirDialogOpen] = useState(false);
   const [selectedFileKeys, setSelectedFileKeys] = useState<Set<string>>(new Set());
   const [selectedFolderKeys, setSelectedFolderKeys] = useState<Set<string>>(new Set());
+  const [jobSelection, setJobSelection] = useState<{
+    operation: 'copy' | 'move';
+    objects: string[];
+    prefixes: string[];
+  } | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('garage-ui:active-object-job');
+    } catch {
+      return null;
+    }
+  });
   // Holds the keys/prefixes awaiting confirmation in the bulk-delete dialog.
   const [pendingDelete, setPendingDelete] = useState<{ keys: string[]; prefixes: string[] } | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -209,27 +223,59 @@ export function ObjectBrowserView({
   };
 
   const handleConfirmBulkDelete = async () => {
-    if (!pendingDelete || !onDeleteMultipleObjects) return;
-
+    if (!pendingDelete) return;
     setBulkDeleting(true);
-    const success = await onDeleteMultipleObjects(pendingDelete.keys, pendingDelete.prefixes);
-    setBulkDeleting(false);
-
-    if (success) {
-      // Drop the deleted folders/files from the live selection.
-      setSelectedFileKeys(prev => {
-        const next = new Set(prev);
-        pendingDelete.keys.forEach(k => next.delete(k));
-        return next;
+    try {
+      const job = await objectJobsApi.create({
+        operation: 'delete',
+        sourceBucket: bucketName,
+        objects: pendingDelete.keys,
+        prefixes: pendingDelete.prefixes,
       });
-      setSelectedFolderKeys(prev => {
-        const next = new Set(prev);
-        pendingDelete.prefixes.forEach(k => next.delete(k));
-        return next;
-      });
+      handleJobStarted(job);
       setPendingDelete(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to start delete');
+    } finally {
+      setBulkDeleting(false);
     }
   };
+
+  const handleJobStarted = (job: ObjectJob) => {
+    setActiveJobId(job.id);
+    try {
+      localStorage.setItem('garage-ui:active-object-job', job.id);
+    } catch {
+      // Progress remains available for this page lifetime.
+    }
+  };
+
+  const handleJobCompleted = useCallback((job: ObjectJob) => {
+    try {
+      localStorage.removeItem('garage-ui:active-object-job');
+    } catch {
+      // Ignore unavailable storage.
+    }
+    if (job.status === 'completed') {
+      toast.success(`${job.operation[0].toUpperCase()}${job.operation.slice(1)} completed`);
+    } else if (job.status === 'completed_with_errors') {
+      toast.error(`${job.operation} completed with ${job.failed} failure${job.failed === 1 ? '' : 's'}`);
+    } else if (job.status === 'failed') {
+      toast.error(job.error || `${job.operation} failed`);
+    }
+    setSelectedFileKeys(new Set());
+    setSelectedFolderKeys(new Set());
+    void onTransferComplete();
+  }, [onTransferComplete]);
+
+  const handleJobClosed = useCallback(() => {
+    try {
+      localStorage.removeItem('garage-ui:active-object-job');
+    } catch {
+      // Ignore unavailable storage.
+    }
+    setActiveJobId(null);
+  }, []);
 
   const handleDeleteObject = async (key: string): Promise<boolean> => {
     if (!onDeleteObject) return false;
@@ -279,14 +325,33 @@ export function ObjectBrowserView({
             </Button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {onDeleteMultipleObjects && selectedCount > 0 && (
+            {selectedCount > 0 && transferDestinationBuckets.length > 0 && (
               <Button
-                onClick={handleRequestBulkDelete}
-                title={`Delete ${selectedCount} selected item(s)`}
-                className="bg-transparent border border-red-500 text-red-500 hover:bg-red-500/5"
+                variant="secondary"
+                onClick={() => setJobSelection({
+                  operation: 'copy',
+                  objects: Array.from(selectedFileKeys),
+                  prefixes: Array.from(selectedFolderKeys),
+                })}
               >
-                <Trash className="h-4 w-4" />
-                Delete {selectedCount} item{selectedCount !== 1 ? 's' : ''}
+                <Copy /> Copy {selectedCount}
+              </Button>
+            )}
+            {selectedCount > 0 && canMove && (
+              <Button
+                variant="secondary"
+                onClick={() => setJobSelection({
+                  operation: 'move',
+                  objects: Array.from(selectedFileKeys),
+                  prefixes: Array.from(selectedFolderKeys),
+                })}
+              >
+                <MoveRight /> Move {selectedCount}
+              </Button>
+            )}
+            {onDeleteObject && selectedCount > 0 && (
+              <Button onClick={handleRequestBulkDelete} variant="destructive">
+                <Trash /> Delete {selectedCount}
               </Button>
             )}
             {onUploadFiles && (
@@ -445,7 +510,13 @@ export function ObjectBrowserView({
               setSelectedObject(obj);
               setDeleteObjectDialogOpen(true);
             } : undefined}
-            onDeleteFolder={onDeleteMultipleObjects ? (obj) => handleDeleteFolder(obj.key) : undefined}
+            onDeleteFolder={onDeleteObject ? (obj) => handleDeleteFolder(obj.key) : undefined}
+            onCopyFolder={transferDestinationBuckets.length > 0 ? (obj) => setJobSelection({
+              operation: 'copy', objects: [], prefixes: [obj.key],
+            }) : undefined}
+            onMoveFolder={canMove ? (obj) => setJobSelection({
+              operation: 'move', objects: [], prefixes: [obj.key],
+            }) : undefined}
             onToggleFileSelection={handleToggleFileSelection}
             onToggleFolderSelection={handleToggleFolderSelection}
             onSelectAll={handleSelectAll}
@@ -487,6 +558,26 @@ export function ObjectBrowserView({
         confirmLabel="Delete"
         loading={bulkDeleting}
         onConfirm={handleConfirmBulkDelete}
+      />
+      {jobSelection && (
+        <ObjectJobDialog
+          open
+          onOpenChange={(open) => { if (!open) setJobSelection(null); }}
+          operation={jobSelection.operation}
+          sourceBucket={bucketName}
+          objects={jobSelection.objects}
+          prefixes={jobSelection.prefixes}
+          destinationBuckets={transferDestinationBuckets}
+          onStarted={(job) => {
+            handleJobStarted(job);
+            setJobSelection(null);
+          }}
+        />
+      )}
+      <ObjectJobProgressDialog
+        jobId={activeJobId}
+        onClose={handleJobClosed}
+        onCompleted={handleJobCompleted}
       />
     </div>
   );

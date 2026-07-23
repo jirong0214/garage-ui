@@ -24,6 +24,7 @@ var _ services.S3Storage = (*S3Mock)(nil)
 // s3NotConfigured.
 type S3Mock struct {
 	ListObjectsFn           func(ctx context.Context, bucketName, prefix string, maxKeys int, continuationToken string) (*models.ObjectListResponse, error)
+	ListObjectsRecursiveFn  func(ctx context.Context, bucketName, prefix string, maxKeys int, continuationToken string) (*services.RecursiveObjectPage, error)
 	SearchObjectsFn         func(ctx context.Context, bucketName, prefix, search string) (*models.ObjectListResponse, error)
 	UploadObjectFn          func(ctx context.Context, bucketName, key string, body io.Reader, contentType string) (*models.ObjectUploadResponse, error)
 	CreateDirectoryMarkerFn func(ctx context.Context, bucketName, key string) (*models.ObjectUploadResponse, error)
@@ -47,6 +48,14 @@ type S3Mock struct {
 	// Calls records every invocation in order. Shares the Call type with
 	// AdminMock via the same package.
 	Calls []Call
+}
+
+func (m *S3Mock) ListObjectsRecursive(ctx context.Context, bucketName, prefix string, maxKeys int, continuationToken string) (*services.RecursiveObjectPage, error) {
+	m.record("ListObjectsRecursive", bucketName, prefix, maxKeys, continuationToken)
+	if m.ListObjectsRecursiveFn == nil {
+		return nil, s3NotConfigured("ListObjectsRecursive")
+	}
+	return m.ListObjectsRecursiveFn(ctx, bucketName, prefix, maxKeys, continuationToken)
 }
 
 func (m *S3Mock) record(method string, args ...any) {

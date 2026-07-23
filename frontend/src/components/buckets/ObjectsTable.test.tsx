@@ -147,4 +147,94 @@ describe('ObjectsTable', () => {
     expect(screen.getByText('Move…')).toBeInTheDocument();
     expect(screen.queryByText('View Details')).not.toBeInTheDocument();
   });
+
+  it('exposes recursive copy, move, and delete actions for folders', () => {
+    const onCopyFolder = vi.fn();
+    const onMoveFolder = vi.fn();
+    const onDeleteFolder = vi.fn();
+    const folder = {
+      key: 'albums/2026/',
+      size: 0,
+      lastModified: '2026-07-20T12:00:00Z',
+      isFolder: true,
+    };
+
+    render(
+      <MemoryRouter>
+        <ObjectsTable
+          bucketName="pics"
+          canShare={false}
+          objects={[folder]}
+          currentPath=""
+          searchQuery=""
+          filterQuery=""
+          deepSearch={false}
+          selectedFileKeys={new Set()}
+          selectedFolderKeys={new Set()}
+          isDragActive={false}
+          itemsPerPage={25}
+          onNavigateToFolder={vi.fn()}
+          onDeleteObject={vi.fn()}
+          onDeleteFolder={onDeleteFolder}
+          onCopyFolder={onCopyFolder}
+          onMoveFolder={onMoveFolder}
+          onToggleFileSelection={vi.fn()}
+          onToggleFolderSelection={vi.fn()}
+          onSelectAll={vi.fn()}
+          onPageChange={vi.fn()}
+          onItemsPerPageChange={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', {name: 'Actions for albums/2026/'}));
+    fireEvent.click(screen.getByText('Copy…'));
+    expect(onCopyFolder).toHaveBeenCalledWith(folder);
+
+    fireEvent.click(screen.getByRole('button', {name: 'Actions for albums/2026/'}));
+    fireEvent.click(screen.getByText('Move…'));
+    expect(onMoveFolder).toHaveBeenCalledWith(folder);
+
+    fireEvent.click(screen.getByRole('button', {name: 'Actions for albums/2026/'}));
+    fireEvent.click(screen.getByText('Delete folder'));
+    expect(onDeleteFolder).toHaveBeenCalledWith(folder);
+  });
+
+  it('allows selection for copy-only users without delete permission', () => {
+    render(
+      <MemoryRouter>
+        <ObjectsTable
+          bucketName="pics"
+          canShare={false}
+          transferDestinationBuckets={[{
+            name: 'archive',
+            creationDate: '2026-01-01T00:00:00Z',
+            websiteAccess: false,
+          }]}
+          objects={[{
+            key: 'photo.jpg',
+            size: 100,
+            lastModified: '2026-07-20T12:00:00Z',
+          }]}
+          currentPath=""
+          searchQuery=""
+          filterQuery=""
+          deepSearch={false}
+          selectedFileKeys={new Set()}
+          selectedFolderKeys={new Set()}
+          isDragActive={false}
+          itemsPerPage={25}
+          onNavigateToFolder={vi.fn()}
+          onToggleFileSelection={vi.fn()}
+          onToggleFolderSelection={vi.fn()}
+          onSelectAll={vi.fn()}
+          onPageChange={vi.fn()}
+          onItemsPerPageChange={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('checkbox', {name: 'Select file photo.jpg'})).toBeInTheDocument();
+    expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+  });
 });

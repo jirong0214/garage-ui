@@ -46,6 +46,9 @@ import (
 //	@tag.name			Objects
 //	@tag.description	Object storage and retrieval operations
 
+//	@tag.name			Object Jobs
+//	@tag.description	Durable recursive and multi-object operations
+
 //	@tag.name			Users
 //	@tag.description	User and access key management
 
@@ -155,6 +158,15 @@ func main() {
 	bucketHandler := handlers.NewBucketHandler(adminService, s3Service, cfg.Garage.PublicURLs)
 	bucketHandler.SetPublicWebRouting(cfg.Garage.WebProtocol, cfg.Garage.WebRootDomain)
 	objectHandler := handlers.NewObjectHandler(s3Service, authService)
+	var objectJobManager *services.ObjectJobManager
+	var objectJobHandler *handlers.ObjectJobHandler
+	if cfg.ObjectJobs.Enabled {
+		objectJobManager, err = services.NewObjectJobManager(s3Service, cfg.ObjectJobs)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to initialize object job manager")
+		}
+		objectJobHandler = handlers.NewObjectJobHandler(objectJobManager)
+	}
 	if cfg.Thumbnail.Enabled {
 		thumbnailService, err := services.NewThumbnailService(s3Service, cfg.Thumbnail)
 		if err != nil {
@@ -231,6 +243,7 @@ func main() {
 		monitoringHandler,
 		capabilitiesHandler,
 		azMiddleware,
+		objectJobHandler,
 	)
 
 	if err := authz.VerifyRouteCoverage(app); err != nil {
@@ -261,6 +274,11 @@ func main() {
 	shutdownStart := time.Now()
 	if err := app.Shutdown(); err != nil {
 		logger.Fatal().Err(err).Msg("Server shutdown failed")
+	}
+	if objectJobManager != nil {
+		if err := objectJobManager.Close(); err != nil {
+			logger.Error().Err(err).Msg("Failed to close object job manager")
+		}
 	}
 
 	logger.Info().

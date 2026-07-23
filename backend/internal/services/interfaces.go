@@ -48,6 +48,7 @@ type AdminService interface {
 // GetBucketStatistics) are intentionally excluded.
 type S3Storage interface {
 	ListObjects(ctx context.Context, bucketName, prefix string, maxKeys int, continuationToken string) (*models.ObjectListResponse, error)
+	ListObjectsRecursive(ctx context.Context, bucketName, prefix string, maxKeys int, continuationToken string) (*RecursiveObjectPage, error)
 	SearchObjects(ctx context.Context, bucketName, prefix, search string) (*models.ObjectListResponse, error)
 	UploadObject(ctx context.Context, bucketName, key string, body io.Reader, contentType string) (*models.ObjectUploadResponse, error)
 	CreateDirectoryMarker(ctx context.Context, bucketName, key string) (*models.ObjectUploadResponse, error)
@@ -67,6 +68,12 @@ type S3Storage interface {
 		Body        io.Reader
 		ContentType string
 	}) []UploadResult
+}
+
+type RecursiveObjectPage struct {
+	Objects               []models.ObjectInfo
+	IsTruncated           bool
+	NextContinuationToken string
 }
 
 // Compile-time guarantees that the concrete services implement the interfaces.

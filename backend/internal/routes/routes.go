@@ -32,6 +32,7 @@ func SetupRoutes(
 	monitoringHandler *handlers.MonitoringHandler,
 	capabilitiesHandler *handlers.CapabilitiesHandler,
 	az *authz.Middleware,
+	objectJobHandlers ...*handlers.ObjectJobHandler,
 ) {
 	// Apply CORS middleware globally
 	app.Use(middleware.CORSMiddleware(&cfg.CORS))
@@ -69,6 +70,15 @@ func SetupRoutes(
 	api.Use(az.ResolveSubject())
 
 	api.Get("/capabilities", capabilitiesHandler.GetCapabilities)
+
+	if len(objectJobHandlers) > 0 && objectJobHandlers[0] != nil {
+		jobs := api.Group("/object-jobs")
+		jobs.Post("/", az.RequireObjectJob(), objectJobHandlers[0].Create)
+		jobs.Get("/", az.Require(authz.ScopeNone, authz.PermObjectList), objectJobHandlers[0].List)
+		jobs.Get("/:id", az.Require(authz.ScopeNone, authz.PermObjectList), objectJobHandlers[0].Get)
+		jobs.Get("/:id/failures", az.Require(authz.ScopeNone, authz.PermObjectList), objectJobHandlers[0].Failures)
+		jobs.Post("/:id/cancel", az.Require(authz.ScopeNone, authz.PermObjectList), objectJobHandlers[0].Cancel)
+	}
 
 	// Bucket routes
 	buckets := api.Group("/buckets")

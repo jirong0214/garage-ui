@@ -97,6 +97,63 @@ func DestinationBucketFromBody() ScopeResolver {
 	}
 }
 
+// RequireObjectJob authorizes a create request according to its operation.
+// Copy needs source read and destination read/write; move additionally needs
+// source delete; delete needs source delete. Source list is always required
+// because recursive prefixes must be enumerated.
+func (m *Middleware) RequireObjectJob() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		if !m.enabled {
+			return c.Next()
+		}
+		subj, ok := SubjectFrom(c)
+		if !ok {
+			return forbidden(c, PermObjectList)
+		}
+		var req struct {
+			Operation         string `json:"operation"`
+			SourceBucket      string `json:"sourceBucket"`
+			DestinationBucket string `json:"destinationBucket"`
+		}
+		if err := c.Bind().JSON(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(
+				models.ErrorResponse(models.ErrCodeBadRequest, "Invalid request body"),
+			)
+		}
+		sourcePerms := []string{PermObjectList}
+		operation := strings.ToLower(req.Operation)
+		switch operation {
+		case "copy":
+			sourcePerms = append(sourcePerms, PermObjectRead)
+		case "move":
+			sourcePerms = append(sourcePerms, PermObjectRead, PermObjectDelete)
+		case "delete":
+			sourcePerms = append(sourcePerms, PermObjectDelete)
+		default:
+			return c.Status(fiber.StatusBadRequest).JSON(
+				models.ErrorResponse(models.ErrCodeBadRequest, "operation must be copy, move, or delete"),
+			)
+		}
+		for _, perm := range sourcePerms {
+			decision := m.authorizer.Decide(subj, perm, Resource{Bucket: req.SourceBucket})
+			logDecision(c, subj.ID, perm, req.SourceBucket, decision.Allow, decision.Reason)
+			if !decision.Allow {
+				return forbidden(c, perm)
+			}
+		}
+		if operation == "copy" || operation == "move" {
+			for _, perm := range []string{PermObjectRead, PermObjectWrite} {
+				decision := m.authorizer.Decide(subj, perm, Resource{Bucket: req.DestinationBucket})
+				logDecision(c, subj.ID, perm, req.DestinationBucket, decision.Allow, decision.Reason)
+				if !decision.Allow {
+					return forbidden(c, perm)
+				}
+			}
+		}
+		return c.Next()
+	}
+}
+
 // Require gates a route on the caller holding ALL of perms for the resolved
 // resource. One structured decision log line is emitted per check: denies at
 // warn, allows at debug.
@@ -247,8 +304,12 @@ func hasRequireForPath(app *fiber.App, method, path string) bool {
 func routeHasRequire(handlers []fiber.Handler) bool {
 	for _, h := range handlers {
 		fn := runtime.FuncForPC(fiberHandlerPC(h))
-		if fn != nil && strings.Contains(fn.Name(), "authz.(*Middleware).Require") {
-			return true
+		if fn != nil {
+			name := fn.Name()
+			if strings.Contains(name, "authz.(*Middleware).Require") ||
+				strings.Contains(name, "RequireObjectJob") {
+				return true
+			}
 		}
 	}
 	return false

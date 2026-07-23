@@ -425,6 +425,35 @@ func (s *S3Service) ListObjects(ctx context.Context, bucketName, prefix string, 
 	}, nil
 }
 
+// ListObjectsRecursive lists concrete objects below a prefix without a
+// delimiter. It is used by durable object jobs and intentionally avoids
+// per-object StatObject calls.
+func (s *S3Service) ListObjectsRecursive(ctx context.Context, bucketName, prefix string, maxKeys int, continuationToken string) (*RecursiveObjectPage, error) {
+	client, err := s.getMinioClient(ctx, bucketName, OpRead)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get MinIO client for bucket %s: %w", bucketName, err)
+	}
+	if maxKeys <= 0 || maxKeys > 1000 {
+		maxKeys = 1000
+	}
+	core := &minio.Core{Client: client}
+	result, err := core.ListObjectsV2(bucketName, prefix, "", continuationToken, "", maxKeys)
+	if err != nil {
+		return nil, fmt.Errorf("failed to recursively list objects in bucket %s: %w", bucketName, err)
+	}
+	objects := make([]models.ObjectInfo, 0, len(result.Contents))
+	for _, object := range result.Contents {
+		objects = append(objects, models.ObjectInfo{
+			Key: object.Key, Size: object.Size, LastModified: object.LastModified,
+			ETag: object.ETag, StorageClass: object.StorageClass,
+		})
+	}
+	return &RecursiveObjectPage{
+		Objects: objects, IsTruncated: result.IsTruncated,
+		NextContinuationToken: result.NextContinuationToken,
+	}, nil
+}
+
 const (
 	searchMaxScan    = 10000 // stop after scanning this many objects
 	searchMaxResults = 1000  // stop after collecting this many matches

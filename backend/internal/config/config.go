@@ -20,10 +20,20 @@ type Config struct {
 	Server        ServerConfig         `mapstructure:"server"`
 	Garage        GarageConfig         `mapstructure:"garage"`
 	Thumbnail     ThumbnailConfig      `mapstructure:"thumbnail"`
+	ObjectJobs    ObjectJobConfig      `mapstructure:"object_jobs"`
 	Auth          AuthConfig           `mapstructure:"auth"`
 	CORS          CORSConfig           `mapstructure:"cors"`
 	Logging       LoggingConfig        `mapstructure:"logging"`
 	AccessControl *AccessControlConfig `mapstructure:"access_control"`
+}
+
+// ObjectJobConfig controls durable recursive and multi-object operations.
+type ObjectJobConfig struct {
+	Enabled      bool          `mapstructure:"enabled"`
+	DatabasePath string        `mapstructure:"database_path"`
+	Concurrency  int           `mapstructure:"concurrency"`
+	MaxActive    int           `mapstructure:"max_active"`
+	Retention    time.Duration `mapstructure:"retention"`
 }
 
 // ThumbnailConfig controls on-demand object thumbnail generation and caching.
@@ -223,6 +233,11 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	viper.SetDefault("thumbnail.max_source_size", 50*1024*1024)
 	viper.SetDefault("thumbnail.cache_max_size", 2*1024*1024*1024)
 	viper.SetDefault("thumbnail.cache_max_age", 30*24*time.Hour)
+	viper.SetDefault("object_jobs.enabled", true)
+	viper.SetDefault("object_jobs.database_path", "/tmp/garage-ui/jobs.db")
+	viper.SetDefault("object_jobs.concurrency", 4)
+	viper.SetDefault("object_jobs.max_active", 1)
+	viper.SetDefault("object_jobs.retention", 72*time.Hour)
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("logging.format", "text")
 	viper.SetDefault("auth.oidc.cookie_name", "garage_session")
@@ -329,6 +344,13 @@ func bindEnvVars() {
 	viper.BindEnv("thumbnail.max_source_size", "GARAGE_UI_THUMBNAIL_MAX_SOURCE_SIZE")
 	viper.BindEnv("thumbnail.cache_max_size", "GARAGE_UI_THUMBNAIL_CACHE_MAX_SIZE")
 	viper.BindEnv("thumbnail.cache_max_age", "GARAGE_UI_THUMBNAIL_CACHE_MAX_AGE")
+
+	// Object job config
+	viper.BindEnv("object_jobs.enabled", "GARAGE_UI_OBJECT_JOBS_ENABLED")
+	viper.BindEnv("object_jobs.database_path", "GARAGE_UI_OBJECT_JOBS_DATABASE_PATH")
+	viper.BindEnv("object_jobs.concurrency", "GARAGE_UI_OBJECT_JOBS_CONCURRENCY")
+	viper.BindEnv("object_jobs.max_active", "GARAGE_UI_OBJECT_JOBS_MAX_ACTIVE")
+	viper.BindEnv("object_jobs.retention", "GARAGE_UI_OBJECT_JOBS_RETENTION")
 
 	// Auth config
 	viper.BindEnv("auth.admin.enabled", "GARAGE_UI_AUTH_ADMIN_ENABLED")
@@ -508,6 +530,20 @@ func (c *Config) Validate() error {
 		}
 		if c.Thumbnail.CacheMaxAge <= 0 {
 			return fmt.Errorf("thumbnail cache_max_age must be greater than zero")
+		}
+	}
+	if c.ObjectJobs.Enabled {
+		if strings.TrimSpace(c.ObjectJobs.DatabasePath) == "" {
+			return fmt.Errorf("object_jobs database_path is required when object jobs are enabled")
+		}
+		if c.ObjectJobs.Concurrency <= 0 {
+			return fmt.Errorf("object_jobs concurrency must be greater than zero")
+		}
+		if c.ObjectJobs.MaxActive <= 0 {
+			return fmt.Errorf("object_jobs max_active must be greater than zero")
+		}
+		if c.ObjectJobs.Retention <= 0 {
+			return fmt.Errorf("object_jobs retention must be greater than zero")
 		}
 	}
 

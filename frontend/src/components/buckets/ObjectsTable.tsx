@@ -45,6 +45,8 @@ interface ObjectsTableProps {
   // permission; canDelete (below) is derived from onDeleteObject.
   onDeleteObject?: (object: S3Object) => void;
   onDeleteFolder?: (object: S3Object) => void;
+  onCopyFolder?: (object: S3Object) => void;
+  onMoveFolder?: (object: S3Object) => void;
   onToggleFileSelection: (key: string) => void;
   onToggleFolderSelection: (key: string) => void;
   // Receives the keys of the currently *visible* (filtered) rows so selection
@@ -114,6 +116,8 @@ export function ObjectsTable({
   onNavigateToFolder,
   onDeleteObject,
   onDeleteFolder,
+  onCopyFolder,
+  onMoveFolder,
   onToggleFileSelection,
   onToggleFolderSelection,
   onSelectAll,
@@ -125,6 +129,7 @@ export function ObjectsTable({
 }: ObjectsTableProps) {
   const navigate = useNavigate();
   const canDelete = Boolean(onDeleteObject);
+  const canSelect = canDelete || transferDestinationBuckets.length > 0 || canMove;
   const [sortPreference, setSortPreference] = useState<SortPreference>(loadSortPreference);
   const {column: sortColumn, direction: sortDirection} = sortPreference;
   // Store tokens for each page: [undefined (page 1), token1 (page 2), token2 (page 3), ...]
@@ -284,7 +289,7 @@ export function ObjectsTable({
         <Table className="table-fixed min-w-[970px] sm:min-w-[1100px]">
           <TableHeader>
           <TableRow>
-            {canDelete && (
+            {canSelect && (
               <TableHead className="w-[50px]">
                 <Checkbox
                   // Scope select-all to the rows actually on screen (pageObjects).
@@ -334,7 +339,7 @@ export function ObjectsTable({
       <TableBody>
         {isLoading ? (
           <TableRow>
-            <TableCell colSpan={canDelete ? 6 : 5} className="text-center py-12">
+            <TableCell colSpan={canSelect ? 6 : 5} className="text-center py-12">
               <div className="flex items-center justify-center gap-2 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>Loading objects...</span>
@@ -343,7 +348,7 @@ export function ObjectsTable({
           </TableRow>
         ) : filteredObjects.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={canDelete ? 6 : 5} className="text-center py-12 text-muted-foreground">
+            <TableCell colSpan={canSelect ? 6 : 5} className="text-center py-12 text-muted-foreground">
               {searchQuery
                 ? 'No objects found matching your search'
                 : isDragActive
@@ -354,13 +359,13 @@ export function ObjectsTable({
         ) : (
           pageObjects.map((obj) => (
             <TableRow key={obj.key}>
-              {canDelete && (
+              {canSelect && (
                 <TableCell className="w-[50px]">
                   {obj.isFolder ? (
                     <Checkbox
                       checked={selectedFolderKeys.has(obj.key)}
                       onCheckedChange={() => onToggleFolderSelection(obj.key)}
-                      aria-label={`Select folder ${obj.key} (deletes its contents recursively)`}
+                      aria-label={`Select folder ${obj.key}`}
                     />
                   ) : (
                     <Checkbox
@@ -477,6 +482,18 @@ export function ObjectsTable({
                         <FolderIcon className="h-4 w-4" />
                         Open
                       </DropdownMenuItem>
+                      {onCopyFolder && (
+                        <DropdownMenuItem onClick={() => onCopyFolder(obj)}>
+                          <Copy className="h-4 w-4" />
+                          Copy…
+                        </DropdownMenuItem>
+                      )}
+                      {onMoveFolder && (
+                        <DropdownMenuItem onClick={() => onMoveFolder(obj)}>
+                          <MoveRight className="h-4 w-4" />
+                          Move…
+                        </DropdownMenuItem>
+                      )}
                       {onDeleteFolder && (
                         <>
                           <DropdownMenuSeparator />
