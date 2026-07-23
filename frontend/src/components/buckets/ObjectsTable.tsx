@@ -1,6 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {Badge} from '@/components/ui/badge';
 import {Button, buttonVariants} from '@/components/ui/button';
 import {Checkbox} from '@/components/ui/checkbox';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
@@ -12,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {ChevronLeft, ChevronRight, Copy, Download, Eye, FolderIcon, Link2, Loader2, MoreVertical, MoveRight, Pencil, Trash2} from 'lucide-react';
+import {ChevronLeft, ChevronRight, Copy, Download, FolderIcon, Link2, Loader2, MoreVertical, MoveRight, Pencil, Trash2} from 'lucide-react';
 import {Select, SelectOption} from '@/components/ui/select';
 import {downloadObject, formatBytes, formatObjectModifiedTime} from '@/lib/file-utils';
 import type {Bucket, S3Object} from '@/types';
@@ -282,7 +281,7 @@ export function ObjectsTable({
     <>
       <div className="overflow-x-auto">
         <TooltipProvider>
-        <Table>
+        <Table className="table-fixed min-w-[760px] sm:min-w-[900px]">
           <TableHeader>
           <TableRow>
             {canDelete && (
@@ -309,32 +308,33 @@ export function ObjectsTable({
               </TableHead>
             )}
           <TableHead
-            className="cursor-pointer hover:bg-muted/50"
+            className="min-w-[260px] cursor-pointer hover:bg-muted/50"
             onClick={() => handleSort('name')}
           >
             Objects {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
           </TableHead>
-          <TableHead className="hidden sm:table-cell">Type</TableHead>
-          <TableHead className="hidden md:table-cell">Storage Class</TableHead>
+          <TableHead className="hidden w-[140px] sm:table-cell">Type</TableHead>
           <TableHead
-            className="cursor-pointer hover:bg-muted/50"
+            className="w-[96px] cursor-pointer hover:bg-muted/50"
             onClick={() => handleSort('size')}
           >
             Size {sortColumn === 'size' && (sortDirection === 'asc' ? '↑' : '↓')}
           </TableHead>
           <TableHead
-            className="cursor-pointer hover:bg-muted/50"
+            className="w-[168px] cursor-pointer hover:bg-muted/50"
             onClick={() => handleSort('modified')}
           >
             Modified {sortColumn === 'modified' && (sortDirection === 'asc' ? '↑' : '↓')}
           </TableHead>
-          <TableHead className="w-[92px]"></TableHead>
+          <TableHead className="w-[176px]">
+            <span className="sr-only">Actions</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {isLoading ? (
           <TableRow>
-            <TableCell colSpan={canDelete ? 7 : 6} className="text-center py-12">
+            <TableCell colSpan={canDelete ? 6 : 5} className="text-center py-12">
               <div className="flex items-center justify-center gap-2 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>Loading objects...</span>
@@ -343,7 +343,7 @@ export function ObjectsTable({
           </TableRow>
         ) : filteredObjects.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={canDelete ? 7 : 6} className="text-center py-12 text-muted-foreground">
+            <TableCell colSpan={canDelete ? 6 : 5} className="text-center py-12 text-muted-foreground">
               {searchQuery
                 ? 'No objects found matching your search'
                 : isDragActive
@@ -391,22 +391,22 @@ export function ObjectsTable({
                   )}
                 </div>
               </TableCell>
-              <TableCell className="hidden sm:table-cell">
-                {obj.isFolder ? 'Directory' : (obj.contentType || 'application/octet-stream')}
+              <TableCell className="hidden w-[140px] sm:table-cell">
+                <span
+                  className="block truncate text-muted-foreground"
+                  title={obj.isFolder ? 'Directory' : (obj.contentType || 'application/octet-stream')}
+                >
+                  {obj.isFolder ? 'Directory' : (obj.contentType || 'application/octet-stream')}
+                </span>
               </TableCell>
-              <TableCell className="hidden md:table-cell">
-                {obj.storageClass && (
-                  <Badge variant="neutral">{obj.storageClass}</Badge>
-                )}
-              </TableCell>
-              <TableCell>{obj.isFolder ? null : formatBytes(obj.size)}</TableCell>
-              <TableCell>
+              <TableCell className="w-[96px]">{obj.isFolder ? null : formatBytes(obj.size)}</TableCell>
+              <TableCell className="w-[168px]">
                 {obj.lastModified ? (() => {
                   const d = new Date(obj.lastModified);
                   return <span className="text-muted-foreground">{formatObjectModifiedTime(d)}</span>;
                 })() : null}
               </TableCell>
-              <TableCell className="w-[92px]">
+              <TableCell className="w-[176px]">
                 <div className="flex items-center justify-end gap-1">
                   {!obj.isFolder && publicBaseURL && (
                     <Tooltip>
@@ -422,6 +422,38 @@ export function ObjectsTable({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Copy public URL</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {!obj.isFolder && canShare && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setShareObject(obj)}
+                          aria-label={`Create signed URL for ${obj.key}`}
+                        >
+                          <Link2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Create signed URL</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {!obj.isFolder && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => downloadObject(bucketName, obj.key)}
+                          aria-label={`Download ${obj.key}`}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Download</TooltipContent>
                     </Tooltip>
                   )}
                   {obj.isFolder ? (
@@ -451,7 +483,7 @@ export function ObjectsTable({
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                ) : (
+                ) : (canRename || transferDestinationBuckets.length > 0 || canMove || onDeleteObject) ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       aria-label={`Actions for ${obj.key}`}
@@ -460,14 +492,6 @@ export function ObjectsTable({
                       <MoreVertical className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => navigate(`/buckets/${bucketName}/objects/${encodeURIComponent(obj.key)}`)}>
-                        <Eye className="h-4 w-4" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => downloadObject(bucketName, obj.key)}>
-                        <Download className="h-4 w-4" />
-                        Download
-                      </DropdownMenuItem>
                       {canRename && (
                         <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'rename'})}>
                           <Pencil className="h-4 w-4" />
@@ -486,12 +510,6 @@ export function ObjectsTable({
                           Move…
                         </DropdownMenuItem>
                       )}
-                      {canShare && (
-                        <DropdownMenuItem onClick={() => setShareObject(obj)}>
-                          <Link2 className="h-4 w-4" />
-                          Create signed URL
-                        </DropdownMenuItem>
-                      )}
                       {onDeleteObject && (
                         <>
                           <DropdownMenuSeparator />
@@ -506,7 +524,7 @@ export function ObjectsTable({
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                )}
+                ) : null}
                 </div>
               </TableCell>
             </TableRow>

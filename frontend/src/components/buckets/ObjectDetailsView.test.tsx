@@ -56,6 +56,8 @@ describe('ObjectDetailsView', () => {
 
     expect(previewHeading.compareDocumentPosition(detailsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('heading', {name: 'photo.jpg'})).not.toBeInTheDocument();
+    expect(screen.queryByText('Storage class')).not.toBeInTheDocument();
+    expect(screen.queryByText('STANDARD')).not.toBeInTheDocument();
     expect(screen.getByText(formatLocalDateTime(new Date('2026-07-20T12:00:00Z')))).toBeInTheDocument();
     expect(screen.getByRole('button', {name: 'Show modified time details'})).toBeInTheDocument();
   });

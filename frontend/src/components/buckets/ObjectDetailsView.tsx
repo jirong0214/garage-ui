@@ -273,7 +273,6 @@ export function ObjectDetailsView() {
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               <Badge>{formatBytes(metadata.size)}</Badge>
               <Badge>{metadata.contentType || 'application/octet-stream'}</Badge>
-              {metadata.storageClass && <Badge>{metadata.storageClass}</Badge>}
             </div>
           </div>
         </div>
@@ -333,7 +332,6 @@ export function ObjectDetailsView() {
         <dl className="divide-y divide-[var(--border)]">
           <DetailRow label="Size">{formatBytes(metadata.size)}</DetailRow>
           <DetailRow label="Content type">{metadata.contentType || 'application/octet-stream'}</DetailRow>
-          <DetailRow label="Storage class">{metadata.storageClass || 'Standard'}</DetailRow>
           <DetailRow label="Last modified"><ModifiedTimeDetails value={metadata.lastModified} /></DetailRow>
           <DetailRow label="ETag">
             <button

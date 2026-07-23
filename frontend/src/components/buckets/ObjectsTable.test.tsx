@@ -18,7 +18,7 @@ describe('ObjectsTable', () => {
     localStorage.clear();
   });
 
-  it('exposes public URL copying as a dedicated row action', async () => {
+  it('exposes sharing and download as dedicated row actions', async () => {
     vi.mocked(copyText).mockResolvedValue(undefined);
 
     render(
@@ -26,7 +26,7 @@ describe('ObjectsTable', () => {
         <ObjectsTable
           bucketName="photos"
           publicBaseURL="https://cdn.example.com"
-          canShare={false}
+          canShare
           objects={[{
             key: 'summer/photo.jpg',
             size: 1024,
@@ -56,8 +56,9 @@ describe('ObjectsTable', () => {
       expect(copyText).toHaveBeenCalledWith('https://cdn.example.com/summer/photo.jpg');
     });
 
-    fireEvent.click(screen.getByRole('button', {name: 'Actions for summer/photo.jpg'}));
-    expect(screen.queryByText('Copy public URL')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Create signed URL for summer/photo.jpg'})).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: 'Download summer/photo.jpg'})).toBeInTheDocument();
+    expect(screen.queryByText('Storage Class')).not.toBeInTheDocument();
   });
 
   it('restores the selected sort column and direction from local storage', () => {
@@ -140,5 +141,6 @@ describe('ObjectsTable', () => {
     expect(screen.getByText('Rename…')).toBeInTheDocument();
     expect(screen.getByText('Copy…')).toBeInTheDocument();
     expect(screen.getByText('Move…')).toBeInTheDocument();
+    expect(screen.queryByText('View Details')).not.toBeInTheDocument();
   });
 });
