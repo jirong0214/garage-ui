@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { ObjectBrowserView } from '@/components/buckets/ObjectBrowserView';
 import { useBucketObjects } from '@/hooks/useBucketObjects';
 import { useBuckets } from '@/hooks/useApi';
 import { useBucketCan } from '@/hooks/usePermissions';
+import { useObjectListScrollRestoration } from '@/hooks/useObjectListScrollRestoration';
 
 export function BucketObjects() {
   const { bucketName = '' } = useParams<{ bucketName: string }>();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: buckets = [] } = useBuckets();
@@ -57,6 +59,7 @@ export function BucketObjects() {
     createDirectory,
     fetchObjects,
   } = useBucketObjects(bucketName, currentPath, searchQuery, deepSearch);
+  useObjectListScrollRestoration(`${location.pathname}${location.search}`, isLoading);
 
   const handleNavigateToFolder = (path: string) => {
     setCurrentPath(path);

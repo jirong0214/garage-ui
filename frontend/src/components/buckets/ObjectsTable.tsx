@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import {Button, buttonVariants} from '@/components/ui/button';
 import {Checkbox} from '@/components/ui/checkbox';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
@@ -128,6 +128,7 @@ export function ObjectsTable({
   initialItemsPerPage,
 }: ObjectsTableProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const canDelete = Boolean(onDeleteObject);
   const canSelect = canDelete || transferDestinationBuckets.length > 0 || canMove;
   const [sortPreference, setSortPreference] = useState<SortPreference>(loadSortPreference);
@@ -389,7 +390,10 @@ export function ObjectsTable({
                     </button>
                   ) : (
                     <button
-                      onClick={() => navigate(`/buckets/${bucketName}/objects/${encodeURIComponent(obj.key)}`)}
+                      onClick={() => navigate(
+                        `/buckets/${bucketName}/objects/${encodeURIComponent(obj.key)}`,
+                        {state: {objectListHref: `${location.pathname}${location.search}`}},
+                      )}
                       title={obj.key.replace(currentPath, '')}
                       className="line-clamp-2 min-w-0 flex-1 cursor-pointer break-all text-left font-medium hover:text-primary hover:underline"
                     >

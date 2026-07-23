@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { objectsApi } from '@/lib/api';
 import { useBuckets } from '@/hooks/useApi';
 import { useBucketCan } from '@/hooks/usePermissions';
@@ -95,6 +95,7 @@ function ModifiedTimeDetails({ value }: { value: string }) {
 
 export function ObjectDetailsView() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { bucketName, '*': encodedObjectKey } = useParams();
   const objectKey = encodedObjectKey ? decodeURIComponent(encodedObjectKey) : undefined;
 
@@ -152,7 +153,11 @@ export function ObjectDetailsView() {
 
   const parentPath = objectKey?.split('/').slice(0, -1).join('/') ?? '';
   const fileName = objectKey?.split('/').pop() || objectKey || '';
-  const backHref = `/buckets/${bucketName}/objects${parentPath ? `?prefix=${encodeURIComponent(parentPath + '/')}` : ''}`;
+  const originatingListHref = (
+    location.state as {objectListHref?: string} | null
+  )?.objectListHref;
+  const backHref = originatingListHref ||
+    `/buckets/${bucketName}/objects${parentPath ? `?prefix=${encodeURIComponent(parentPath + '/')}` : ''}`;
 
   const copy = async (text: string, label = 'Copied') => {
     try {
