@@ -357,6 +357,140 @@ func TestLoginToken_MalformedJSONReturns400(t *testing.T) {
 	}
 }
 
+func TestBootstrapAdminCreatesPersistentCredentials(t *testing.T) {
+	cfg := &config.Config{
+		DataDir: t.TempDir(),
+		Garage:  config.GarageConfig{AdminToken: "bootstrap-token"},
+		Auth:    config.AuthConfig{Admin: config.AdminAuthConfig{Enabled: true}},
+	}
+	svc := newAuthTestService(t, cfg.Auth.Admin)
+	h := NewAuthHandler(cfg, svc)
+	app := fiber.New()
+	app.Post("/auth/login-token", h.LoginToken)
+	app.Post("/auth/setup-admin", func(c fiber.Ctx) error {
+		user, err := svc.ValidateSessionToken(c.Get("Authorization")[7:])
+		if err != nil {
+			return err
+		}
+		c.Locals("userInfo", user)
+		return h.SetupAdmin(c)
+	})
+	app.Post("/auth/login", h.LoginAdmin)
+	app.Get("/protected",
+		func(c fiber.Ctx) error {
+			user, err := svc.ValidateSessionToken(c.Get("Authorization")[7:])
+			if err != nil {
+				return err
+			}
+			c.Locals("userInfo", user)
+			return c.Next()
+		},
+		h.RejectCompletedBootstrapSession,
+		func(c fiber.Ctx) error { return c.SendStatus(http.StatusNoContent) },
+	)
+
+	loginReq := httptest.NewRequest(http.MethodPost, "/auth/login-token", strings.NewReader(`{"token":"bootstrap-token"}`))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginResp, err := app.Test(loginReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer loginResp.Body.Close()
+	var login struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(loginResp.Body).Decode(&login); err != nil {
+		t.Fatal(err)
+	}
+
+	setupReq := httptest.NewRequest(http.MethodPost, "/auth/setup-admin", strings.NewReader(`{"username":"garage-admin","password":"a-long-password"}`))
+	setupReq.Header.Set("Content-Type", "application/json")
+	setupReq.Header.Set("Authorization", "Bearer "+login.Token)
+	setupResp, err := app.Test(setupReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer setupResp.Body.Close()
+	if setupResp.StatusCode != http.StatusOK {
+		t.Fatalf("setup status = %d", setupResp.StatusCode)
+	}
+
+	staleReq := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	staleReq.Header.Set("Authorization", "Bearer "+login.Token)
+	staleResp, err := app.Test(staleReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer staleResp.Body.Close()
+	if staleResp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("stale bootstrap session status = %d, want 401", staleResp.StatusCode)
+	}
+
+	basicReq := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(`{"username":"garage-admin","password":"a-long-password"}`))
+	basicReq.Header.Set("Content-Type", "application/json")
+	basicResp, err := app.Test(basicReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer basicResp.Body.Close()
+	if basicResp.StatusCode != http.StatusOK {
+		t.Fatalf("basic status = %d", basicResp.StatusCode)
+	}
+
+	secondTokenReq := httptest.NewRequest(http.MethodPost, "/auth/login-token", strings.NewReader(`{"token":"bootstrap-token"}`))
+	secondTokenReq.Header.Set("Content-Type", "application/json")
+	secondTokenResp, err := app.Test(secondTokenReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer secondTokenResp.Body.Close()
+	if secondTokenResp.StatusCode != http.StatusForbidden {
+		t.Fatalf("second token login status = %d, want 403", secondTokenResp.StatusCode)
+	}
+}
+
+func TestExplicitTokenSessionRemainsValidAfterAdminSetup(t *testing.T) {
+	cfg := &config.Config{
+		DataDir: t.TempDir(),
+		Garage:  config.GarageConfig{AdminToken: "long-term-token"},
+		Auth: config.AuthConfig{
+			Admin: config.AdminAuthConfig{Enabled: true},
+			Token: config.TokenAuthConfig{Enabled: true},
+		},
+	}
+	svc := newAuthTestService(t, cfg.Auth.Admin)
+	h := NewAuthHandler(cfg, svc)
+	if err := h.adminStore.Create("garage-admin", "a-long-password"); err != nil {
+		t.Fatal(err)
+	}
+	app := fiber.New()
+	app.Post("/auth/login-token", h.LoginToken)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/login-token", strings.NewReader(`{"token":"long-term-token"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	user, err := svc.ValidateSessionToken(body.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.AuthMethod != "token" {
+		t.Fatalf("auth method = %q, want token", user.AuthMethod)
+	}
+}
+
 func TestGetAuthConfig_TokenEnabled(t *testing.T) {
 	cfg := &config.Config{
 		Auth: config.AuthConfig{

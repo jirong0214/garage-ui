@@ -7,12 +7,13 @@ import { TokenLoginForm } from '@/components/auth/TokenLoginForm';
 import { LoadingSpinner } from '@/components/auth/LoadingSpinner';
 
 export function Login() {
-  const { config, isLoading, initialize, isAuthenticated } = useAuthStore();
+  const { config, isLoading, initialize, isAuthenticated, user } = useAuthStore();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const loginSuccess = searchParams.get('login');
   const returnUrl = searchParams.get('returnUrl') || '/';
+  const bootstrapRequired = config?.admin.bootstrap_required || false;
 
   useEffect(() => {
     if (loginSuccess === 'success') {
@@ -24,9 +25,9 @@ export function Login() {
 
   useEffect(() => {
     if (isAuthenticated && !loginSuccess) {
-      navigate(decodeURIComponent(returnUrl));
+      navigate(bootstrapRequired && user?.auth_method === 'bootstrap-token' ? '/setup' : decodeURIComponent(returnUrl));
     }
-  }, [isAuthenticated, navigate, returnUrl, loginSuccess]);
+  }, [isAuthenticated, navigate, returnUrl, loginSuccess, bootstrapRequired, user?.auth_method]);
 
   if (isLoading || loginSuccess === 'success') {
     return <LoadingSpinner />;
@@ -41,6 +42,15 @@ export function Login() {
   const showAdmin = config?.admin.enabled || false;
   const showOIDC = config?.oidc.enabled || false;
   const showToken = config?.token.enabled || false;
+  if (bootstrapRequired) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md">
+          <TokenLoginForm bootstrap />
+        </div>
+      </div>
+    );
+  }
 
   // Token-only auth (zero-config fallback)
   if (showToken && !showAdmin && !showOIDC) {

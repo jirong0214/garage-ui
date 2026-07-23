@@ -106,7 +106,7 @@ re-authorized per object when they resume.
 ```yaml
 object_jobs:
   enabled: true
-  database_path: /var/cache/garage-ui/jobs.db
+  database_path: /var/lib/garage-ui/cache/jobs.db
   concurrency: 4
   max_active: 1
   retention: 72h

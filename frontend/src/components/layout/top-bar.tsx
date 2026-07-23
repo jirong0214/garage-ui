@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ChevronLeft, ChevronRight, User, LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User, LogOut, Monitor, Moon, Sun, Settings } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb';
 import { useTheme } from '@/components/theme-provider';
@@ -121,6 +121,15 @@ export function TopBar({ crumbs }: TopBarProps) {
                     <div className="truncate text-[12.5px] text-[var(--muted-foreground)]">{user.email}</div>
                   )}
                 </div>
+                {!config?.admin.bootstrap_required && user?.auth_method !== 'bootstrap-token' && (
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); navigate('/account'); }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] hover:bg-[var(--accent)]"
+                  >
+                    <Settings className="h-3.5 w-3.5" /> Account
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => { setMenuOpen(false); logout(); }}

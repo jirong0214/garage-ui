@@ -1,8 +1,12 @@
 # Garage UI Backend Configuration
 
+# Runtime state root. The split API Docker image overrides this with
+# /var/lib/garage-ui. Cache, job, and generated JWT paths derive from it.
+data_dir: "/tmp/garage-ui"
+
 # Server configuration
 server:
-  host: "::" # IPv6 wildcard; dual-stack behavior depends on OS/runtime socket settings
+  host: "0.0.0.0" # IPv4 wildcard; override with :: for IPv6 binding
   port: 8080
   environment: "development" # development, production
   domain: "localhost" # Domain name for the application
@@ -33,7 +37,7 @@ garage:
 # Durable asynchronous copy, move, and recursive delete jobs
 object_jobs:
   enabled: true
-  database_path: "/var/cache/garage-ui/jobs.db"
+  database_path: "" # Defaults to <data_dir>/cache/jobs.db
   concurrency: 4 # Concurrent S3 object operations within one active job
   max_active: 1 # Jobs executed concurrently; additional jobs remain queued
   retention: 72h # Finished jobs and per-object failures retained on disk
@@ -43,10 +47,11 @@ object_jobs:
 auth:
   # JWT Configuration
   # Ed25519 private key in PEM format for JWT token signing
-  # If not specified, a new key will be generated on each startup (tokens won't persist across restarts)
+  # If not specified, a key is generated once at jwt_key_path and reused.
   # Generate with: openssl genpkey -algorithm ED25519 -out jwt-key.pem
   # The key is a 64-byte Ed25519 private key
-  jwt_private_key: "" # Leave empty to auto-generate, or provide PEM-encoded Ed25519 private key
+  jwt_private_key: "" # Optional PEM-encoded Ed25519 private key
+  jwt_key_path: "" # Defaults to <data_dir>/state/jwt-key.pem
 
   # Expose Prometheus metrics at top-level /metrics WITHOUT authentication.
   # Needed for Prometheus to scrape when auth (admin/token/oidc) is enabled.
@@ -56,15 +61,20 @@ auth:
 
   # Admin Authentication (username/password)
   admin:
-    enabled: false # Set to true to enable admin login
-    username: "admin"
-    password: "changeme"
+    # Enabled by default. On its first run, Garage UI asks for the Garage
+    # admin token once, then stores a bcrypt-hashed local UI administrator at
+    # <data_dir>/state/admin-auth.json. The fields below are optional only for
+    # migrating an existing environment-based login.
+    # Set GARAGE_UI_AUTH_ADMIN_ENABLED=false (or set this value to false) when
+    # using OIDC or admin-token authentication instead.
+    enabled: true
+    # username: "admin"
+    # password: "change-this-password"
 
   # Admin Token Authentication
   # When enabled, users can log in using the Garage admin token
-  # Auto-enabled when no other auth method is configured (zero-config fallback)
   token:
-    enabled: false # Set to true to explicitly enable, or leave all auth disabled for auto-enable
+    enabled: false
 
   # OIDC Configuration
   # NOTE: When OIDC is enabled, server.root_url is required for OAuth2 redirects

@@ -158,6 +158,18 @@ export const authApi = {
     return response;
   },
 
+  setupAdmin: async (username: string, password: string) => {
+    return authApiClient.post<{ success: boolean; token: string; user: AuthUser }>('/setup-admin', { username, password });
+  },
+
+  updateAdminCredentials: async (username: string, currentPassword: string, newPassword: string) => {
+    return authApiClient.put<{ success: boolean; token: string; user: AuthUser }>('/admin-credentials', {
+      username,
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  },
+
   me: async () => {
     const response = await authApiClient.get<{ success: boolean; user: AuthUser }>('/me');
     return response;

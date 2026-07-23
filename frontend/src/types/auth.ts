@@ -1,6 +1,7 @@
 export interface AuthConfig {
   admin: {
     enabled: boolean;
+    bootstrap_required?: boolean;
   };
   oidc: {
     enabled: boolean;
@@ -15,6 +16,7 @@ export interface AuthUser {
   username: string;
   email?: string;
   name?: string;
+  auth_method?: 'admin' | 'token' | 'bootstrap-token' | 'oidc';
 }
 
 export interface AuthState {

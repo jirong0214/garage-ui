@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -45,23 +47,35 @@ func NewJWTService() (*JWTService, error) {
 }
 
 func NewJWTServiceWithKey(privateKeyPEM string) (*JWTService, error) {
+	return NewJWTServiceWithKeyFile(privateKeyPEM, "")
+}
+
+// NewJWTServiceWithKeyFile uses an explicitly configured PEM key when present.
+// Otherwise it loads or atomically creates a persistent key at keyPath. An
+// empty keyPath preserves the legacy in-memory key behavior for library users.
+func NewJWTServiceWithKeyFile(privateKeyPEM, keyPath string) (*JWTService, error) {
 	var privateKey ed25519.PrivateKey
 	var publicKey ed25519.PublicKey
 	var err error
 
 	if privateKeyPEM != "" {
-		// Parse the provided PEM-encoded private key
 		privateKey, err = parseEd25519PrivateKeyFromPEM(privateKeyPEM)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse Ed25519 private key: %w", err)
 		}
-		publicKey = privateKey.Public().(ed25519.PublicKey)
+	} else if keyPath != "" {
+		privateKey, err = loadOrCreateEd25519PrivateKey(keyPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load or create Ed25519 private key at %s: %w", keyPath, err)
+		}
 	} else {
-		// Generate a new Ed25519 key pair if no key is provided
 		publicKey, privateKey, err = ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate Ed25519 key: %w", err)
 		}
+	}
+	if publicKey == nil {
+		publicKey = privateKey.Public().(ed25519.PublicKey)
 	}
 
 	return &JWTService{
@@ -71,6 +85,68 @@ func NewJWTServiceWithKey(privateKeyPEM string) (*JWTService, error) {
 			states: make(map[string]StateData),
 		},
 	}, nil
+}
+
+func loadOrCreateEd25519PrivateKey(path string) (ed25519.PrivateKey, error) {
+	data, err := os.ReadFile(path)
+	if err == nil {
+		return parseEd25519PrivateKeyFromPEM(string(data))
+	}
+	if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("read key: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, fmt.Errorf("create key directory: %w", err)
+	}
+
+	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("generate key: %w", err)
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("marshal key: %w", err)
+	}
+	encoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
+
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".jwt-key-*.tmp")
+	if err != nil {
+		return nil, fmt.Errorf("create temporary key: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		return nil, fmt.Errorf("set temporary key permissions: %w", err)
+	}
+	if _, err := tmp.Write(encoded); err != nil {
+		tmp.Close()
+		return nil, fmt.Errorf("write temporary key: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return nil, fmt.Errorf("sync temporary key: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return nil, fmt.Errorf("close temporary key: %w", err)
+	}
+
+	// Link publishes a fully written file without replacing a key created by
+	// another process racing this startup.
+	if err := os.Link(tmpPath, path); err != nil {
+		if !os.IsExist(err) {
+			return nil, fmt.Errorf("publish key: %w", err)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("read concurrently created key: %w", err)
+		}
+		return parseEd25519PrivateKeyFromPEM(string(data))
+	}
+
+	return privateKey, nil
 }
 
 func parseEd25519PrivateKeyFromPEM(privateKeyPEM string) (ed25519.PrivateKey, error) {

@@ -34,11 +34,47 @@ server:
   host: "0.0.0.0"
   port: 8080
   environment: development
+auth:
+  metrics_public: false
+  admin:
+    username: admin
+    password: test-password
 garage:
   endpoint: http://garage:3900
   admin_endpoint: http://garage:3903
   admin_token: supersecret
 `
+
+func TestLoad_AdminAuthDefaultsEnabled(t *testing.T) {
+	resetViper(t)
+	path := writeConfigFile(t, minimalValidYAML)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.Auth.Admin.Enabled {
+		t.Fatal("Auth.Admin.Enabled = false, want true by default")
+	}
+}
+
+func TestLoad_AdminAuthCanBeExplicitlyDisabledByEnv(t *testing.T) {
+	resetViper(t)
+	path := writeConfigFile(t, minimalValidYAML)
+	t.Setenv("GARAGE_UI_AUTH_ADMIN_ENABLED", "false")
+	t.Setenv("GARAGE_UI_AUTH_TOKEN_ENABLED", "true")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Auth.Admin.Enabled {
+		t.Fatal("Auth.Admin.Enabled = true, want explicit env override to disable it")
+	}
+	if !cfg.Auth.Token.Enabled {
+		t.Fatal("Auth.Token.Enabled = false, want token auth enabled")
+	}
+}
 
 func TestLoad_YAMLOnly(t *testing.T) {
 	resetViper(t)
@@ -76,6 +112,8 @@ func TestLoad_EnvOnly_MissingFile(t *testing.T) {
 	t.Setenv("GARAGE_UI_GARAGE_ENDPOINT", "http://g:3900")
 	t.Setenv("GARAGE_UI_GARAGE_ADMIN_ENDPOINT", "http://g:3903")
 	t.Setenv("GARAGE_UI_GARAGE_ADMIN_TOKEN", "env-token")
+	t.Setenv("GARAGE_UI_AUTH_ADMIN_USERNAME", "admin")
+	t.Setenv("GARAGE_UI_AUTH_ADMIN_PASSWORD", "test-password")
 
 	cfg, err := Load(missing)
 	if err != nil {
@@ -84,8 +122,11 @@ func TestLoad_EnvOnly_MissingFile(t *testing.T) {
 	if cfg.Server.Port != 9090 {
 		t.Errorf("Server.Port = %d, want 9090 (from env)", cfg.Server.Port)
 	}
-	if cfg.Server.Host != "::" {
-		t.Errorf("Server.Host = %q, want :: (default)", cfg.Server.Host)
+	if cfg.Server.Host != "0.0.0.0" {
+		t.Errorf("Server.Host = %q, want 0.0.0.0 (default)", cfg.Server.Host)
+	}
+	if cfg.Garage.WebProtocol != "https" {
+		t.Errorf("WebProtocol = %q, want https (default)", cfg.Garage.WebProtocol)
 	}
 	if cfg.Garage.AdminToken != "env-token" {
 		t.Errorf("Garage.AdminToken = %q, want env-token", cfg.Garage.AdminToken)
@@ -112,8 +153,31 @@ func TestLoad_ThumbnailDefaultsAndEnvOverrides(t *testing.T) {
 	if cfg.Thumbnail.CacheMaxAge != 48*time.Hour {
 		t.Fatalf("CacheMaxAge = %s, want 48h", cfg.Thumbnail.CacheMaxAge)
 	}
-	if cfg.Thumbnail.CacheDir != "/tmp/garage-ui/thumbnails" {
+	if cfg.Thumbnail.CacheDir != "/tmp/garage-ui/cache/thumbnails" {
 		t.Fatalf("CacheDir = %q", cfg.Thumbnail.CacheDir)
+	}
+	if cfg.Auth.JWTKeyPath != "/tmp/garage-ui/state/jwt-key.pem" {
+		t.Fatalf("JWTKeyPath = %q", cfg.Auth.JWTKeyPath)
+	}
+}
+
+func TestLoad_DataDirDerivesStatePaths(t *testing.T) {
+	resetViper(t)
+	path := writeConfigFile(t, minimalValidYAML)
+	t.Setenv("GARAGE_UI_DATA_DIR", "/var/lib/garage-ui")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Thumbnail.CacheDir != "/var/lib/garage-ui/cache/thumbnails" {
+		t.Errorf("CacheDir = %q", cfg.Thumbnail.CacheDir)
+	}
+	if cfg.ObjectJobs.DatabasePath != "/var/lib/garage-ui/cache/jobs.db" {
+		t.Errorf("DatabasePath = %q", cfg.ObjectJobs.DatabasePath)
+	}
+	if cfg.Auth.JWTKeyPath != "/var/lib/garage-ui/state/jwt-key.pem" {
+		t.Errorf("JWTKeyPath = %q", cfg.Auth.JWTKeyPath)
 	}
 }
 
@@ -374,6 +438,35 @@ func TestValidate(t *testing.T) {
 			wantErrContains: "",
 		},
 		{
+			name: "production rejects all authentication methods disabled",
+			mutate: func(c *Config) {
+				c.Server.Environment = "production"
+				c.Auth.Admin.Enabled = false
+				c.Auth.OIDC.Enabled = false
+				c.Auth.Token.Enabled = false
+			},
+			wantErrContains: "at least one authentication method is required in production",
+		},
+		{
+			name: "production accepts token authentication",
+			mutate: func(c *Config) {
+				c.Server.Environment = "production"
+				c.Auth.Admin.Enabled = false
+				c.Auth.Token.Enabled = true
+			},
+			wantErrContains: "",
+		},
+		{
+			name: "development permits all authentication methods disabled",
+			mutate: func(c *Config) {
+				c.Server.Environment = "development"
+				c.Auth.Admin.Enabled = false
+				c.Auth.OIDC.Enabled = false
+				c.Auth.Token.Enabled = false
+			},
+			wantErrContains: "",
+		},
+		{
 			name: "oidc enabled without client_id",
 			mutate: func(c *Config) {
 				applyValidOIDC(c)
@@ -560,6 +653,8 @@ func TestLoad_GarageTomlOnly(t *testing.T) {
 	resetViper(t)
 	tomlPath := writeToml(t, testGarageToml)
 	missingYaml := filepath.Join(t.TempDir(), "nope.yaml")
+	t.Setenv("GARAGE_UI_AUTH_ADMIN_USERNAME", "admin")
+	t.Setenv("GARAGE_UI_AUTH_ADMIN_PASSWORD", "test-password")
 
 	cfg, err := Load(missingYaml, WithGarageToml(tomlPath))
 	if err != nil {
@@ -616,6 +711,10 @@ garage:
   endpoint: http://custom:3900
   admin_endpoint: http://custom:3903
   admin_token: yaml-wins
+auth:
+  admin:
+    username: admin
+    password: test-password
 `
 	yamlPath := writeConfigFile(t, yaml)
 
@@ -636,6 +735,8 @@ func TestLoad_EnvOverridesToml(t *testing.T) {
 	tomlPath := writeToml(t, testGarageToml)
 	missingYaml := filepath.Join(t.TempDir(), "nope.yaml")
 	t.Setenv("GARAGE_UI_GARAGE_ADMIN_TOKEN", "env-wins")
+	t.Setenv("GARAGE_UI_AUTH_ADMIN_USERNAME", "admin")
+	t.Setenv("GARAGE_UI_AUTH_ADMIN_PASSWORD", "test-password")
 
 	cfg, err := Load(missingYaml, WithGarageToml(tomlPath))
 	if err != nil {
@@ -658,6 +759,8 @@ garage:
   admin_endpoint: http://garage:3903
   admin_token: supersecret
 auth:
+  admin:
+    enabled: false
   oidc:
     enabled: true
     client_id: "garage-ui"
@@ -904,6 +1007,10 @@ garage:
   admin_endpoint: "http://localhost:3903"
   admin_token: "test-token"
 auth:
+  admin:
+    enabled: false
+  token:
+    enabled: true
   oidc:
     enabled: false
     team_attribute_path: "groups"
@@ -955,6 +1062,11 @@ garage:
   endpoint: "http://localhost:3900"
   admin_endpoint: "http://localhost:3903"
   admin_token: "test-token"
+auth:
+  admin:
+    enabled: false
+  token:
+    enabled: true
 `
 	if err := os.WriteFile(cfgFile, []byte(yaml), 0o600); err != nil {
 		t.Fatal(err)
@@ -982,6 +1094,11 @@ garage:
   endpoint: "http://localhost:3900"
   admin_endpoint: "http://localhost:3903"
   admin_token: "test-token"
+auth:
+  admin:
+    enabled: false
+  token:
+    enabled: true
 access_control: {}
 `
 	if err := os.WriteFile(cfgFile, []byte(yaml), 0o600); err != nil {
@@ -1055,10 +1172,12 @@ func TestLoad_MetricsPublic_DefaultsFalse(t *testing.T) {
 
 func TestLoad_MetricsPublic_YAML(t *testing.T) {
 	resetViper(t)
-	path := writeConfigFile(t, minimalValidYAML+`
-auth:
-  metrics_public: true
-`)
+	path := writeConfigFile(t, strings.Replace(
+		minimalValidYAML,
+		"metrics_public: false",
+		"metrics_public: true",
+		1,
+	))
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -1071,10 +1190,7 @@ auth:
 
 func TestLoad_MetricsPublic_EnvOverridesYAML(t *testing.T) {
 	resetViper(t)
-	path := writeConfigFile(t, minimalValidYAML+`
-auth:
-  metrics_public: false
-`)
+	path := writeConfigFile(t, minimalValidYAML)
 	t.Setenv("GARAGE_UI_AUTH_METRICS_PUBLIC", "true")
 
 	cfg, err := Load(path)

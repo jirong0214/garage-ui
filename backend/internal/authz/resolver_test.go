@@ -63,7 +63,7 @@ func TestResolveOIDCAdminRole(t *testing.T) {
 
 func TestResolveNonOIDCIsAdmin(t *testing.T) {
 	r := resolverFixture(t)
-	for _, method := range []string{"admin", "token"} {
+	for _, method := range []string{"admin", "token", "bootstrap-token"} {
 		s := r.Resolve(&auth.UserInfo{Username: "op", AuthMethod: method})
 		if !s.IsAdmin {
 			t.Errorf("method %q must resolve to admin (deferred: non-OIDC team mapping)", method)

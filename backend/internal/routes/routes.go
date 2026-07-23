@@ -65,6 +65,7 @@ func SetupRoutes(
 
 	// Apply authentication middleware to all API routes
 	api.Use(middleware.AuthMiddleware(&cfg.Auth, authService))
+	api.Use(authHandler.RejectCompletedBootstrapSession)
 
 	// Resolve the authz Subject once per request, right after authentication.
 	api.Use(az.ResolveSubject())
@@ -197,14 +198,18 @@ func SetupRoutes(
 		app.Post("/auth/login", authHandler.LoginAdmin)
 	}
 
-	// Token auth login endpoint (only if token auth is enabled)
-	if cfg.Auth.Token.Enabled {
+	// Token login also serves as the one-time local-admin bootstrap mechanism.
+	if cfg.Auth.Token.Enabled || cfg.Auth.Admin.Enabled {
 		app.Post("/auth/login-token", authHandler.LoginToken)
 	}
 
 	// Auth "me" endpoint (if any auth is enabled)
 	if cfg.Auth.Admin.Enabled || cfg.Auth.OIDC.Enabled || cfg.Auth.Token.Enabled {
-		app.Get("/auth/me", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.GetMe)
+		app.Get("/auth/me", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.RejectCompletedBootstrapSession, authHandler.GetMe)
+	}
+	if cfg.Auth.Admin.Enabled {
+		app.Post("/auth/setup-admin", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.RejectCompletedBootstrapSession, authHandler.SetupAdmin)
+		app.Put("/auth/admin-credentials", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.RejectCompletedBootstrapSession, authHandler.UpdateAdminCredentials)
 	}
 
 	// OIDC authentication routes (only if OIDC is enabled)
