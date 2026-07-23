@@ -51,13 +51,16 @@ describe('ObjectsTable', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', {name: 'Copy public URL for summer/photo.jpg'}));
+    const publicURLButton = screen.getByRole('button', {name: 'Copy public URL for summer/photo.jpg'});
+    fireEvent.click(publicURLButton);
     await waitFor(() => {
       expect(copyText).toHaveBeenCalledWith('https://cdn.example.com/summer/photo.jpg');
     });
 
-    expect(screen.getByRole('button', {name: 'Create signed URL for summer/photo.jpg'})).toBeInTheDocument();
-    expect(screen.getByRole('button', {name: 'Download summer/photo.jpg'})).toBeInTheDocument();
+    expect(publicURLButton).toHaveTextContent('Public URL');
+    expect(screen.getByRole('button', {name: 'Create signed URL for summer/photo.jpg'})).toHaveTextContent('Share');
+    expect(screen.getByRole('button', {name: 'Download summer/photo.jpg'})).toHaveTextContent('Download');
+    expect(screen.getByText('summer/photo.jpg').closest('button')).toHaveClass('line-clamp-2');
     expect(screen.queryByText('Storage Class')).not.toBeInTheDocument();
   });
 

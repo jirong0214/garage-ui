@@ -281,7 +281,7 @@ export function ObjectsTable({
     <>
       <div className="overflow-x-auto">
         <TooltipProvider>
-        <Table className="table-fixed min-w-[760px] sm:min-w-[900px]">
+        <Table className="table-fixed min-w-[970px] sm:min-w-[1100px]">
           <TableHeader>
           <TableRow>
             {canDelete && (
@@ -308,25 +308,25 @@ export function ObjectsTable({
               </TableHead>
             )}
           <TableHead
-            className="min-w-[260px] cursor-pointer hover:bg-muted/50"
+            className="w-[300px] cursor-pointer hover:bg-muted/50"
             onClick={() => handleSort('name')}
           >
             Objects {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
           </TableHead>
-          <TableHead className="hidden w-[140px] sm:table-cell">Type</TableHead>
+          <TableHead className="hidden w-[130px] sm:table-cell">Type</TableHead>
           <TableHead
-            className="w-[96px] cursor-pointer hover:bg-muted/50"
+            className="w-[90px] cursor-pointer hover:bg-muted/50"
             onClick={() => handleSort('size')}
           >
             Size {sortColumn === 'size' && (sortDirection === 'asc' ? '↑' : '↓')}
           </TableHead>
           <TableHead
-            className="w-[168px] cursor-pointer hover:bg-muted/50"
+            className="w-[160px] cursor-pointer hover:bg-muted/50"
             onClick={() => handleSort('modified')}
           >
             Modified {sortColumn === 'modified' && (sortDirection === 'asc' ? '↑' : '↓')}
           </TableHead>
-          <TableHead className="w-[176px]">
+          <TableHead className="w-[360px]">
             <span className="sr-only">Actions</span>
           </TableHead>
         </TableRow>
@@ -371,27 +371,29 @@ export function ObjectsTable({
                   )}
                 </TableCell>
               )}
-              <TableCell>
-                <div className="flex items-center gap-2">
+              <TableCell className="w-[300px]">
+                <div className="flex min-w-0 items-center gap-2">
                   <ObjectThumbnail bucketName={bucketName} object={obj} />
                   {obj.isFolder ? (
                     <button
                       onClick={() => onNavigateToFolder(obj.key)}
-                      className="font-medium cursor-pointer underline hover:text-primary"
+                      title={obj.key.replace(currentPath, '').replace(/\/$/, '')}
+                      className="line-clamp-2 min-w-0 flex-1 cursor-pointer break-all text-left font-medium underline hover:text-primary"
                     >
                       {obj.key.replace(currentPath, '').replace(/\/$/, '')}
                     </button>
                   ) : (
                     <button
                       onClick={() => navigate(`/buckets/${bucketName}/objects/${encodeURIComponent(obj.key)}`)}
-                      className="font-medium cursor-pointer hover:underline hover:text-primary"
+                      title={obj.key.replace(currentPath, '')}
+                      className="line-clamp-2 min-w-0 flex-1 cursor-pointer break-all text-left font-medium hover:text-primary hover:underline"
                     >
                       {obj.key.replace(currentPath, '')}
                     </button>
                   )}
                 </div>
               </TableCell>
-              <TableCell className="hidden w-[140px] sm:table-cell">
+              <TableCell className="hidden w-[130px] sm:table-cell">
                 <span
                   className="block truncate text-muted-foreground"
                   title={obj.isFolder ? 'Directory' : (obj.contentType || 'application/octet-stream')}
@@ -399,14 +401,14 @@ export function ObjectsTable({
                   {obj.isFolder ? 'Directory' : (obj.contentType || 'application/octet-stream')}
                 </span>
               </TableCell>
-              <TableCell className="w-[96px]">{obj.isFolder ? null : formatBytes(obj.size)}</TableCell>
-              <TableCell className="w-[168px]">
+              <TableCell className="w-[90px]">{obj.isFolder ? null : formatBytes(obj.size)}</TableCell>
+              <TableCell className="w-[160px]">
                 {obj.lastModified ? (() => {
                   const d = new Date(obj.lastModified);
                   return <span className="text-muted-foreground">{formatObjectModifiedTime(d)}</span>;
                 })() : null}
               </TableCell>
-              <TableCell className="w-[176px]">
+              <TableCell className="w-[360px]">
                 <div className="flex items-center justify-end gap-1">
                   {!obj.isFolder && publicBaseURL && (
                     <Tooltip>
@@ -414,11 +416,13 @@ export function ObjectsTable({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon-sm"
+                          size="sm"
+                          className="px-2 text-[13px]"
                           onClick={() => copyPublicURL(obj.key)}
                           aria-label={`Copy public URL for ${obj.key}`}
                         >
                           <Copy className="h-4 w-4" />
+                          Public URL
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Copy public URL</TooltipContent>
@@ -430,11 +434,13 @@ export function ObjectsTable({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon-sm"
+                          size="sm"
+                          className="px-2 text-[13px]"
                           onClick={() => setShareObject(obj)}
                           aria-label={`Create signed URL for ${obj.key}`}
                         >
                           <Link2 className="h-4 w-4" />
+                          Share
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Create signed URL</TooltipContent>
@@ -446,11 +452,13 @@ export function ObjectsTable({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon-sm"
+                          size="sm"
+                          className="px-2 text-[13px]"
                           onClick={() => downloadObject(bucketName, obj.key)}
                           aria-label={`Download ${obj.key}`}
                         >
                           <Download className="h-4 w-4" />
+                          Download
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Download</TooltipContent>
