@@ -34,7 +34,7 @@ export default function BucketListScreen() {
       contentContainerStyle={buckets.data?.length ? styles.list : styles.empty}
       data={buckets.data ?? []}
       keyExtractor={(item) => item.name ?? ''}
-      ListEmptyComponent={<Text style={styles.emptyText}>{buckets.isPending ? 'Loading…' : t('noBuckets')}</Text>}
+      ListEmptyComponent={<Text style={styles.emptyText}>{buckets.isPending ? t('loading') : t('noBuckets')}</Text>}
       renderItem={({ item }) => (
         <Pressable
           accessibilityRole="button"

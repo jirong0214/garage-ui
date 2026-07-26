@@ -12,6 +12,7 @@ export default function FilesLayout() {
           title: String((route.params as { bucket?: string } | undefined)?.bucket ?? ''),
         })}
       />
+      <Stack.Screen name="preview" options={{ headerBackButtonDisplayMode: 'minimal' }} />
     </Stack>
   );
 }
