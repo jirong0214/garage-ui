@@ -117,7 +117,12 @@ func main() {
 		logger.Fatal().Err(err).Msg("Failed to connect to Garage admin API")
 	}
 	adminService := adminResult.Service
-	capabilitiesHandler := handlers.NewCapabilitiesHandler(adminResult.APIVersion, adminResult.Capabilities, cfg.AccessControl != nil)
+	capabilitiesHandler := handlers.NewCapabilitiesHandler(
+		adminResult.APIVersion,
+		adminResult.Capabilities,
+		cfg.AccessControl != nil,
+		cfg.Auth.Admin.Enabled,
+	)
 
 	logger.Info().Msg("Initializing S3 service")
 	s3Service := services.NewS3Service(&cfg.Garage, adminService)
@@ -277,6 +282,9 @@ func main() {
 		if err := objectJobManager.Close(); err != nil {
 			logger.Error().Err(err).Msg("Failed to close object job manager")
 		}
+	}
+	if err := authService.Close(); err != nil {
+		logger.Error().Err(err).Msg("Failed to close authentication session store")
 	}
 
 	logger.Info().

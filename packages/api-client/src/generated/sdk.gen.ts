@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape } from './client';
 import { client } from './client.gen';
-import type { CancelObjectJobData, CancelObjectJobErrors, CancelObjectJobResponses, CreateObjectJobData, CreateObjectJobErrors, CreateObjectJobResponses, DeleteApiV1BucketsByNameData, DeleteApiV1BucketsByNameErrors, DeleteApiV1BucketsByNameResponses, DeleteApiV1UsersByAccessKeyData, DeleteApiV1UsersByAccessKeyErrors, DeleteApiV1UsersByAccessKeyResponses, DeleteObjectData, DeleteObjectErrors, DeleteObjectResponses, GetApiHealthData, GetApiHealthResponses, GetApiV1BucketsByNameData, GetApiV1BucketsByNameErrors, GetApiV1BucketsByNameResponses, GetApiV1ClusterHealthData, GetApiV1ClusterHealthErrors, GetApiV1ClusterHealthResponses, GetApiV1ClusterNodesByNodeIdData, GetApiV1ClusterNodesByNodeIdErrors, GetApiV1ClusterNodesByNodeIdResponses, GetApiV1ClusterNodesByNodeIdStatisticsData, GetApiV1ClusterNodesByNodeIdStatisticsErrors, GetApiV1ClusterNodesByNodeIdStatisticsResponses, GetApiV1ClusterStatisticsData, GetApiV1ClusterStatisticsErrors, GetApiV1ClusterStatisticsResponses, GetApiV1ClusterStatusData, GetApiV1ClusterStatusErrors, GetApiV1ClusterStatusResponses, GetApiV1MonitoringAdminHealthData, GetApiV1MonitoringAdminHealthErrors, GetApiV1MonitoringAdminHealthResponses, GetApiV1MonitoringDashboardData, GetApiV1MonitoringDashboardErrors, GetApiV1MonitoringDashboardResponses, GetApiV1MonitoringMetricsData, GetApiV1MonitoringMetricsErrors, GetApiV1MonitoringMetricsResponses, GetApiV1UsersByAccessKeyData, GetApiV1UsersByAccessKeyErrors, GetApiV1UsersByAccessKeyResponses, GetApiV1UsersByAccessKeySecretData, GetApiV1UsersByAccessKeySecretErrors, GetApiV1UsersByAccessKeySecretResponses, GetApiV1UsersData, GetApiV1UsersErrors, GetApiV1UsersResponses, GetAuthConfigData, GetAuthConfigErrors, GetAuthConfigResponses, GetCapabilitiesData, GetCapabilitiesErrors, GetCapabilitiesResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetHealthData, GetHealthResponses, GetObjectData, GetObjectErrors, GetObjectJobData, GetObjectJobErrors, GetObjectJobResponses, GetObjectMetadataData, GetObjectMetadataErrors, GetObjectMetadataResponses, GetObjectPresignedUrlData, GetObjectPresignedUrlErrors, GetObjectPresignedUrlResponses, GetObjectPreviewUrlData, GetObjectPreviewUrlErrors, GetObjectPreviewUrlResponses, GetObjectResponses, GetObjectThumbnailData, GetObjectThumbnailErrors, GetObjectThumbnailResponses, HeadObjectData, HeadObjectErrors, HeadObjectResponses, ListBucketsData, ListBucketsErrors, ListBucketsResponses, ListObjectJobFailuresData, ListObjectJobFailuresErrors, ListObjectJobFailuresResponses, ListObjectJobsData, ListObjectJobsErrors, ListObjectJobsResponses, ListObjectsData, ListObjectsErrors, ListObjectsResponses, LoginData, LoginErrors, LoginResponses, PatchApiV1UsersByAccessKeyData, PatchApiV1UsersByAccessKeyErrors, PatchApiV1UsersByAccessKeyResponses, PostApiV1BucketsByBucketDirectoriesData, PostApiV1BucketsByBucketDirectoriesErrors, PostApiV1BucketsByBucketDirectoriesResponses, PostApiV1BucketsByBucketObjectsCopyData, PostApiV1BucketsByBucketObjectsCopyErrors, PostApiV1BucketsByBucketObjectsCopyResponses, PostApiV1BucketsByBucketObjectsData, PostApiV1BucketsByBucketObjectsDeleteMultipleData, PostApiV1BucketsByBucketObjectsDeleteMultipleErrors, PostApiV1BucketsByBucketObjectsDeleteMultipleResponses, PostApiV1BucketsByBucketObjectsErrors, PostApiV1BucketsByBucketObjectsMoveData, PostApiV1BucketsByBucketObjectsMoveErrors, PostApiV1BucketsByBucketObjectsMoveResponses, PostApiV1BucketsByBucketObjectsResponses, PostApiV1BucketsByBucketObjectsUploadMultipleData, PostApiV1BucketsByBucketObjectsUploadMultipleErrors, PostApiV1BucketsByBucketObjectsUploadMultipleResponses, PostApiV1BucketsByNamePermissionsData, PostApiV1BucketsByNamePermissionsErrors, PostApiV1BucketsByNamePermissionsResponses, PostApiV1BucketsData, PostApiV1BucketsErrors, PostApiV1BucketsResponses, PostApiV1UsersData, PostApiV1UsersErrors, PostApiV1UsersResponses, PutApiV1BucketsByNameQuotasData, PutApiV1BucketsByNameQuotasErrors, PutApiV1BucketsByNameQuotasResponses, PutApiV1BucketsByNameWebsiteData, PutApiV1BucketsByNameWebsiteErrors, PutApiV1BucketsByNameWebsiteResponses } from './types.gen';
+import type { CancelObjectJobData, CancelObjectJobErrors, CancelObjectJobResponses, CreateObjectJobData, CreateObjectJobErrors, CreateObjectJobResponses, DeleteApiV1BucketsByNameData, DeleteApiV1BucketsByNameErrors, DeleteApiV1BucketsByNameResponses, DeleteApiV1UsersByAccessKeyData, DeleteApiV1UsersByAccessKeyErrors, DeleteApiV1UsersByAccessKeyResponses, DeleteObjectData, DeleteObjectErrors, DeleteObjectResponses, GetApiHealthData, GetApiHealthResponses, GetApiV1BucketsByNameData, GetApiV1BucketsByNameErrors, GetApiV1BucketsByNameResponses, GetApiV1ClusterHealthData, GetApiV1ClusterHealthErrors, GetApiV1ClusterHealthResponses, GetApiV1ClusterNodesByNodeIdData, GetApiV1ClusterNodesByNodeIdErrors, GetApiV1ClusterNodesByNodeIdResponses, GetApiV1ClusterNodesByNodeIdStatisticsData, GetApiV1ClusterNodesByNodeIdStatisticsErrors, GetApiV1ClusterNodesByNodeIdStatisticsResponses, GetApiV1ClusterStatisticsData, GetApiV1ClusterStatisticsErrors, GetApiV1ClusterStatisticsResponses, GetApiV1ClusterStatusData, GetApiV1ClusterStatusErrors, GetApiV1ClusterStatusResponses, GetApiV1MonitoringAdminHealthData, GetApiV1MonitoringAdminHealthErrors, GetApiV1MonitoringAdminHealthResponses, GetApiV1MonitoringDashboardData, GetApiV1MonitoringDashboardErrors, GetApiV1MonitoringDashboardResponses, GetApiV1MonitoringMetricsData, GetApiV1MonitoringMetricsErrors, GetApiV1MonitoringMetricsResponses, GetApiV1UsersByAccessKeyData, GetApiV1UsersByAccessKeyErrors, GetApiV1UsersByAccessKeyResponses, GetApiV1UsersByAccessKeySecretData, GetApiV1UsersByAccessKeySecretErrors, GetApiV1UsersByAccessKeySecretResponses, GetApiV1UsersData, GetApiV1UsersErrors, GetApiV1UsersResponses, GetAuthConfigData, GetAuthConfigErrors, GetAuthConfigResponses, GetCapabilitiesData, GetCapabilitiesErrors, GetCapabilitiesResponses, GetCurrentUserData, GetCurrentUserErrors, GetCurrentUserResponses, GetHealthData, GetHealthResponses, GetObjectData, GetObjectErrors, GetObjectJobData, GetObjectJobErrors, GetObjectJobResponses, GetObjectMetadataData, GetObjectMetadataErrors, GetObjectMetadataResponses, GetObjectPresignedUrlData, GetObjectPresignedUrlErrors, GetObjectPresignedUrlResponses, GetObjectPreviewUrlData, GetObjectPreviewUrlErrors, GetObjectPreviewUrlResponses, GetObjectResponses, GetObjectThumbnailData, GetObjectThumbnailErrors, GetObjectThumbnailResponses, HeadObjectData, HeadObjectErrors, HeadObjectResponses, ListBucketsData, ListBucketsErrors, ListBucketsResponses, ListDeviceSessionsData, ListDeviceSessionsErrors, ListDeviceSessionsResponses, ListObjectJobFailuresData, ListObjectJobFailuresErrors, ListObjectJobFailuresResponses, ListObjectJobsData, ListObjectJobsErrors, ListObjectJobsResponses, ListObjectsData, ListObjectsErrors, ListObjectsResponses, LoginData, LoginErrors, LoginResponses, LogoutSessionData, LogoutSessionErrors, LogoutSessionResponses, PatchApiV1UsersByAccessKeyData, PatchApiV1UsersByAccessKeyErrors, PatchApiV1UsersByAccessKeyResponses, PostApiV1BucketsByBucketDirectoriesData, PostApiV1BucketsByBucketDirectoriesErrors, PostApiV1BucketsByBucketDirectoriesResponses, PostApiV1BucketsByBucketObjectsCopyData, PostApiV1BucketsByBucketObjectsCopyErrors, PostApiV1BucketsByBucketObjectsCopyResponses, PostApiV1BucketsByBucketObjectsData, PostApiV1BucketsByBucketObjectsDeleteMultipleData, PostApiV1BucketsByBucketObjectsDeleteMultipleErrors, PostApiV1BucketsByBucketObjectsDeleteMultipleResponses, PostApiV1BucketsByBucketObjectsErrors, PostApiV1BucketsByBucketObjectsMoveData, PostApiV1BucketsByBucketObjectsMoveErrors, PostApiV1BucketsByBucketObjectsMoveResponses, PostApiV1BucketsByBucketObjectsResponses, PostApiV1BucketsByBucketObjectsUploadMultipleData, PostApiV1BucketsByBucketObjectsUploadMultipleErrors, PostApiV1BucketsByBucketObjectsUploadMultipleResponses, PostApiV1BucketsByNamePermissionsData, PostApiV1BucketsByNamePermissionsErrors, PostApiV1BucketsByNamePermissionsResponses, PostApiV1BucketsData, PostApiV1BucketsErrors, PostApiV1BucketsResponses, PostApiV1UsersData, PostApiV1UsersErrors, PostApiV1UsersResponses, PutApiV1BucketsByNameQuotasData, PutApiV1BucketsByNameQuotasErrors, PutApiV1BucketsByNameQuotasResponses, PutApiV1BucketsByNameWebsiteData, PutApiV1BucketsByNameWebsiteErrors, PutApiV1BucketsByNameWebsiteResponses, RefreshSessionData, RefreshSessionErrors, RefreshSessionResponses, RevokeAllDeviceSessionsData, RevokeAllDeviceSessionsErrors, RevokeAllDeviceSessionsResponses, RevokeDeviceSessionData, RevokeDeviceSessionErrors, RevokeDeviceSessionResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -540,6 +540,15 @@ export const login = <ThrowOnError extends boolean = false>(options: Options<Log
 });
 
 /**
+ * Log out current device session
+ */
+export const logoutSession = <ThrowOnError extends boolean = false>(options?: Options<LogoutSessionData, ThrowOnError>): RequestResult<LogoutSessionResponses, LogoutSessionErrors, ThrowOnError> => (options?.client ?? client).post<LogoutSessionResponses, LogoutSessionErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/auth/logout',
+    ...options
+});
+
+/**
  * Get current user
  *
  * Returns information about the currently authenticated user
@@ -547,6 +556,47 @@ export const login = <ThrowOnError extends boolean = false>(options: Options<Log
 export const getCurrentUser = <ThrowOnError extends boolean = false>(options?: Options<GetCurrentUserData, ThrowOnError>): RequestResult<GetCurrentUserResponses, GetCurrentUserErrors, ThrowOnError> => (options?.client ?? client).get<GetCurrentUserResponses, GetCurrentUserErrors, ThrowOnError>({
     security: [{ name: 'Authorization', type: 'apiKey' }],
     url: '/auth/me',
+    ...options
+});
+
+/**
+ * Refresh a device session
+ *
+ * Atomically rotates a device refresh token. Reusing any previously rotated token revokes the device session.
+ */
+export const refreshSession = <ThrowOnError extends boolean = false>(options: Options<RefreshSessionData, ThrowOnError>): RequestResult<RefreshSessionResponses, RefreshSessionErrors, ThrowOnError> => (options.client ?? client).post<RefreshSessionResponses, RefreshSessionErrors, ThrowOnError>({
+    url: '/auth/refresh',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Revoke all device sessions
+ */
+export const revokeAllDeviceSessions = <ThrowOnError extends boolean = false>(options?: Options<RevokeAllDeviceSessionsData, ThrowOnError>): RequestResult<RevokeAllDeviceSessionsResponses, RevokeAllDeviceSessionsErrors, ThrowOnError> => (options?.client ?? client).delete<RevokeAllDeviceSessionsResponses, RevokeAllDeviceSessionsErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/auth/sessions',
+    ...options
+});
+
+/**
+ * List device sessions
+ */
+export const listDeviceSessions = <ThrowOnError extends boolean = false>(options?: Options<ListDeviceSessionsData, ThrowOnError>): RequestResult<ListDeviceSessionsResponses, ListDeviceSessionsErrors, ThrowOnError> => (options?.client ?? client).get<ListDeviceSessionsResponses, ListDeviceSessionsErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/auth/sessions',
+    ...options
+});
+
+/**
+ * Revoke a device session
+ */
+export const revokeDeviceSession = <ThrowOnError extends boolean = false>(options: Options<RevokeDeviceSessionData, ThrowOnError>): RequestResult<RevokeDeviceSessionResponses, RevokeDeviceSessionErrors, ThrowOnError> => (options.client ?? client).delete<RevokeDeviceSessionResponses, RevokeDeviceSessionErrors, ThrowOnError>({
+    security: [{ name: 'Authorization', type: 'apiKey' }],
+    url: '/auth/sessions/{id}',
     ...options
 });
 

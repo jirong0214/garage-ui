@@ -9,11 +9,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
+	"time"
 
 	"Noooste/garage-ui/internal/config"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 )
 
@@ -26,6 +29,7 @@ type Service struct {
 	oauth2Config *oauth2.Config
 	oidcClient   *http.Client
 	jwtService   *JWTService
+	sessionStore *deviceSessionStore
 }
 
 // UserInfo represents authenticated user information
@@ -36,6 +40,7 @@ type UserInfo struct {
 	Roles      []string
 	Teams      []string // raw team claim values (team_attribute_path), OIDC only
 	AuthMethod string   // "oidc" | "admin" | "token" | "bootstrap-token"; "" on legacy sessions
+	SessionID  string   // set only for revocable device-session access tokens
 }
 
 // NewAuthService creates a new authentication service
@@ -44,21 +49,35 @@ func NewAuthService(authCfg *config.AuthConfig, serverCfg *config.ServerConfig) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize JWT service: %w", err)
 	}
+	sessionStore, err := openDeviceSessionStore(authCfg.Sessions.DatabasePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize device session store: %w", err)
+	}
 
 	service := &Service{
 		authConfig:   authCfg,
 		serverConfig: serverCfg,
 		jwtService:   jwtService,
+		sessionStore: sessionStore,
 	}
 
 	// Initialize OIDC if enabled
 	if authCfg.OIDC.Enabled {
 		if err := service.initOIDC(); err != nil {
+			sessionStore.Close()
 			return nil, fmt.Errorf("failed to initialize OIDC: %w", err)
 		}
 	}
 
 	return service, nil
+}
+
+// Close releases the persistent device-session database.
+func (a *Service) Close() error {
+	if a == nil {
+		return nil
+	}
+	return a.sessionStore.Close()
 }
 
 // initOIDC initializes the OIDC provider and configuration
@@ -424,12 +443,153 @@ func (a *Service) ValidateSessionToken(tokenString string) (*UserInfo, error) {
 		return nil, err
 	}
 
-	return &UserInfo{
+	userInfo := &UserInfo{
 		Username:   claims.Username,
 		Email:      claims.Email,
 		Name:       claims.Name,
 		Roles:      claims.Roles,
 		Teams:      claims.Teams,
 		AuthMethod: claims.AuthMethod,
+		SessionID:  claims.SessionID,
+	}
+	if claims.SessionID != "" {
+		if err := a.sessionStore.activeForUser(claims.SessionID, userInfo, time.Now()); err != nil {
+			return nil, fmt.Errorf("device session is not active: %w", err)
+		}
+	}
+	return userInfo, nil
+}
+
+// DeviceSessionTokens contains the only plaintext copy of a newly generated
+// refresh token. Callers must return it directly to the client and must never
+// log or persist it.
+type DeviceSessionTokens struct {
+	AccessToken           string
+	RefreshToken          string
+	AccessTokenExpiresAt  time.Time
+	RefreshTokenExpiresAt time.Time
+	Session               DeviceSessionInfo
+	User                  UserInfo
+}
+
+func (a *Service) CreateDeviceSession(userInfo *UserInfo, deviceName, devicePlatform string) (*DeviceSessionTokens, error) {
+	now := time.Now()
+	sessionID := uuid.NewString()
+	refreshToken, refreshHash, err := newRefreshToken(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	accessMaxAge, refreshMaxAge := a.deviceSessionAges()
+	session := DeviceSession{
+		ID:               sessionID,
+		User:             identityCopy(userInfo),
+		DeviceName:       strings.TrimSpace(deviceName),
+		DevicePlatform:   strings.TrimSpace(devicePlatform),
+		CreatedAt:        now,
+		LastUsedAt:       now,
+		ExpiresAt:        now.Add(refreshMaxAge),
+		CurrentTokenHash: refreshHash,
+	}
+	if err := a.sessionStore.create(session); err != nil {
+		return nil, fmt.Errorf("persist device session: %w", err)
+	}
+	accessToken, err := a.jwtService.GenerateTokenForSession(userInfo, int(accessMaxAge/time.Second), sessionID)
+	if err != nil {
+		_ = a.sessionStore.revoke(sessionID, userInfo, now, "access_token_creation_failed")
+		return nil, err
+	}
+	return &DeviceSessionTokens{
+		AccessToken:           accessToken,
+		RefreshToken:          refreshToken,
+		AccessTokenExpiresAt:  now.Add(accessMaxAge),
+		RefreshTokenExpiresAt: session.ExpiresAt,
+		Session:               session.Info(sessionID),
+		User:                  identityCopy(userInfo),
 	}, nil
+}
+
+func (a *Service) RefreshDeviceSession(refreshToken string) (*DeviceSessionTokens, error) {
+	sessionID, presentedHash, err := parseRefreshToken(refreshToken)
+	if err != nil {
+		return nil, err
+	}
+	replacementToken, replacementHash, err := newRefreshToken(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	session, err := a.sessionStore.rotate(sessionID, presentedHash, replacementHash, now)
+	if err != nil {
+		return nil, err
+	}
+	accessMaxAge, _ := a.deviceSessionAges()
+	accessToken, err := a.jwtService.GenerateTokenForSession(&session.User, int(accessMaxAge/time.Second), session.ID)
+	if err != nil {
+		_ = a.sessionStore.revoke(session.ID, &session.User, now, "access_token_creation_failed")
+		return nil, err
+	}
+	return &DeviceSessionTokens{
+		AccessToken:           accessToken,
+		RefreshToken:          replacementToken,
+		AccessTokenExpiresAt:  now.Add(accessMaxAge),
+		RefreshTokenExpiresAt: session.ExpiresAt,
+		Session:               session.Info(session.ID),
+		User:                  identityCopy(&session.User),
+	}, nil
+}
+
+func (a *Service) ListDeviceSessions(userInfo *UserInfo) ([]DeviceSessionInfo, error) {
+	sessions, err := a.sessionStore.listForUser(userInfo, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(sessions, func(i, j int) bool {
+		return sessions[i].LastUsedAt.After(sessions[j].LastUsedAt)
+	})
+	result := make([]DeviceSessionInfo, 0, len(sessions))
+	for i := range sessions {
+		result = append(result, sessions[i].Info(userInfo.SessionID))
+	}
+	return result, nil
+}
+
+func (a *Service) RevokeDeviceSession(userInfo *UserInfo, sessionID string) error {
+	return a.sessionStore.revoke(sessionID, userInfo, time.Now(), "user_revoked")
+}
+
+func (a *Service) RevokeAllDeviceSessions(userInfo *UserInfo) (int, error) {
+	return a.sessionStore.revokeAll(userInfo, time.Now(), "user_revoked_all")
+}
+
+func (a *Service) RevokeCurrentDeviceSession(userInfo *UserInfo) error {
+	if userInfo == nil || userInfo.SessionID == "" {
+		return nil
+	}
+	return a.sessionStore.revoke(userInfo.SessionID, userInfo, time.Now(), "logout")
+}
+
+func (a *Service) deviceSessionAges() (time.Duration, time.Duration) {
+	accessMaxAge := a.authConfig.Sessions.AccessMaxAge
+	if accessMaxAge <= 0 {
+		accessMaxAge = 900
+	}
+	refreshMaxAge := a.authConfig.Sessions.RefreshMaxAge
+	if refreshMaxAge <= accessMaxAge {
+		refreshMaxAge = 2592000
+	}
+	return time.Duration(accessMaxAge) * time.Second, time.Duration(refreshMaxAge) * time.Second
+}
+
+func identityCopy(userInfo *UserInfo) UserInfo {
+	if userInfo == nil {
+		return UserInfo{}
+	}
+	return UserInfo{
+		Username:   userInfo.Username,
+		Email:      userInfo.Email,
+		Name:       userInfo.Name,
+		Roles:      append([]string(nil), userInfo.Roles...),
+		Teams:      append([]string(nil), userInfo.Teams...),
+		AuthMethod: userInfo.AuthMethod,
+	}
 }

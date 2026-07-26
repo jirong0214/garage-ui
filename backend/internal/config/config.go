@@ -83,9 +83,18 @@ type AuthConfig struct {
 	Admin         AdminAuthConfig `mapstructure:"admin"`
 	OIDC          OIDCConfig      `mapstructure:"oidc"`
 	Token         TokenAuthConfig `mapstructure:"token"`
+	Sessions      SessionConfig   `mapstructure:"sessions"`
 	JWTPrivKey    string          `mapstructure:"jwt_private_key"` // Ed25519 private key in PEM format for JWT signing (64 bytes)
 	JWTKeyPath    string          `mapstructure:"jwt_key_path"`    // Persistent Ed25519 key path used when jwt_private_key is empty
 	MetricsPublic bool            `mapstructure:"metrics_public"`  // Expose Prometheus metrics at top-level /metrics without auth
+}
+
+// SessionConfig controls opt-in device sessions. Existing browser logins that
+// do not request a device session keep the historical stateless 24-hour JWT.
+type SessionConfig struct {
+	DatabasePath  string `mapstructure:"database_path"`
+	AccessMaxAge  int    `mapstructure:"access_max_age"`
+	RefreshMaxAge int    `mapstructure:"refresh_max_age"`
 }
 
 // AdminAuthConfig contains admin authentication settings
@@ -243,6 +252,8 @@ func Load(configPath string, opts ...LoadOption) (*Config, error) {
 	viper.SetDefault("logging.level", "info")
 	viper.SetDefault("logging.format", "text")
 	viper.SetDefault("auth.admin.enabled", true)
+	viper.SetDefault("auth.sessions.access_max_age", 900)
+	viper.SetDefault("auth.sessions.refresh_max_age", 2592000)
 	viper.SetDefault("auth.oidc.cookie_name", "garage_session")
 	viper.SetDefault("auth.oidc.cookie_http_only", true)
 	viper.SetDefault("auth.oidc.cookie_same_site", "lax")
@@ -365,6 +376,9 @@ func bindEnvVars() {
 	viper.BindEnv("auth.jwt_private_key", "GARAGE_UI_AUTH_JWT_PRIVATE_KEY")
 	viper.BindEnv("auth.jwt_key_path", "GARAGE_UI_AUTH_JWT_KEY_PATH")
 	viper.BindEnv("auth.metrics_public", "GARAGE_UI_AUTH_METRICS_PUBLIC")
+	viper.BindEnv("auth.sessions.database_path", "GARAGE_UI_AUTH_SESSIONS_DATABASE_PATH")
+	viper.BindEnv("auth.sessions.access_max_age", "GARAGE_UI_AUTH_SESSIONS_ACCESS_MAX_AGE")
+	viper.BindEnv("auth.sessions.refresh_max_age", "GARAGE_UI_AUTH_SESSIONS_REFRESH_MAX_AGE")
 
 	// Token auth config
 	viper.BindEnv("auth.token.enabled", "GARAGE_UI_AUTH_TOKEN_ENABLED")
@@ -414,6 +428,9 @@ func applyDataPathDefaults(cfg *Config) {
 	}
 	if cfg.Auth.JWTKeyPath == "" {
 		cfg.Auth.JWTKeyPath = filepath.Join(cfg.DataDir, "state", "jwt-key.pem")
+	}
+	if cfg.Auth.Sessions.DatabasePath == "" {
+		cfg.Auth.Sessions.DatabasePath = filepath.Join(cfg.DataDir, "state", "auth-sessions.db")
 	}
 }
 
@@ -571,6 +588,24 @@ func (c *Config) Validate() error {
 	// migration path and must be supplied as a pair when used.
 	if (c.Auth.Admin.Username == "") != (c.Auth.Admin.Password == "") {
 		return fmt.Errorf("admin auth username and password are required when either is configured")
+	}
+	if strings.TrimSpace(c.Auth.Sessions.DatabasePath) == "" {
+		c.Auth.Sessions.DatabasePath = filepath.Join(c.DataDir, "state", "auth-sessions.db")
+	}
+	if c.Auth.Sessions.AccessMaxAge == 0 {
+		c.Auth.Sessions.AccessMaxAge = 900
+	}
+	if c.Auth.Sessions.RefreshMaxAge == 0 {
+		c.Auth.Sessions.RefreshMaxAge = 2592000
+	}
+	if c.Auth.Sessions.AccessMaxAge < 0 {
+		return fmt.Errorf("auth sessions access_max_age must be greater than zero")
+	}
+	if c.Auth.Sessions.RefreshMaxAge < 0 {
+		return fmt.Errorf("auth sessions refresh_max_age must be greater than zero")
+	}
+	if c.Auth.Sessions.RefreshMaxAge <= c.Auth.Sessions.AccessMaxAge {
+		return fmt.Errorf("auth sessions refresh_max_age must be greater than access_max_age")
 	}
 
 	// Validate OIDC config if enabled

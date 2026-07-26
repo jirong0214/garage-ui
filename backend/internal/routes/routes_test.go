@@ -127,7 +127,12 @@ func TestRoutes_Registered_NoAuth(t *testing.T) {
 		method, path string
 	}{
 		{"POST", "/auth/login"},
+		{"POST", "/auth/refresh"},
 		{"GET", "/auth/me"},
+		{"POST", "/auth/logout"},
+		{"GET", "/auth/sessions"},
+		{"DELETE", "/auth/sessions"},
+		{"DELETE", "/auth/sessions/session-id"},
 		{"GET", "/auth/oidc/login"},
 		{"GET", "/auth/oidc/callback"},
 		{"POST", "/auth/oidc/logout"},
@@ -144,12 +149,17 @@ func TestRoutes_Registered_AdminOnly(t *testing.T) {
 		c.Auth.Admin.Password = "pw"
 	})
 
-	// /auth/login and /auth/me present; /auth/oidc/* not.
+	// Admin and device-session routes are present; /auth/oidc/* is not.
 	for _, tc := range []struct {
 		method, path string
 	}{
 		{"POST", "/auth/login"},
+		{"POST", "/auth/refresh"},
 		{"GET", "/auth/me"},
+		{"POST", "/auth/logout"},
+		{"GET", "/auth/sessions"},
+		{"DELETE", "/auth/sessions"},
+		{"DELETE", "/auth/sessions/session-id"},
 	} {
 		req := httptest.NewRequest(tc.method, tc.path, nil)
 		resp, err := f.App.Test(req)
@@ -192,6 +202,14 @@ func TestRoutes_AllAPIRoutesRegistered(t *testing.T) {
 	cases := []struct {
 		method, path string
 	}{
+		// Authentication and device sessions
+		{"POST", "/auth/login"},
+		{"POST", "/auth/refresh"},
+		{"GET", "/auth/me"},
+		{"POST", "/auth/logout"},
+		{"GET", "/auth/sessions"},
+		{"DELETE", "/auth/sessions"},
+		{"DELETE", "/auth/sessions/session-id"},
 		// Buckets
 		{"GET", "/api/v1/buckets/"},
 		{"POST", "/api/v1/buckets/"},

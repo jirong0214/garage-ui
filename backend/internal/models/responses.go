@@ -69,9 +69,33 @@ type SessionUser struct {
 }
 
 type LoginResponse struct {
-	Success bool        `json:"success"`
-	Token   string      `json:"token"`
-	User    SessionUser `json:"user"`
+	Success               bool                   `json:"success"`
+	Token                 string                 `json:"token"`
+	RefreshToken          string                 `json:"refresh_token,omitempty"`
+	AccessTokenExpiresAt  *time.Time             `json:"access_token_expires_at,omitempty"`
+	RefreshTokenExpiresAt *time.Time             `json:"refresh_token_expires_at,omitempty"`
+	Session               *DeviceSessionResponse `json:"session,omitempty"`
+	User                  SessionUser            `json:"user"`
+}
+
+type DeviceSessionResponse struct {
+	ID             string     `json:"id"`
+	DeviceName     string     `json:"device_name"`
+	DevicePlatform string     `json:"device_platform,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	LastUsedAt     time.Time  `json:"last_used_at"`
+	ExpiresAt      time.Time  `json:"expires_at"`
+	RevokedAt      *time.Time `json:"revoked_at,omitempty"`
+	Current        bool       `json:"current"`
+}
+
+type DeviceSessionListResponse struct {
+	Sessions []DeviceSessionResponse `json:"sessions"`
+}
+
+type SessionRevocationResponse struct {
+	Success bool `json:"success"`
+	Revoked int  `json:"revoked"`
 }
 
 type CurrentUserResponse struct {
@@ -83,6 +107,8 @@ type CapabilityFeatures struct {
 	ClusterStatistics bool `json:"clusterStatistics"`
 	NodeInfo          bool `json:"nodeInfo"`
 	NodeStatistics    bool `json:"nodeStatistics"`
+	RefreshTokens     bool `json:"refreshTokens"`
+	DeviceSessions    bool `json:"deviceSessions"`
 }
 
 type AccessControlBinding struct {

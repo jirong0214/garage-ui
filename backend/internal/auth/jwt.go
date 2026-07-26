@@ -39,6 +39,7 @@ type SessionClaims struct {
 	Roles      []string `json:"roles"`
 	Teams      []string `json:"teams,omitempty"`
 	AuthMethod string   `json:"auth_method,omitempty"`
+	SessionID  string   `json:"sid,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -227,6 +228,10 @@ func (j *JWTService) cleanupExpiredStates() {
 }
 
 func (j *JWTService) GenerateToken(userInfo *UserInfo, sessionMaxAge int) (string, error) {
+	return j.GenerateTokenForSession(userInfo, sessionMaxAge, "")
+}
+
+func (j *JWTService) GenerateTokenForSession(userInfo *UserInfo, sessionMaxAge int, sessionID string) (string, error) {
 	j.mu.RLock()
 	defer j.mu.RUnlock()
 
@@ -244,6 +249,7 @@ func (j *JWTService) GenerateToken(userInfo *UserInfo, sessionMaxAge int) (strin
 		Roles:      userInfo.Roles,
 		Teams:      userInfo.Teams,
 		AuthMethod: userInfo.AuthMethod,
+		SessionID:  sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(expiresAt),

@@ -30,10 +30,40 @@ clients use only the canonical query-key routes.
 
 ## Authentication
 
-Mobile uses `POST /auth/login` and sends the returned JWT as
-`Authorization: Bearer <token>`. The current JWT has no refresh-token or
-per-device-session support; those capabilities remain required before mobile
-beta. Garage admin tokens and S3 credentials are never mobile API inputs.
+Mobile opts into a revocable device session by sending `device_name` and
+`device_platform` to `POST /auth/login`. The response contains:
+
+- a 15-minute JWT access token;
+- a 30-day opaque refresh token;
+- both expiry timestamps; and
+- the device session identifier.
+
+The refresh token is rotated by `POST /auth/refresh`. Reuse of any already
+rotated token revokes the entire device session. The server persists only a
+SHA-256 hash of each refresh secret, while Mobile stores the complete credential
+bundle only in the platform secure store. Access JWTs issued for device sessions
+carry a session identifier, so `POST /auth/logout`,
+`DELETE /auth/sessions/{id}`, and `DELETE /auth/sessions` invalidate affected
+access tokens immediately. `GET /auth/sessions` lists the caller's device
+sessions.
+
+Existing Web clients remain compatible: omitting both device fields returns the
+historical access-only JWT response and does not create a device session.
+Capabilities advertise the additive `refreshTokens` and `deviceSessions`
+features. Garage admin tokens and S3 credentials are never mobile API inputs.
+
+## Deferred: paginated object search
+
+Prefix browsing supports `continuation_token`, but the current `search`
+parameter performs a bounded recursive scan and does not return a continuation
+token. When the server reports a truncated search result, Mobile must label the
+result as potentially incomplete and must not pretend that another page can be
+loaded.
+
+A future search contract needs an opaque cursor bound to the server, bucket,
+prefix, search term, and stable ordering. It is intentionally deferred rather
+than approximated on the client, because a client-generated offset would cause
+duplicates or omissions while objects change.
 
 ## Additive changes
 

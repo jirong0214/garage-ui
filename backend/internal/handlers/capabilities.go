@@ -14,13 +14,19 @@ type CapabilitiesHandler struct {
 	apiVersion           string
 	capabilities         services.Capabilities
 	accessControlEnabled bool
+	deviceAuthEnabled    bool
 }
 
-func NewCapabilitiesHandler(apiVersion string, capabilities services.Capabilities, accessControlEnabled bool) *CapabilitiesHandler {
+func NewCapabilitiesHandler(apiVersion string, capabilities services.Capabilities, accessControlEnabled bool, deviceAuthEnabled ...bool) *CapabilitiesHandler {
+	deviceAuth := true
+	if len(deviceAuthEnabled) > 0 {
+		deviceAuth = deviceAuthEnabled[0]
+	}
 	return &CapabilitiesHandler{
 		apiVersion:           apiVersion,
 		capabilities:         capabilities,
 		accessControlEnabled: accessControlEnabled,
+		deviceAuthEnabled:    deviceAuth,
 	}
 }
 
@@ -58,6 +64,8 @@ func (h *CapabilitiesHandler) GetCapabilities(c fiber.Ctx) error {
 			ClusterStatistics: h.capabilities.ClusterStatistics,
 			NodeInfo:          h.capabilities.NodeInfo,
 			NodeStatistics:    h.capabilities.NodeStatistics,
+			RefreshTokens:     h.deviceAuthEnabled,
+			DeviceSessions:    h.deviceAuthEnabled,
 		},
 		AccessControl: ac,
 	}))

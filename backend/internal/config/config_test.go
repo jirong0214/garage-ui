@@ -179,6 +179,32 @@ func TestLoad_DataDirDerivesStatePaths(t *testing.T) {
 	if cfg.Auth.JWTKeyPath != "/var/lib/garage-ui/state/jwt-key.pem" {
 		t.Errorf("JWTKeyPath = %q", cfg.Auth.JWTKeyPath)
 	}
+	if cfg.Auth.Sessions.DatabasePath != "/var/lib/garage-ui/state/auth-sessions.db" {
+		t.Errorf("Sessions.DatabasePath = %q", cfg.Auth.Sessions.DatabasePath)
+	}
+	if cfg.Auth.Sessions.AccessMaxAge != 900 || cfg.Auth.Sessions.RefreshMaxAge != 2592000 {
+		t.Errorf("session ages = (%d, %d)", cfg.Auth.Sessions.AccessMaxAge, cfg.Auth.Sessions.RefreshMaxAge)
+	}
+}
+
+func TestLoad_DeviceSessionEnvOverrides(t *testing.T) {
+	resetViper(t)
+	path := writeConfigFile(t, minimalValidYAML)
+	databasePath := filepath.Join(t.TempDir(), "sessions.db")
+	t.Setenv("GARAGE_UI_AUTH_SESSIONS_DATABASE_PATH", databasePath)
+	t.Setenv("GARAGE_UI_AUTH_SESSIONS_ACCESS_MAX_AGE", "1200")
+	t.Setenv("GARAGE_UI_AUTH_SESSIONS_REFRESH_MAX_AGE", "5184000")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Auth.Sessions.DatabasePath != databasePath {
+		t.Fatalf("DatabasePath = %q", cfg.Auth.Sessions.DatabasePath)
+	}
+	if cfg.Auth.Sessions.AccessMaxAge != 1200 || cfg.Auth.Sessions.RefreshMaxAge != 5184000 {
+		t.Fatalf("session ages = (%d, %d)", cfg.Auth.Sessions.AccessMaxAge, cfg.Auth.Sessions.RefreshMaxAge)
+	}
 }
 
 func TestLoad_ObjectJobDefaultsAndEnvOverrides(t *testing.T) {
@@ -436,6 +462,21 @@ func TestValidate(t *testing.T) {
 				c.Auth.Admin.Password = ""
 			},
 			wantErrContains: "",
+		},
+		{
+			name: "negative device access lifetime rejected",
+			mutate: func(c *Config) {
+				c.Auth.Sessions.AccessMaxAge = -1
+			},
+			wantErrContains: "auth sessions access_max_age must be greater than zero",
+		},
+		{
+			name: "refresh lifetime must exceed access lifetime",
+			mutate: func(c *Config) {
+				c.Auth.Sessions.AccessMaxAge = 900
+				c.Auth.Sessions.RefreshMaxAge = 900
+			},
+			wantErrContains: "refresh_max_age must be greater than access_max_age",
 		},
 		{
 			name: "production rejects all authentication methods disabled",

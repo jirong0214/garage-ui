@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 
 	"Noooste/garage-ui/internal/auth"
 	"Noooste/garage-ui/internal/config"
+	"Noooste/garage-ui/internal/models"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -42,6 +44,7 @@ func newAuthTestApp(t *testing.T, cfg *config.Config) (*fiber.App, *AuthHandler)
 	app := fiber.New()
 	app.Get("/auth/config", h.GetAuthConfig)
 	app.Post("/auth/login", h.LoginAdmin)
+	app.Post("/auth/refresh", h.RefreshSession)
 	app.Get("/auth/me", h.GetMe)
 	return app, h
 }
@@ -595,5 +598,221 @@ func TestGetMe_NoLocalsReturns401(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", resp.StatusCode)
+	}
+}
+
+func TestLoginAdmin_DeviceSessionRefreshRotationAndCompatibility(t *testing.T) {
+	cfg := &config.Config{
+		DataDir: t.TempDir(),
+		Auth: config.AuthConfig{
+			Admin: config.AdminAuthConfig{Enabled: true, Username: "admin", Password: "correct-password"},
+		},
+	}
+	app, handler := newAuthTestApp(t, cfg)
+
+	legacyReq := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(`{"username":"admin","password":"correct-password"}`))
+	legacyReq.Header.Set("Content-Type", "application/json")
+	legacyResp, err := app.Test(legacyReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer legacyResp.Body.Close()
+	var legacy map[string]any
+	if err := json.NewDecoder(legacyResp.Body).Decode(&legacy); err != nil {
+		t.Fatal(err)
+	}
+	if legacyResp.StatusCode != http.StatusOK {
+		t.Fatalf("legacy login status = %d", legacyResp.StatusCode)
+	}
+	if _, exists := legacy["refresh_token"]; exists {
+		t.Fatal("legacy Web login unexpectedly received a refresh token")
+	}
+
+	deviceReq := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(`{"username":"admin","password":"correct-password","device_name":"iPhone SE","device_platform":"ios"}`))
+	deviceReq.Header.Set("Content-Type", "application/json")
+	deviceResp, err := app.Test(deviceReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer deviceResp.Body.Close()
+	var initial models.LoginResponse
+	if err := json.NewDecoder(deviceResp.Body).Decode(&initial); err != nil {
+		t.Fatal(err)
+	}
+	if deviceResp.StatusCode != http.StatusOK || initial.Token == "" || initial.RefreshToken == "" || initial.Session == nil {
+		t.Fatalf("device login = status %d body %+v", deviceResp.StatusCode, initial)
+	}
+	if initial.Session.DeviceName != "iPhone SE" || initial.Session.DevicePlatform != "ios" {
+		t.Fatalf("session = %+v", initial.Session)
+	}
+
+	refreshReq := httptest.NewRequest(http.MethodPost, "/auth/refresh", strings.NewReader(`{"refresh_token":"`+initial.RefreshToken+`"}`))
+	refreshReq.Header.Set("Content-Type", "application/json")
+	refreshResp, err := app.Test(refreshReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer refreshResp.Body.Close()
+	var rotated models.LoginResponse
+	if err := json.NewDecoder(refreshResp.Body).Decode(&rotated); err != nil {
+		t.Fatal(err)
+	}
+	if refreshResp.StatusCode != http.StatusOK || rotated.RefreshToken == initial.RefreshToken {
+		t.Fatalf("refresh = status %d body %+v", refreshResp.StatusCode, rotated)
+	}
+
+	replayReq := httptest.NewRequest(http.MethodPost, "/auth/refresh", strings.NewReader(`{"refresh_token":"`+initial.RefreshToken+`"}`))
+	replayReq.Header.Set("Content-Type", "application/json")
+	replayResp, err := app.Test(replayReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer replayResp.Body.Close()
+	if replayResp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("replay status = %d, want 401", replayResp.StatusCode)
+	}
+	if _, err := handler.authService.ValidateSessionToken(rotated.Token); !errors.Is(err, auth.ErrDeviceSessionRevoked) {
+		t.Fatalf("rotated access remains valid after replay: %v", err)
+	}
+}
+
+func TestLoginAdmin_DevicePlatformWithoutNameRejected(t *testing.T) {
+	cfg := &config.Config{
+		DataDir: t.TempDir(),
+		Auth: config.AuthConfig{
+			Admin: config.AdminAuthConfig{Enabled: true, Username: "admin", Password: "correct-password"},
+		},
+	}
+	app, _ := newAuthTestApp(t, cfg)
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(`{"username":"admin","password":"correct-password","device_platform":"ios"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", resp.StatusCode)
+	}
+}
+
+func TestDeviceSessionHandlersListRevokeAndLogout(t *testing.T) {
+	cfg := &config.Config{DataDir: t.TempDir()}
+	svc := newAuthTestService(t, config.AdminAuthConfig{})
+	defer svc.Close()
+	handler := NewAuthHandler(cfg, svc)
+	user := &auth.UserInfo{Username: "admin", AuthMethod: "admin"}
+	first, err := svc.CreateDeviceSession(user, "Phone", "ios")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := svc.CreateDeviceSession(user, "Tablet", "ios")
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentUser, err := svc.ValidateSessionToken(first.AccessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	app := fiber.New()
+	seedUser := func(c fiber.Ctx) error {
+		c.Locals("userInfo", currentUser)
+		return c.Next()
+	}
+	app.Get("/auth/sessions", seedUser, handler.ListDeviceSessions)
+	app.Delete("/auth/sessions/:id", seedUser, handler.RevokeDeviceSession)
+	app.Delete("/auth/sessions", seedUser, handler.RevokeAllDeviceSessions)
+	app.Post("/auth/logout", seedUser, handler.Logout)
+
+	listResp, err := app.Test(httptest.NewRequest(http.MethodGet, "/auth/sessions", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listResp.Body.Close()
+	var list models.DeviceSessionListResponse
+	if err := json.NewDecoder(listResp.Body).Decode(&list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Sessions) != 2 {
+		t.Fatalf("sessions = %d, want 2", len(list.Sessions))
+	}
+	currentCount := 0
+	for _, session := range list.Sessions {
+		if session.Current {
+			currentCount++
+		}
+	}
+	if currentCount != 1 {
+		t.Fatalf("current sessions = %d, want 1", currentCount)
+	}
+
+	revokeResp, err := app.Test(httptest.NewRequest(http.MethodDelete, "/auth/sessions/"+second.Session.ID, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer revokeResp.Body.Close()
+	if revokeResp.StatusCode != http.StatusOK {
+		t.Fatalf("revoke status = %d", revokeResp.StatusCode)
+	}
+	if _, err := svc.RefreshDeviceSession(second.RefreshToken); !errors.Is(err, auth.ErrDeviceSessionRevoked) {
+		t.Fatalf("revoked refresh error = %v", err)
+	}
+
+	logoutResp, err := app.Test(httptest.NewRequest(http.MethodPost, "/auth/logout", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer logoutResp.Body.Close()
+	if logoutResp.StatusCode != http.StatusOK {
+		t.Fatalf("logout status = %d", logoutResp.StatusCode)
+	}
+	if _, err := svc.ValidateSessionToken(first.AccessToken); !errors.Is(err, auth.ErrDeviceSessionRevoked) {
+		t.Fatalf("current access after logout error = %v", err)
+	}
+}
+
+func TestUpdateAdminCredentialsRevokesExistingDeviceSessions(t *testing.T) {
+	cfg := &config.Config{
+		DataDir: t.TempDir(),
+		Auth: config.AuthConfig{
+			Admin: config.AdminAuthConfig{
+				Enabled:  true,
+				Username: "old-admin",
+				Password: "old-password-value",
+			},
+		},
+	}
+	svc := newAuthTestService(t, cfg.Auth.Admin)
+	defer svc.Close()
+	handler := NewAuthHandler(cfg, svc)
+	user := &auth.UserInfo{Username: "old-admin", AuthMethod: "admin"}
+	device, err := svc.CreateDeviceSession(user, "Phone", "ios")
+	if err != nil {
+		t.Fatal(err)
+	}
+	currentUser, err := svc.ValidateSessionToken(device.AccessToken)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	app := fiber.New()
+	app.Put("/auth/admin-credentials", func(c fiber.Ctx) error {
+		c.Locals("userInfo", currentUser)
+		return handler.UpdateAdminCredentials(c)
+	})
+	req := httptest.NewRequest(http.MethodPut, "/auth/admin-credentials", strings.NewReader(`{"username":"new-admin","current_password":"old-password-value","new_password":"new-password-value"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d body=%s", resp.StatusCode, body)
+	}
+	if _, err := svc.ValidateSessionToken(device.AccessToken); !errors.Is(err, auth.ErrDeviceSessionRevoked) {
+		t.Fatalf("old device access after credential change error = %v", err)
 	}
 }

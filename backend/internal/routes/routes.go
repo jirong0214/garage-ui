@@ -210,6 +210,7 @@ func SetupRoutes(
 	// Admin auth login endpoint (only if admin is enabled)
 	if cfg.Auth.Admin.Enabled {
 		app.Post("/auth/login", authHandler.LoginAdmin)
+		app.Post("/auth/refresh", authHandler.RefreshSession)
 	}
 
 	// Token login also serves as the one-time local-admin bootstrap mechanism.
@@ -220,6 +221,10 @@ func SetupRoutes(
 	// Auth "me" endpoint (if any auth is enabled)
 	if cfg.Auth.Admin.Enabled || cfg.Auth.OIDC.Enabled || cfg.Auth.Token.Enabled {
 		app.Get("/auth/me", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.RejectCompletedBootstrapSession, authHandler.GetMe)
+		app.Post("/auth/logout", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.RejectCompletedBootstrapSession, authHandler.Logout)
+		app.Get("/auth/sessions", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.RejectCompletedBootstrapSession, authHandler.ListDeviceSessions)
+		app.Delete("/auth/sessions", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.RejectCompletedBootstrapSession, authHandler.RevokeAllDeviceSessions)
+		app.Delete("/auth/sessions/:id", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.RejectCompletedBootstrapSession, authHandler.RevokeDeviceSession)
 	}
 	if cfg.Auth.Admin.Enabled {
 		app.Post("/auth/setup-admin", middleware.AuthMiddleware(&cfg.Auth, authService), authHandler.RejectCompletedBootstrapSession, authHandler.SetupAdmin)

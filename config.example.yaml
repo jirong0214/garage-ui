@@ -53,6 +53,14 @@ auth:
   jwt_private_key: "" # Optional PEM-encoded Ed25519 private key
   jwt_key_path: "" # Defaults to <data_dir>/state/jwt-key.pem
 
+  # Opt-in mobile/device sessions. Browser logins that omit device_name keep
+  # the existing access-only JWT response. Refresh token plaintext is returned
+  # only once and its hash is persisted in the database below.
+  sessions:
+    database_path: "" # Defaults to <data_dir>/state/auth-sessions.db
+    access_max_age: 900 # Device access token lifetime in seconds (15 minutes)
+    refresh_max_age: 2592000 # Device refresh token lifetime in seconds (30 days)
+
   # Expose Prometheus metrics at top-level /metrics WITHOUT authentication.
   # Needed for Prometheus to scrape when auth (admin/token/oidc) is enabled.
   # WARNING: exposes operational cluster telemetry (no object data or secrets)

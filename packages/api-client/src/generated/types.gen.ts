@@ -5,8 +5,14 @@ export type ClientOptions = {
 };
 
 export type HandlersLoginBasicRequest = {
+    device_name?: string;
+    device_platform?: string;
     password: string;
     username: string;
+};
+
+export type HandlersRefreshSessionRequest = {
+    refresh_token: string;
 };
 
 export type ModelsApiError = {
@@ -117,8 +123,10 @@ export type ModelsCapabilitiesResponse = {
 
 export type ModelsCapabilityFeatures = {
     clusterStatistics?: boolean;
+    deviceSessions?: boolean;
     nodeInfo?: boolean;
     nodeStatistics?: boolean;
+    refreshTokens?: boolean;
 };
 
 export type ModelsClusterStatistics = {
@@ -156,6 +164,21 @@ export type ModelsDashboardMetrics = {
     usageByBucket?: Array<ModelsBucketUsage>;
 };
 
+export type ModelsDeviceSessionListResponse = {
+    sessions?: Array<ModelsDeviceSessionResponse>;
+};
+
+export type ModelsDeviceSessionResponse = {
+    created_at?: string;
+    current?: boolean;
+    device_name?: string;
+    device_platform?: string;
+    expires_at?: string;
+    id?: string;
+    last_used_at?: string;
+    revoked_at?: string;
+};
+
 export type ModelsGarageBucketInfo = {
     bytes?: number;
     created?: string;
@@ -190,6 +213,10 @@ export type ModelsHealthResponse = {
 };
 
 export type ModelsLoginResponse = {
+    access_token_expires_at?: string;
+    refresh_token?: string;
+    refresh_token_expires_at?: string;
+    session?: ModelsDeviceSessionResponse;
     success?: boolean;
     token?: string;
     user?: ModelsSessionUser;
@@ -341,6 +368,11 @@ export type ModelsPresignedUrlResponse = {
 export type ModelsPreviewUrlResponse = {
     expires_at?: string;
     url?: string;
+};
+
+export type ModelsSessionRevocationResponse = {
+    revoked?: number;
+    success?: boolean;
 };
 
 export type ModelsSessionUser = {
@@ -2276,6 +2308,35 @@ export type LoginResponses = {
 
 export type LoginResponse = LoginResponses[keyof LoginResponses];
 
+export type LogoutSessionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/logout';
+};
+
+export type LogoutSessionErrors = {
+    /**
+     * Unauthorized
+     */
+    401: ModelsApiResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ModelsApiResponse;
+};
+
+export type LogoutSessionError = LogoutSessionErrors[keyof LogoutSessionErrors];
+
+export type LogoutSessionResponses = {
+    /**
+     * OK
+     */
+    200: ModelsSessionRevocationResponse;
+};
+
+export type LogoutSessionResponse = LogoutSessionResponses[keyof LogoutSessionResponses];
+
 export type GetCurrentUserData = {
     body?: never;
     path?: never;
@@ -2300,6 +2361,142 @@ export type GetCurrentUserResponses = {
 };
 
 export type GetCurrentUserResponse = GetCurrentUserResponses[keyof GetCurrentUserResponses];
+
+export type RefreshSessionData = {
+    /**
+     * Refresh token
+     */
+    body: HandlersRefreshSessionRequest;
+    path?: never;
+    query?: never;
+    url: '/auth/refresh';
+};
+
+export type RefreshSessionErrors = {
+    /**
+     * Bad Request
+     */
+    400: ModelsApiResponse;
+    /**
+     * Unauthorized
+     */
+    401: ModelsApiResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ModelsApiResponse;
+};
+
+export type RefreshSessionError = RefreshSessionErrors[keyof RefreshSessionErrors];
+
+export type RefreshSessionResponses = {
+    /**
+     * OK
+     */
+    200: ModelsLoginResponse;
+};
+
+export type RefreshSessionResponse = RefreshSessionResponses[keyof RefreshSessionResponses];
+
+export type RevokeAllDeviceSessionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/sessions';
+};
+
+export type RevokeAllDeviceSessionsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: ModelsApiResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ModelsApiResponse;
+};
+
+export type RevokeAllDeviceSessionsError = RevokeAllDeviceSessionsErrors[keyof RevokeAllDeviceSessionsErrors];
+
+export type RevokeAllDeviceSessionsResponses = {
+    /**
+     * OK
+     */
+    200: ModelsSessionRevocationResponse;
+};
+
+export type RevokeAllDeviceSessionsResponse = RevokeAllDeviceSessionsResponses[keyof RevokeAllDeviceSessionsResponses];
+
+export type ListDeviceSessionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/sessions';
+};
+
+export type ListDeviceSessionsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: ModelsApiResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ModelsApiResponse;
+};
+
+export type ListDeviceSessionsError = ListDeviceSessionsErrors[keyof ListDeviceSessionsErrors];
+
+export type ListDeviceSessionsResponses = {
+    /**
+     * OK
+     */
+    200: ModelsDeviceSessionListResponse;
+};
+
+export type ListDeviceSessionsResponse = ListDeviceSessionsResponses[keyof ListDeviceSessionsResponses];
+
+export type RevokeDeviceSessionData = {
+    body?: never;
+    path: {
+        /**
+         * Device session ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/auth/sessions/{id}';
+};
+
+export type RevokeDeviceSessionErrors = {
+    /**
+     * Unauthorized
+     */
+    401: ModelsApiResponse;
+    /**
+     * Forbidden
+     */
+    403: ModelsApiResponse;
+    /**
+     * Not Found
+     */
+    404: ModelsApiResponse;
+    /**
+     * Internal Server Error
+     */
+    500: ModelsApiResponse;
+};
+
+export type RevokeDeviceSessionError = RevokeDeviceSessionErrors[keyof RevokeDeviceSessionErrors];
+
+export type RevokeDeviceSessionResponses = {
+    /**
+     * OK
+     */
+    200: ModelsSessionRevocationResponse;
+};
+
+export type RevokeDeviceSessionResponse = RevokeDeviceSessionResponses[keyof RevokeDeviceSessionResponses];
 
 export type GetHealthData = {
     body?: never;

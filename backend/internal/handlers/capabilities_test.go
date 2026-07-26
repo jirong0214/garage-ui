@@ -32,8 +32,12 @@ func TestCapabilities_V2(t *testing.T) {
 	var body struct {
 		Success bool `json:"success"`
 		Data    struct {
-			GarageApiVersion string                `json:"garageApiVersion"`
-			Features         services.Capabilities `json:"features"`
+			GarageApiVersion string `json:"garageApiVersion"`
+			Features         struct {
+				services.Capabilities
+				RefreshTokens  bool `json:"refreshTokens"`
+				DeviceSessions bool `json:"deviceSessions"`
+			} `json:"features"`
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
@@ -47,6 +51,9 @@ func TestCapabilities_V2(t *testing.T) {
 	}
 	if !body.Data.Features.ClusterStatistics || !body.Data.Features.NodeInfo || !body.Data.Features.NodeStatistics {
 		t.Errorf("features = %+v, want all true", body.Data.Features)
+	}
+	if !body.Data.Features.RefreshTokens || !body.Data.Features.DeviceSessions {
+		t.Errorf("device auth features = %+v, want true", body.Data.Features)
 	}
 }
 
@@ -76,6 +83,33 @@ func TestCapabilities_V1(t *testing.T) {
 	}
 	if body.Data.Features.ClusterStatistics || body.Data.Features.NodeInfo || body.Data.Features.NodeStatistics {
 		t.Errorf("features = %+v, want all false", body.Data.Features)
+	}
+}
+
+func TestCapabilities_DeviceAuthDisabled(t *testing.T) {
+	app := fiber.New()
+	h := NewCapabilitiesHandler("v2", services.CapabilitiesV2(), false, false)
+	app.Get("/capabilities", h.GetCapabilities)
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/capabilities", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var body struct {
+		Data struct {
+			Features struct {
+				RefreshTokens  bool `json:"refreshTokens"`
+				DeviceSessions bool `json:"deviceSessions"`
+			} `json:"features"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Data.Features.RefreshTokens || body.Data.Features.DeviceSessions {
+		t.Fatalf("device auth features = %+v, want false", body.Data.Features)
 	}
 }
 

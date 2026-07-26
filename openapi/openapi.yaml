@@ -2,6 +2,10 @@ basePath: /
 definitions:
   handlers.LoginBasicRequest:
     properties:
+      device_name:
+        type: string
+      device_platform:
+        type: string
       password:
         type: string
       username:
@@ -9,6 +13,13 @@ definitions:
     required:
     - password
     - username
+    type: object
+  handlers.RefreshSessionRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
     type: object
   models.APIError:
     properties:
@@ -186,9 +197,13 @@ definitions:
     properties:
       clusterStatistics:
         type: boolean
+      deviceSessions:
+        type: boolean
       nodeInfo:
         type: boolean
       nodeStatistics:
+        type: boolean
+      refreshTokens:
         type: boolean
     type: object
   models.ClusterStatistics:
@@ -261,6 +276,32 @@ definitions:
           $ref: '#/definitions/models.BucketUsage'
         type: array
     type: object
+  models.DeviceSessionListResponse:
+    properties:
+      sessions:
+        items:
+          $ref: '#/definitions/models.DeviceSessionResponse'
+        type: array
+    type: object
+  models.DeviceSessionResponse:
+    properties:
+      created_at:
+        type: string
+      current:
+        type: boolean
+      device_name:
+        type: string
+      device_platform:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      last_used_at:
+        type: string
+      revoked_at:
+        type: string
+    type: object
   models.GarageBucketInfo:
     properties:
       bytes:
@@ -324,6 +365,14 @@ definitions:
     type: object
   models.LoginResponse:
     properties:
+      access_token_expires_at:
+        type: string
+      refresh_token:
+        type: string
+      refresh_token_expires_at:
+        type: string
+      session:
+        $ref: '#/definitions/models.DeviceSessionResponse'
       success:
         type: boolean
       token:
@@ -604,6 +653,13 @@ definitions:
         type: string
       url:
         type: string
+    type: object
+  models.SessionRevocationResponse:
+    properties:
+      revoked:
+        type: integer
+      success:
+        type: boolean
     type: object
   models.SessionUser:
     properties:
@@ -2857,6 +2913,29 @@ paths:
       summary: Admin auth login
       tags:
       - auth
+  /auth/logout:
+    post:
+      operationId: logoutSession
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SessionRevocationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Log out current device session
+      tags:
+      - auth
   /auth/me:
     get:
       description: Returns information about the currently authenticated user
@@ -2875,6 +2954,124 @@ paths:
       security:
       - BearerAuth: []
       summary: Get current user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Atomically rotates a device refresh token. Reusing any previously
+        rotated token revokes the device session.
+      operationId: refreshSession
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RefreshSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      summary: Refresh a device session
+      tags:
+      - auth
+  /auth/sessions:
+    delete:
+      operationId: revokeAllDeviceSessions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SessionRevocationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke all device sessions
+      tags:
+      - auth
+    get:
+      operationId: listDeviceSessions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.DeviceSessionListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List device sessions
+      tags:
+      - auth
+  /auth/sessions/{id}:
+    delete:
+      operationId: revokeDeviceSession
+      parameters:
+      - description: Device session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SessionRevocationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke a device session
       tags:
       - auth
   /health:
