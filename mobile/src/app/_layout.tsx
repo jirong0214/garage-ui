@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { router, Stack, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -17,11 +17,21 @@ export default function RootLayout() {
       }),
   );
   const bootstrap = useSessionStore((state) => state.bootstrap);
+  const authenticated = useSessionStore((state) => state.authenticated);
+  const ready = useSessionStore((state) => state.ready);
+  const server = useSessionStore((state) => state.server);
   const colorScheme = useColorScheme();
+  const segments = useSegments();
 
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
+
+  useEffect(() => {
+    if (ready && server && !authenticated && segments[0] === '(tabs)') {
+      router.replace('/login');
+    }
+  }, [authenticated, ready, segments, server]);
 
   return (
     <QueryClientProvider client={queryClient}>

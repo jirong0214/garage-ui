@@ -14,6 +14,12 @@ import {
 } from '@garage-ui/api-client';
 
 import { authStorage } from '@/features/auth/session/auth-storage';
+import { credentialsFromResponse } from '@/features/auth/session/Models/session-response';
+import { currentDeviceSessionDescription } from '@/features/auth/session/Services/device-description-service';
+import {
+  authenticatedClient,
+  authorizationHeaders,
+} from '@/features/auth/session/Services/session-service';
 import type { ServerProfile } from '@/features/server/configuration/server-model';
 
 import { toApiError } from './api-error';
@@ -29,12 +35,6 @@ function unwrap<T>(result: Result<T>): T {
 
 function client(baseUrl: string) {
   return createClient({ baseUrl });
-}
-
-async function authorization(profile: ServerProfile): Promise<Record<string, string>> {
-  const token = await authStorage.getToken(profile.id);
-  if (!token) throw toApiError({ message: 'Your session has expired. Please sign in again.' });
-  return { Authorization: `Bearer ${token}` };
 }
 
 export async function testServer(baseUrl: string): Promise<{
@@ -58,21 +58,31 @@ export async function testServer(baseUrl: string): Promise<{
 }
 
 export async function signIn(profile: ServerProfile, username: string, password: string): Promise<void> {
+  const device = currentDeviceSessionDescription();
   const result = await login({
     client: client(profile.baseUrl),
-    body: { username, password },
+    body: {
+      username,
+      password,
+      device_name: device.deviceName,
+      device_platform: device.devicePlatform,
+    },
   });
   const body = unwrap(result);
   if (!body.success || !body.token) {
     throw toApiError({ message: 'The server did not return a valid session.' }, result.response);
   }
-  await authStorage.setToken(profile.id, body.token);
+  if (body.refresh_token) {
+    await authStorage.setSession(profile.id, credentialsFromResponse(body));
+  } else {
+    await authStorage.setToken(profile.id, body.token);
+  }
 }
 
 export async function fetchCapabilities(profile: ServerProfile): Promise<ModelsCapabilitiesResponse> {
   const result = await getCapabilities({
-    client: client(profile.baseUrl),
-    headers: await authorization(profile),
+    client: authenticatedClient(profile),
+    headers: await authorizationHeaders(profile),
   });
   const envelope = unwrap(result);
   if (!envelope.success || !envelope.data) throw toApiError(envelope, result.response);
@@ -81,8 +91,8 @@ export async function fetchCapabilities(profile: ServerProfile): Promise<ModelsC
 
 export async function fetchBuckets(profile: ServerProfile): Promise<ModelsBucketInfo[]> {
   const result = await listBuckets({
-    client: client(profile.baseUrl),
-    headers: await authorization(profile),
+    client: authenticatedClient(profile),
+    headers: await authorizationHeaders(profile),
   });
   const envelope = unwrap(result);
   if (!envelope.success || !envelope.data) throw toApiError(envelope, result.response);
@@ -100,8 +110,8 @@ export async function fetchObjects(
   } = {},
 ): Promise<ModelsObjectListResponse> {
   const result = await listObjects({
-    client: client(profile.baseUrl),
-    headers: await authorization(profile),
+    client: authenticatedClient(profile),
+    headers: await authorizationHeaders(profile),
     path: { bucket },
     query: {
       prefix: options.prefix ?? '',

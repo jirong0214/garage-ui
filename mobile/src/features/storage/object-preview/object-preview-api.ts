@@ -1,12 +1,15 @@
 import {
-  createClient,
   getObjectMetadata,
   getObjectPreviewUrl,
   type ModelsObjectInfo,
 } from '@garage-ui/api-client';
 import type { ImageSource } from 'expo-image';
 
-import { authStorage } from '@/features/auth/session/auth-storage';
+import {
+  authenticatedClient,
+  authenticatedFetch,
+  authorizationHeaders,
+} from '@/features/auth/session/Services/session-service';
 import type { ServerProfile } from '@/features/server/configuration/server-model';
 import { toApiError } from '@/infrastructure/api/api-error';
 import { objectKeyQuery } from '@/infrastructure/api/object-key';
@@ -22,12 +25,6 @@ function unwrap<T>(result: Result<T>): T {
   return result.data;
 }
 
-async function authorizedHeaders(profile: ServerProfile): Promise<Record<string, string>> {
-  const token = await authStorage.getToken(profile.id);
-  if (!token) throw toApiError({ message: 'Your session has expired. Please sign in again.' });
-  return { Authorization: `Bearer ${token}` };
-}
-
 function objectEndpoint(profile: ServerProfile, bucket: string, key: string): string {
   return `${profile.baseUrl}/api/v1/buckets/${encodeURIComponent(bucket)}/object?${objectKeyQuery(key)}`;
 }
@@ -38,8 +35,8 @@ export async function fetchObjectMetadata(
   key: string,
 ): Promise<ModelsObjectInfo> {
   const result = await getObjectMetadata({
-    client: createClient({ baseUrl: profile.baseUrl }),
-    headers: await authorizedHeaders(profile),
+    client: authenticatedClient(profile),
+    headers: await authorizationHeaders(profile),
     path: { bucket },
     query: { key },
   });
@@ -54,8 +51,8 @@ export async function mintObjectPreviewUrl(
   key: string,
 ): Promise<string> {
   const result = await getObjectPreviewUrl({
-    client: createClient({ baseUrl: profile.baseUrl }),
-    headers: await authorizedHeaders(profile),
+    client: authenticatedClient(profile),
+    headers: await authorizationHeaders(profile),
     path: { bucket },
     query: { key },
   });
@@ -75,7 +72,7 @@ export async function authenticatedThumbnailSource(
   if (version) parameters.set('v', version);
   return {
     uri: `${profile.baseUrl}/api/v1/buckets/${encodeURIComponent(bucket)}/object/thumbnail?${parameters}`,
-    headers: await authorizedHeaders(profile),
+    headers: await authorizationHeaders(profile),
     cacheKey: `${profile.id}:${bucket}:${key}:${version ?? 'current'}:128`,
   };
 }
@@ -85,9 +82,9 @@ export async function fetchTextPreview(
   bucket: string,
   key: string,
 ): Promise<{ text: string; truncated: boolean }> {
-  const response = await fetch(objectEndpoint(profile, bucket, key), {
+  const response = await authenticatedFetch(profile)(objectEndpoint(profile, bucket, key), {
     headers: {
-      ...(await authorizedHeaders(profile)),
+      ...(await authorizationHeaders(profile)),
       Range: `bytes=0-${textPreviewBytes - 1}`,
     },
   });

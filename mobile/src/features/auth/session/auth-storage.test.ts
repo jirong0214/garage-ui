@@ -29,11 +29,39 @@ describe('AuthStorage', () => {
     await storage.clearToken('server-a');
     expect(await storage.getToken('server-a')).toBeNull();
     expect(await storage.getToken('server-b')).toBe('token-b');
-    expect([...secureStore.values.keys()]).toEqual(['garage-ui.session.server-b.jwt']);
+    expect([...secureStore.values.keys()]).toEqual(['garage-ui.session.server-b.credentials']);
   });
 
   it('refuses to store empty credentials', async () => {
     const storage = new AuthStorage(new MemorySecureStore());
-    await expect(storage.setToken('server-a', ' ')).rejects.toThrow('empty session token');
+    await expect(storage.setToken('server-a', ' ')).rejects.toThrow('empty access token');
+    await expect(
+      storage.setSession('server-a', { accessToken: 'access', refreshToken: ' ' }),
+    ).rejects.toThrow('empty refresh token');
+  });
+
+  it('stores the access and refresh credentials in one SecureStore value', async () => {
+    const secureStore = new MemorySecureStore();
+    const storage = new AuthStorage(secureStore);
+    const credentials = {
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      sessionId: 'session-id',
+      accessTokenExpiresAt: '2026-07-26T12:00:00Z',
+      refreshTokenExpiresAt: '2026-08-25T12:00:00Z',
+    };
+
+    await storage.setSession('server-a', credentials);
+
+    expect(await storage.getSession('server-a')).toEqual(credentials);
+    expect([...secureStore.values.values()]).toEqual([JSON.stringify(credentials)]);
+  });
+
+  it('reads an existing access-only JWT without copying it outside SecureStore', async () => {
+    const secureStore = new MemorySecureStore();
+    secureStore.values.set('garage-ui.session.server-a.jwt', 'legacy-jwt');
+    const storage = new AuthStorage(secureStore);
+
+    expect(await storage.getSession('server-a')).toEqual({ accessToken: 'legacy-jwt' });
   });
 });
