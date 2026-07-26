@@ -1,0 +1,18 @@
+{
+  "name": "@garage-ui/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./generated": "./src/generated/index.ts"
+  },
+  "scripts": {
+    "generate": "openapi-ts -i ../../openapi/openapi.yaml -o src/generated",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.99.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'openapi/**'
+      - 'packages/api-client/**'
       - 'Dockerfile'
       - 'Makefile'
       - 'scripts/coverage-gate.sh'
@@ -29,9 +31,27 @@ jobs:
           cache-dependency-path: backend/go.sum
 
       - name: Generate swagger docs
+        run: bash scripts/generate-openapi.sh
+
+      - name: Verify committed OpenAPI contract
+        run: git diff --exit-code -- openapi/openapi.yaml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: packages/api-client/package-lock.json
+
+      - name: Validate OpenAPI semantics
+        run: node scripts/validate-openapi.mjs
+
+      - name: Verify generated TypeScript client
         run: |
-          go install github.com/swaggo/swag/cmd/swag@latest
-          cd backend && swag init
+          npm --prefix packages/api-client ci
+          npm --prefix packages/api-client run generate
+          npm --prefix packages/api-client run typecheck
+          git diff --exit-code -- packages/api-client/src/generated
 
       - name: Run unit tests with race detector and coverage
         run: |
@@ -83,4 +103,3 @@ jobs:
         run: |
           docker compose -p garage-ui-smoke \
             -f backend/tests/smoke/docker-compose.test.yml down -v || true
-

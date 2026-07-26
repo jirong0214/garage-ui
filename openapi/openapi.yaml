@@ -1,0 +1,2919 @@
+basePath: /
+definitions:
+  handlers.LoginBasicRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  models.APIError:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  models.APIResponse:
+    properties:
+      data: {}
+      error:
+        $ref: '#/definitions/models.APIError'
+      success:
+        type: boolean
+    type: object
+  models.AccessControlBinding:
+    properties:
+      bucket_prefixes:
+        items:
+          type: string
+        type: array
+      permissions:
+        items:
+          type: string
+        type: array
+    type: object
+  models.AccessControlCapabilities:
+    properties:
+      bindings:
+        items:
+          $ref: '#/definitions/models.AccessControlBinding'
+        type: array
+      cluster_permissions:
+        items:
+          type: string
+        type: array
+      enabled:
+        type: boolean
+      is_admin:
+        type: boolean
+      subject:
+        type: string
+    type: object
+  models.AdminAuthMethodConfig:
+    properties:
+      bootstrap_required:
+        type: boolean
+      enabled:
+        type: boolean
+    type: object
+  models.AuthConfigResponse:
+    properties:
+      admin:
+        $ref: '#/definitions/models.AdminAuthMethodConfig'
+      oidc:
+        $ref: '#/definitions/models.OIDCAuthMethodConfig'
+      token:
+        $ref: '#/definitions/models.AuthMethodConfig'
+    type: object
+  models.AuthMethodConfig:
+    properties:
+      enabled:
+        type: boolean
+    type: object
+  models.BucketInfo:
+    properties:
+      creationDate:
+        type: string
+      effective_permissions:
+        description: |-
+          EffectivePermissions is the caller's prefix-scoped permissions on this
+          bucket, computed server-side. Omitted when access control is disabled.
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      objectCount:
+        type: integer
+      publicUrl:
+        type: string
+      quotas:
+        $ref: '#/definitions/models.BucketQuotas'
+      region:
+        type: string
+      size:
+        type: integer
+      websiteAccess:
+        type: boolean
+      websiteConfig:
+        $ref: '#/definitions/models.BucketWebsiteConfig'
+    type: object
+  models.BucketKeyInfo:
+    properties:
+      accessKeyId:
+        type: string
+      bucketLocalAliases:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      permissions:
+        $ref: '#/definitions/models.BucketKeyPermission'
+    type: object
+  models.BucketKeyPermission:
+    properties:
+      owner:
+        type: boolean
+      read:
+        type: boolean
+      write:
+        type: boolean
+    type: object
+  models.BucketListResponse:
+    properties:
+      buckets:
+        items:
+          $ref: '#/definitions/models.BucketInfo'
+        type: array
+      count:
+        type: integer
+    type: object
+  models.BucketPermission:
+    properties:
+      bucketId:
+        type: string
+      bucketName:
+        type: string
+      owner:
+        type: boolean
+      read:
+        type: boolean
+      write:
+        type: boolean
+    type: object
+  models.BucketQuotas:
+    properties:
+      maxObjects:
+        type: integer
+      maxSize:
+        type: integer
+    type: object
+  models.BucketUsage:
+    properties:
+      bucketName:
+        type: string
+      objectCount:
+        type: integer
+      percentage:
+        type: number
+      size:
+        type: integer
+    type: object
+  models.BucketWebsiteConfig:
+    properties:
+      errorDocument:
+        type: string
+      indexDocument:
+        type: string
+    type: object
+  models.CapabilitiesResponse:
+    properties:
+      access_control:
+        $ref: '#/definitions/models.AccessControlCapabilities'
+      apiVersion:
+        type: string
+      features:
+        $ref: '#/definitions/models.CapabilityFeatures'
+      garageApiVersion:
+        type: string
+    type: object
+  models.CapabilityFeatures:
+    properties:
+      clusterStatistics:
+        type: boolean
+      nodeInfo:
+        type: boolean
+      nodeStatistics:
+        type: boolean
+    type: object
+  models.ClusterStatistics:
+    properties:
+      freeform:
+        type: string
+    type: object
+  models.CreateBucketRequest:
+    properties:
+      name:
+        type: string
+      region:
+        type: string
+    required:
+    - name
+    type: object
+  models.CreateObjectJobRequest:
+    properties:
+      conflictPolicy:
+        enum:
+        - skip
+        - overwrite
+        type: string
+      destinationBucket:
+        type: string
+      destinationPrefix:
+        type: string
+      objects:
+        items:
+          type: string
+        type: array
+      operation:
+        enum:
+        - copy
+        - move
+        - delete
+        type: string
+      prefixes:
+        items:
+          type: string
+        type: array
+      sourceBucket:
+        type: string
+    required:
+    - operation
+    - sourceBucket
+    type: object
+  models.CreateUserRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  models.CurrentUserResponse:
+    properties:
+      success:
+        type: boolean
+      user:
+        $ref: '#/definitions/models.SessionUser'
+    type: object
+  models.DashboardMetrics:
+    properties:
+      bucketCount:
+        type: integer
+      objectCount:
+        type: integer
+      totalSize:
+        type: integer
+      usageByBucket:
+        items:
+          $ref: '#/definitions/models.BucketUsage'
+        type: array
+    type: object
+  models.GarageBucketInfo:
+    properties:
+      bytes:
+        type: integer
+      created:
+        type: string
+      effective_permissions:
+        description: |-
+          EffectivePermissions is the caller's prefix-scoped permissions on this
+          bucket, computed server-side. Omitted when access control is disabled.
+        items:
+          type: string
+        type: array
+      globalAliases:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      keys:
+        items:
+          $ref: '#/definitions/models.BucketKeyInfo'
+        type: array
+      objects:
+        type: integer
+      quotas:
+        $ref: '#/definitions/models.BucketQuotas'
+      unfinishedMultipartUploadBytes:
+        type: integer
+      unfinishedMultipartUploadParts:
+        type: integer
+      unfinishedMultipartUploads:
+        type: integer
+      unfinishedUploads:
+        type: integer
+      websiteAccess:
+        type: boolean
+      websiteConfig:
+        $ref: '#/definitions/models.BucketWebsiteConfig'
+    type: object
+  models.GrantBucketPermissionRequest:
+    properties:
+      accessKeyId:
+        type: string
+      permissions:
+        $ref: '#/definitions/models.BucketKeyPermission'
+    required:
+    - accessKeyId
+    - permissions
+    type: object
+  models.HealthResponse:
+    properties:
+      apiVersion:
+        type: string
+      status:
+        type: string
+      timestamp:
+        type: string
+      version:
+        type: string
+    type: object
+  models.LoginResponse:
+    properties:
+      success:
+        type: boolean
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/models.SessionUser'
+    type: object
+  models.OIDCAuthMethodConfig:
+    properties:
+      enabled:
+        type: boolean
+      provider:
+        type: string
+    type: object
+  models.ObjectDeleteMultipleResponse:
+    properties:
+      bucket:
+        type: string
+      deleted:
+        type: integer
+      keys:
+        items:
+          type: string
+        type: array
+      prefixes:
+        items:
+          type: string
+        type: array
+    type: object
+  models.ObjectDeleteResponse:
+    properties:
+      bucket:
+        type: string
+      deleted:
+        type: boolean
+      key:
+        type: string
+    type: object
+  models.ObjectInfo:
+    properties:
+      content_type:
+        type: string
+      etag:
+        type: string
+      key:
+        type: string
+      last_modified:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      size:
+        type: integer
+      storage_class:
+        type: string
+    type: object
+  models.ObjectJob:
+    properties:
+      bytesProcessed:
+        type: integer
+      bytesTotal:
+        type: integer
+      cancelRequested:
+        type: boolean
+      conflictPolicy:
+        enum:
+        - skip
+        - overwrite
+        type: string
+      createdAt:
+        type: string
+      currentKey:
+        type: string
+      destinationBucket:
+        type: string
+      destinationPrefix:
+        type: string
+      discovered:
+        type: integer
+      error:
+        type: string
+      failed:
+        type: integer
+      finishedAt:
+        type: string
+      id:
+        type: string
+      objects:
+        items:
+          type: string
+        type: array
+      operation:
+        enum:
+        - copy
+        - move
+        - delete
+        type: string
+      owner:
+        type: string
+      phase:
+        type: string
+      prefixes:
+        items:
+          type: string
+        type: array
+      processed:
+        type: integer
+      progress:
+        type: number
+      skipped:
+        type: integer
+      sourceBucket:
+        type: string
+      startedAt:
+        type: string
+      status:
+        enum:
+        - queued
+        - scanning
+        - running
+        - cancelling
+        - completed
+        - completed_with_errors
+        - failed
+        - cancelled
+        type: string
+      succeeded:
+        type: integer
+    type: object
+  models.ObjectJobFailure:
+    properties:
+      destinationKey:
+        type: string
+      error:
+        type: string
+      sourceKey:
+        type: string
+    type: object
+  models.ObjectJobFailureList:
+    properties:
+      failures:
+        items:
+          $ref: '#/definitions/models.ObjectJobFailure'
+        type: array
+      limit:
+        type: integer
+      nextOffset:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  models.ObjectJobList:
+    properties:
+      count:
+        type: integer
+      jobs:
+        items:
+          $ref: '#/definitions/models.ObjectJob'
+        type: array
+    type: object
+  models.ObjectListResponse:
+    properties:
+      bucket:
+        type: string
+      count:
+        type: integer
+      is_truncated:
+        type: boolean
+      next_continuation_token:
+        type: string
+      objects:
+        items:
+          $ref: '#/definitions/models.ObjectInfo'
+        type: array
+      prefixes:
+        items:
+          type: string
+        type: array
+    type: object
+  models.ObjectTransferRequest:
+    properties:
+      destinationBucket:
+        type: string
+      destinationKey:
+        type: string
+      overwrite:
+        type: boolean
+      sourceKey:
+        type: string
+    type: object
+  models.ObjectTransferResponse:
+    properties:
+      destinationBucket:
+        type: string
+      destinationKey:
+        type: string
+      etag:
+        type: string
+      operation:
+        type: string
+      sourceBucket:
+        type: string
+      sourceDeleted:
+        type: boolean
+      sourceKey:
+        type: string
+    type: object
+  models.ObjectUploadFailedResult:
+    properties:
+      content_type:
+        type: string
+      error:
+        type: string
+      key:
+        type: string
+    type: object
+  models.ObjectUploadMultipleResponse:
+    properties:
+      bucket:
+        type: string
+      failed_files:
+        items:
+          $ref: '#/definitions/models.ObjectUploadFailedResult'
+        type: array
+      failure_count:
+        type: integer
+      success_count:
+        type: integer
+      success_files:
+        items:
+          $ref: '#/definitions/models.ObjectUploadResult'
+        type: array
+      total_files:
+        type: integer
+    type: object
+  models.ObjectUploadResponse:
+    properties:
+      bucket:
+        type: string
+      content_type:
+        type: string
+      etag:
+        type: string
+      key:
+        type: string
+      size:
+        type: integer
+    type: object
+  models.ObjectUploadResult:
+    properties:
+      content_type:
+        type: string
+      etag:
+        type: string
+      key:
+        type: string
+      size:
+        type: integer
+    type: object
+  models.PresignedURLResponse:
+    properties:
+      bucket:
+        type: string
+      expires_in:
+        description: in seconds
+        type: integer
+      key:
+        type: string
+      url:
+        type: string
+    type: object
+  models.PreviewURLResponse:
+    properties:
+      expires_at:
+        type: string
+      url:
+        type: string
+    type: object
+  models.SessionUser:
+    properties:
+      auth_method:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      username:
+        type: string
+    type: object
+  models.UpdateBucketQuotasRequest:
+    properties:
+      maxObjects:
+        type: integer
+      maxSize:
+        type: integer
+    type: object
+  models.UpdateBucketWebsiteRequest:
+    properties:
+      enabled:
+        type: boolean
+      errorDocument:
+        type: string
+      indexDocument:
+        type: string
+    type: object
+  models.UpdateUserRequest:
+    properties:
+      expiration:
+        description: ISO 8601 date string
+        type: string
+      status:
+        description: '"active" or "inactive"'
+        type: string
+    type: object
+  models.UserInfo:
+    properties:
+      accessKeyId:
+        type: string
+      createdAt:
+        type: string
+      expiration:
+        type: string
+      expired:
+        type: boolean
+      name:
+        type: string
+      permissions:
+        description: Array of bucket permissions
+        items:
+          $ref: '#/definitions/models.BucketPermission'
+        type: array
+      secretKey:
+        type: string
+      status:
+        description: '"active" or "inactive"'
+        type: string
+    type: object
+  models.UserListResponse:
+    properties:
+      count:
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/models.UserInfo'
+        type: array
+    type: object
+info:
+  contact: {}
+  description: |-
+    REST API for managing Garage distributed object storage system
+    This API provides endpoints for managing buckets, objects, users, and cluster operations.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Garage UI API
+  version: 0.1.0
+paths:
+  /api/v1/buckets:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of all buckets in the Garage storage system with
+        object count and size
+      operationId: listBuckets
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved list of buckets
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.BucketListResponse'
+              type: object
+        "500":
+          description: Failed to list buckets
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List all buckets
+      tags:
+      - Buckets
+    post:
+      consumes:
+      - application/json
+      description: Creates a new bucket in the Garage storage system
+      parameters:
+      - description: Bucket creation payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateBucketRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Bucket created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    bucket:
+                      type: string
+                    message:
+                      type: string
+                  type: object
+              type: object
+        "400":
+          description: Invalid request body or bucket name is required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "409":
+          description: Bucket already exists
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to create bucket
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new bucket
+      tags:
+      - Buckets
+  /api/v1/buckets/{bucket}/directories:
+    post:
+      consumes:
+      - application/json
+      description: Creates a zero-byte object whose key ends with "/" so that S3 clients
+        display it as an empty folder.
+      parameters:
+      - description: Name of the bucket
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Directory key (must end with '/')
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            key:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Directory created
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectUploadResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to create directory
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create directory in bucket
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/object:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an object stored in the specified bucket
+      operationId: deleteObject
+      parameters:
+      - description: Name of the bucket containing the object
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Exact object key
+        in: query
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully deleted the object
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectDeleteResponse'
+              type: object
+        "400":
+          description: Bucket name and object key are required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Object not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to delete object
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Delete object from bucket
+      tags:
+      - Objects
+    get:
+      consumes:
+      - application/json
+      description: Retrieves an object stored in the specified bucket
+      operationId: getObject
+      parameters:
+      - description: Name of the bucket containing the object
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Exact object key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: Set to true to download the object as an attachment
+        in: query
+        name: download
+        type: boolean
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: Successfully retrieved the object
+          schema:
+            type: file
+        "206":
+          description: Partial object content
+          schema:
+            type: file
+        "400":
+          description: Bucket name and object key are required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Object not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "416":
+          description: Requested range is not satisfiable
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get object from bucket
+      tags:
+      - Objects
+    head:
+      operationId: headObject
+      parameters:
+      - description: Name of the bucket containing the object
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Exact object key
+        in: query
+        name: key
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Head an object
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/object/metadata:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves metadata information about an object without downloading
+        the actual content
+      operationId: getObjectMetadata
+      parameters:
+      - description: Name of the bucket containing the object
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Exact object key
+        in: query
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved object metadata
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectInfo'
+              type: object
+        "400":
+          description: Bucket name and object key are required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Object not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get object metadata
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/object/presign:
+    get:
+      consumes:
+      - application/json
+      description: Generates a pre-signed URL that allows temporary access to the
+        specified object
+      operationId: getObjectPresignedURL
+      parameters:
+      - description: Name of the bucket containing the object
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Exact object key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: 'Expiration time in seconds for the pre-signed URL (default:
+          3600 seconds)'
+        in: query
+        name: expires_in
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully generated pre-signed URL
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PresignedURLResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Object not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to generate pre-signed URL
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get pre-signed URL for object
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/object/preview-url:
+    get:
+      description: Returns a relative URL carrying a short-lived token that authorizes
+        streaming this object. Media elements cannot send an Authorization header,
+        so the token rides in the URL instead.
+      operationId: getObjectPreviewURL
+      parameters:
+      - description: Name of the bucket containing the object
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Exact object key
+        in: query
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Preview URL minted
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.PreviewURLResponse'
+              type: object
+        "400":
+          description: Bucket name and object key are required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to mint the preview token
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get a tokenized preview URL for an object
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/object/thumbnail:
+    get:
+      description: Returns a generated PNG thumbnail. The object key is passed as
+        a query parameter so every valid S3 key is unambiguous.
+      operationId: getObjectThumbnail
+      parameters:
+      - description: Bucket name
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Exact object key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: Square size in pixels, 32-512 (default 96)
+        in: query
+        name: size
+        type: integer
+      - description: Source version used for immutable caching
+        in: query
+        name: v
+        type: string
+      produces:
+      - image/png
+      responses:
+        "200":
+          description: PNG thumbnail
+          schema:
+            type: file
+        "304":
+          description: Not modified
+          schema:
+            type: string
+        "400":
+          description: Invalid key or size
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "413":
+          description: Source exceeds thumbnail limits
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "415":
+          description: Unsupported image type
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Thumbnail generation failed
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "501":
+          description: Thumbnail generation disabled
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get an object thumbnail
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/objects:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of objects and prefixes (folders) stored in the
+        specified bucket, with optional filtering by prefix, pagination support, and
+        max keys
+      operationId: listObjects
+      parameters:
+      - description: Name of the bucket to list objects from
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Filter objects by prefix
+        in: query
+        name: prefix
+        type: string
+      - description: Recursively search object keys under prefix by case-insensitive
+          substring (best-effort; bypasses max_keys and continuation_token)
+        in: query
+        name: search
+        type: string
+      - description: 'Maximum number of objects to return (default: 100)'
+        in: query
+        name: max_keys
+        type: integer
+      - description: Token for pagination to retrieve next page of results
+        in: query
+        name: continuation_token
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved list of objects and prefixes
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectListResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Bucket not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to list objects
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List objects in a bucket
+      tags:
+      - Objects
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an object to the specified bucket using multipart/form-data
+      parameters:
+      - description: Name of the bucket to upload the object to
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Object key (path in bucket). If not provided, the filename will
+          be used
+        in: formData
+        name: key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Object uploaded successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectUploadResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Bucket not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to upload object
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Upload object to bucket
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/objects/copy:
+    post:
+      consumes:
+      - application/json
+      description: Copies one object to a destination bucket and key using S3 server-side
+        copy.
+      parameters:
+      - description: Source bucket
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Copy destination
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ObjectTransferRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Object copied
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectTransferResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Copy an object
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/objects/delete-multiple:
+    post:
+      consumes:
+      - application/json
+      description: Deletes multiple objects stored in the specified bucket
+      parameters:
+      - description: Name of the bucket containing the objects
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Object keys to delete and/or folder prefixes to delete recursively
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            keys:
+              items:
+                type: string
+              type: array
+            prefixes:
+              items:
+                type: string
+              type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully deleted the objects
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectDeleteMultipleResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Bucket not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to delete objects
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Delete multiple objects from bucket
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/objects/move:
+    post:
+      consumes:
+      - application/json
+      description: Moves one object to a destination bucket and key. A same-bucket
+        move is a rename.
+      parameters:
+      - description: Source bucket
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Move destination
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ObjectTransferRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Object moved
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectTransferResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Move or rename an object
+      tags:
+      - Objects
+  /api/v1/buckets/{bucket}/objects/upload-multiple:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads multiple objects to the specified bucket using multipart/form-data.
+        Accepts unlimited number of files and handles them in a loop.
+      parameters:
+      - description: Name of the bucket to upload the objects to
+        in: path
+        name: bucket
+        required: true
+        type: string
+      - description: Files to upload (can be multiple)
+        in: formData
+        name: files
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Objects uploaded successfully (including partial failures)
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectUploadMultipleResponse'
+              type: object
+        "400":
+          description: Invalid request parameters
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Bucket not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to upload objects
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Upload multiple objects to bucket
+      tags:
+      - Objects
+  /api/v1/buckets/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing bucket from the Garage storage system. Set
+        recursive=true to empty it first.
+      parameters:
+      - description: Name of the bucket to delete
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Delete every object before deleting the bucket
+        in: query
+        name: recursive
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Bucket deleted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    bucket:
+                      type: string
+                    message:
+                      type: string
+                  type: object
+              type: object
+        "400":
+          description: Bucket name is required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Bucket does not exist
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to delete bucket
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a bucket
+      tags:
+      - Buckets
+    get:
+      consumes:
+      - application/json
+      description: Retrieves detailed information about a specific bucket including
+        creation date and region
+      parameters:
+      - description: Name of the bucket to retrieve information for
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved bucket information
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.BucketInfo'
+              type: object
+        "400":
+          description: Bucket name is required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Bucket does not exist
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to retrieve bucket information
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get bucket information
+      tags:
+      - Buckets
+  /api/v1/buckets/{name}/permissions:
+    post:
+      consumes:
+      - application/json
+      description: Grants read/write/owner permissions for an access key on a specific
+        bucket
+      parameters:
+      - description: Name of the bucket
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Permission grant request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.GrantBucketPermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Permissions granted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GarageBucketInfo'
+              type: object
+        "400":
+          description: Invalid request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Bucket not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to grant permissions
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Grant bucket permissions
+      tags:
+      - Buckets
+  /api/v1/buckets/{name}/quotas:
+    put:
+      consumes:
+      - application/json
+      description: Sets or clears the max size (bytes) and max object count quotas
+        for a bucket. A null field clears that quota (unlimited).
+      parameters:
+      - description: Name of the bucket
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Quota configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateBucketQuotasRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Quotas updated
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GarageBucketInfo'
+              type: object
+        "400":
+          description: Invalid request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Bucket not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to update bucket
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update bucket quotas
+      tags:
+      - Buckets
+  /api/v1/buckets/{name}/website:
+    put:
+      consumes:
+      - application/json
+      description: Enables or disables static website hosting for a bucket
+      parameters:
+      - description: Name of the bucket
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Website configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateBucketWebsiteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Website configuration updated
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.GarageBucketInfo'
+              type: object
+        "400":
+          description: Invalid request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "404":
+          description: Bucket not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to update bucket
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update bucket website configuration
+      tags:
+      - Buckets
+  /api/v1/capabilities:
+    get:
+      description: Returns API contract metadata, Garage feature support, and the
+        authenticated caller's resolved permissions.
+      operationId: getCapabilities
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.CapabilitiesResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get client capabilities
+      tags:
+      - Capabilities
+  /api/v1/cluster/health:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the overall health status of the Garage storage cluster
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved cluster health
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "500":
+          description: Failed to get cluster health
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get cluster health
+      tags:
+      - Cluster
+  /api/v1/cluster/nodes/{node_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves detailed information about a specific node in the Garage
+        storage cluster
+      parameters:
+      - description: ID of the node to retrieve information for
+        in: path
+        name: node_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved node information
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Node ID is required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to get node information
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get node information
+      tags:
+      - Cluster
+  /api/v1/cluster/nodes/{node_id}/statistics:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves performance statistics and metrics for a specific node
+        in the Garage storage cluster
+      parameters:
+      - description: ID of the node to retrieve statistics for
+        in: path
+        name: node_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved node statistics
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Node ID is required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to get node statistics
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get node statistics
+      tags:
+      - Cluster
+  /api/v1/cluster/statistics:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ClusterStatistics'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "501":
+          description: Not Implemented
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get cluster statistics
+      tags:
+      - Cluster
+  /api/v1/cluster/status:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the current status of the Garage storage cluster
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved cluster status
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "500":
+          description: Failed to get cluster status
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get cluster status
+      tags:
+      - Cluster
+  /api/v1/health:
+    get:
+      operationId: getAPIHealth
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.HealthResponse'
+              type: object
+      summary: Health check API alias
+      tags:
+      - Health
+  /api/v1/monitoring/admin-health:
+    get:
+      consumes:
+      - application/json
+      description: Performs a health check on the Garage Admin API to verify connectivity
+        and availability
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Admin API is healthy
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    message:
+                      type: string
+                    status:
+                      type: string
+                  type: object
+              type: object
+        "503":
+          description: Admin API health check failed
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Check Admin API health
+      tags:
+      - Monitoring
+  /api/v1/monitoring/dashboard:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves aggregated metrics for the dashboard including storage,
+        buckets, and request metrics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved dashboard metrics
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.DashboardMetrics'
+              type: object
+        "500":
+          description: Failed to get dashboard metrics
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get dashboard metrics
+      tags:
+      - Monitoring
+  /api/v1/monitoring/metrics:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves system metrics from the Garage Admin API for monitoring
+        purposes
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: System metrics in plain text format
+          schema:
+            type: string
+        "500":
+          description: Failed to retrieve metrics
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get system metrics
+      tags:
+      - Monitoring
+  /api/v1/object-jobs:
+    get:
+      operationId: listObjectJobs
+      parameters:
+      - description: Maximum jobs, 1-100
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectJobList'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List object jobs
+      tags:
+      - Object Jobs
+    post:
+      consumes:
+      - application/json
+      description: Creates a durable copy, move, or delete job for explicit objects
+        and recursive prefixes.
+      operationId: createObjectJob
+      parameters:
+      - description: Retry-safe request key
+        in: header
+        name: Idempotency-Key
+        type: string
+      - description: Job specification
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateObjectJobRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectJob'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create an object job
+      tags:
+      - Object Jobs
+  /api/v1/object-jobs/{id}:
+    get:
+      operationId: getObjectJob
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectJob'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get object job
+      tags:
+      - Object Jobs
+  /api/v1/object-jobs/{id}/cancel:
+    post:
+      operationId: cancelObjectJob
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectJob'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel object job
+      tags:
+      - Object Jobs
+  /api/v1/object-jobs/{id}/failures:
+    get:
+      operationId: listObjectJobFailures
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Zero-based offset
+        in: query
+        name: offset
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectJobFailureList'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List object job failures
+      tags:
+      - Object Jobs
+  /api/v1/users:
+    get:
+      description: Retrieves a list of all users/access keys
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.UserListResponse'
+              type: object
+        "500":
+          description: Failed to list users
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List all users
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user/access key with optional name
+      parameters:
+      - description: User creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.UserInfo'
+              type: object
+        "400":
+          description: Invalid request body
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to create user
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new user
+      tags:
+      - Users
+  /api/v1/users/{access_key}:
+    delete:
+      description: Deletes a specific user/access key
+      parameters:
+      - description: Access key of the user to delete
+        in: path
+        name: access_key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User deleted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Access key is required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to delete user
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a user
+      tags:
+      - Users
+    get:
+      description: Retrieves information about a specific user/access key
+      parameters:
+      - description: Access key of the user to retrieve
+        in: path
+        name: access_key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.UserInfo'
+              type: object
+        "400":
+          description: Access key is required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to get user info
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get user information
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      description: Updates the permissions and settings for a specific user/access
+        key
+      parameters:
+      - description: Access key of the user to update
+        in: path
+        name: access_key
+        required: true
+        type: string
+      - description: User update request with new permissions
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.UserInfo'
+              type: object
+        "400":
+          description: Access key is required or invalid request body
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to update user
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update user permissions
+      tags:
+      - Users
+  /api/v1/users/{access_key}/secret:
+    get:
+      description: Retrieves the secret access key for a specific user/access key
+      parameters:
+      - description: Access key of the user to retrieve secret for
+        in: path
+        name: access_key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Secret key retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Access key is required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "500":
+          description: Failed to get secret key
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get user secret key
+      tags:
+      - Users
+  /auth/config:
+    get:
+      description: Returns the current auth configuration (admin and/or OIDC)
+      operationId: getAuthConfig
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Auth config
+          schema:
+            $ref: '#/definitions/models.AuthConfigResponse'
+        "500":
+          description: Configuration unavailable
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      summary: Get authentication configuration
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with admin username and password, returns JWT token
+      operationId: login
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginBasicRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+        "500":
+          description: Session creation failed
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      summary: Admin auth login
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Returns information about the currently authenticated user
+      operationId: getCurrentUser
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information
+          schema:
+            $ref: '#/definitions/models.CurrentUserResponse'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/models.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Returns the health status of the API service along with version
+        information
+      operationId: getHealth
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.HealthResponse'
+              type: object
+      summary: Health check
+      tags:
+      - Health
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: Health check endpoints
+  name: Health
+- description: Bucket management operations
+  name: Buckets
+- description: Object storage and retrieval operations
+  name: Objects
+- description: Durable recursive and multi-object operations
+  name: Object Jobs
+- description: User and access key management
+  name: Users
+- description: Cluster status and node management
+  name: Cluster
+- description: Monitoring and metrics endpoints
+  name: Monitoring
