@@ -39,5 +39,7 @@ beta. Garage admin tokens and S3 credentials are never mobile API inputs.
 
 The canonical object routes and `apiVersion` fields are additive. Existing
 routes and response fields remain intact. Deployments older than contract 1.x
-will not expose this metadata and should be reported as incompatible rather
-than silently assumed compatible.
+will not expose this metadata. Release clients must report them as
+incompatible rather than silently assuming compatibility. Explicit LAN Debug
+builds may continue for diagnostics after showing an unknown-contract warning;
+this exception must not ship in Release.
