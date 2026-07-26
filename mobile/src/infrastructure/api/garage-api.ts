@@ -92,13 +92,23 @@ export async function fetchBuckets(profile: ServerProfile): Promise<ModelsBucket
 export async function fetchObjects(
   profile: ServerProfile,
   bucket: string,
-  prefix = '',
+  options: {
+    prefix?: string;
+    search?: string;
+    maxKeys?: number;
+    continuationToken?: string;
+  } = {},
 ): Promise<ModelsObjectListResponse> {
   const result = await listObjects({
     client: client(profile.baseUrl),
     headers: await authorization(profile),
     path: { bucket },
-    query: { prefix, max_keys: 100 },
+    query: {
+      prefix: options.prefix ?? '',
+      search: options.search || undefined,
+      max_keys: options.maxKeys ?? 50,
+      continuation_token: options.continuationToken || undefined,
+    },
   });
   const envelope = unwrap(result);
   if (!envelope.success || !envelope.data) throw toApiError(envelope, result.response);
