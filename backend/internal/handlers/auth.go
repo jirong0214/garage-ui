@@ -32,7 +32,9 @@ func NewAuthHandler(cfg *config.Config, authService *auth.Service) *AuthHandler 
 //	@Description	Returns the current auth configuration (admin and/or OIDC)
 //	@Tags			auth
 //	@Produce		json
-//	@Success		200	{object}	object{admin=object,oidc=object}	"Auth config"
+//	@Success		200	{object}	models.AuthConfigResponse	"Auth config"
+//	@Failure		500	{object}	models.APIResponse			"Configuration unavailable"
+//	@ID				getAuthConfig
 //	@Router			/auth/config [get]
 func (h *AuthHandler) GetAuthConfig(c fiber.Ctx) error {
 	configured, err := h.adminStore.Configured()
@@ -40,16 +42,16 @@ func (h *AuthHandler) GetAuthConfig(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.ErrorResponse(models.ErrCodeInternalError, "Failed to read administrator configuration"))
 	}
 	bootstrapRequired := h.cfg.Auth.Admin.Enabled && !configured && h.cfg.Auth.Admin.Username == "" && h.cfg.Auth.Admin.Password == ""
-	response := fiber.Map{
-		"admin": fiber.Map{
-			"enabled":            h.cfg.Auth.Admin.Enabled,
-			"bootstrap_required": bootstrapRequired,
+	response := models.AuthConfigResponse{
+		Admin: models.AdminAuthMethodConfig{
+			Enabled:           h.cfg.Auth.Admin.Enabled,
+			BootstrapRequired: bootstrapRequired,
 		},
-		"oidc": fiber.Map{
-			"enabled": h.cfg.Auth.OIDC.Enabled,
+		OIDC: models.OIDCAuthMethodConfig{
+			Enabled: h.cfg.Auth.OIDC.Enabled,
 		},
-		"token": fiber.Map{
-			"enabled": h.cfg.Auth.Token.Enabled || bootstrapRequired,
+		Token: models.AuthMethodConfig{
+			Enabled: h.cfg.Auth.Token.Enabled || bootstrapRequired,
 		},
 	}
 
@@ -59,7 +61,7 @@ func (h *AuthHandler) GetAuthConfig(c fiber.Ctx) error {
 		if provider == "" {
 			provider = "OIDC Provider"
 		}
-		response["oidc"].(fiber.Map)["provider"] = provider
+		response.OIDC.Provider = provider
 	}
 
 	return c.JSON(response)
@@ -79,9 +81,11 @@ type LoginBasicRequest struct {
 //	@Accept			json
 //	@Produce		json
 //	@Param			credentials	body		LoginBasicRequest								true	"Login credentials"
-//	@Success		200			{object}	object{success=bool,token=string,user=object}	"Login successful"
+//	@Success		200			{object}	models.LoginResponse								"Login successful"
 //	@Failure		400			{object}	models.APIResponse								"Invalid request"
 //	@Failure		401			{object}	models.APIResponse								"Invalid credentials"
+//	@Failure		500			{object}	models.APIResponse								"Session creation failed"
+//	@ID				login
 //	@Router			/auth/login [post]
 func (h *AuthHandler) LoginAdmin(c fiber.Ctx) error {
 	// Parse request body
@@ -116,12 +120,12 @@ func (h *AuthHandler) LoginAdmin(c fiber.Ctx) error {
 		)
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"token":   sessionToken,
-		"user": fiber.Map{
-			"username":    userInfo.Username,
-			"auth_method": userInfo.AuthMethod,
+	return c.JSON(models.LoginResponse{
+		Success: true,
+		Token:   sessionToken,
+		User: models.SessionUser{
+			Username:   userInfo.Username,
+			AuthMethod: userInfo.AuthMethod,
 		},
 	})
 }
@@ -275,9 +279,10 @@ func (h *AuthHandler) RejectCompletedBootstrapSession(c fiber.Ctx) error {
 //	@Description	Returns information about the currently authenticated user
 //	@Tags			auth
 //	@Produce		json
-//	@Security		ApiKeyAuth
-//	@Success		200	{object}	object{success=bool,user=object}	"User information"
+//	@Security		BearerAuth
+//	@Success		200	{object}	models.CurrentUserResponse	"User information"
 //	@Failure		401	{object}	models.APIResponse					"Not authenticated"
+//	@ID				getCurrentUser
 //	@Router			/auth/me [get]
 func (h *AuthHandler) GetMe(c fiber.Ctx) error {
 	// Try to get user info from OIDC context
@@ -285,13 +290,13 @@ func (h *AuthHandler) GetMe(c fiber.Ctx) error {
 	if userInfoInterface != nil {
 		userInfo, ok := userInfoInterface.(*auth.UserInfo)
 		if ok {
-			return c.JSON(fiber.Map{
-				"success": true,
-				"user": fiber.Map{
-					"username":    userInfo.Username,
-					"email":       userInfo.Email,
-					"name":        userInfo.Name,
-					"auth_method": userInfo.AuthMethod,
+			return c.JSON(models.CurrentUserResponse{
+				Success: true,
+				User: models.SessionUser{
+					Username:   userInfo.Username,
+					Email:      userInfo.Email,
+					Name:       userInfo.Name,
+					AuthMethod: userInfo.AuthMethod,
 				},
 			})
 		}
@@ -302,10 +307,10 @@ func (h *AuthHandler) GetMe(c fiber.Ctx) error {
 	if usernameInterface != nil {
 		username, ok := usernameInterface.(string)
 		if ok {
-			return c.JSON(fiber.Map{
-				"success": true,
-				"user": fiber.Map{
-					"username": username,
+			return c.JSON(models.CurrentUserResponse{
+				Success: true,
+				User: models.SessionUser{
+					Username: username,
 				},
 			})
 		}

@@ -534,7 +534,7 @@ func TestGetPreviewURL_Success(t *testing.T) {
 		Data models.PreviewURLResponse `json:"data"`
 	}
 	decodeJSON(t, resp.Body, &body)
-	if body.Data.URL != "/api/v1/buckets/b1/objects/clip.mp4?pt=tok123" {
+	if body.Data.URL != "/api/v1/buckets/b1/object?key=clip.mp4&pt=tok123" {
 		t.Errorf("url = %q", body.Data.URL)
 	}
 	if body.Data.ExpiresAt != "2026-07-11T12:00:00Z" {
@@ -572,8 +572,8 @@ func TestGetPreviewURL_EscapesKeyInURL(t *testing.T) {
 		Data models.PreviewURLResponse `json:"data"`
 	}
 	decodeJSON(t, resp.Body, &body)
-	if !strings.HasPrefix(body.Data.URL, "/api/v1/buckets/b1/objects/dir%2Fmy%20file.mp4?pt=") {
-		t.Errorf("url = %q, want the key percent-encoded whole", body.Data.URL)
+	if !strings.HasPrefix(body.Data.URL, "/api/v1/buckets/b1/object?key=dir%2Fmy+file.mp4&pt=") {
+		t.Errorf("url = %q, want the exact key query-encoded", body.Data.URL)
 	}
 }
 

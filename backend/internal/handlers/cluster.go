@@ -26,6 +26,7 @@ func NewClusterHandler(adminService services.AdminService) *ClusterHandler {
 //	@Summary		Get cluster health
 //	@Description	Retrieves the overall health status of the Garage storage cluster
 //	@Tags			Cluster
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	models.APIResponse{data=object}				"Successfully retrieved cluster health"
@@ -49,6 +50,7 @@ func (h *ClusterHandler) GetHealth(c fiber.Ctx) error {
 //	@Summary		Get cluster status
 //	@Description	Retrieves the current status of the Garage storage cluster
 //	@Tags			Cluster
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	models.APIResponse{data=object}				"Successfully retrieved cluster status"
@@ -67,8 +69,16 @@ func (h *ClusterHandler) GetStatus(c fiber.Ctx) error {
 	return c.JSON(models.SuccessResponse(status))
 }
 
-// GetStatistics returns global cluster statistics
-// GET /api/v1/cluster/statistics
+// GetStatistics returns global cluster statistics.
+//
+//	@Summary		Get cluster statistics
+//	@Tags			Cluster
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	models.APIResponse{data=models.ClusterStatistics}
+//	@Failure		500	{object}	models.APIResponse{error=models.APIError}
+//	@Failure		501	{object}	models.APIResponse{error=models.APIError}
+//	@Router			/api/v1/cluster/statistics [get]
 func (h *ClusterHandler) GetStatistics(c fiber.Ctx) error {
 	ctx := c.Context()
 	stats, err := h.adminService.GetClusterStatistics(ctx)
@@ -90,6 +100,7 @@ func (h *ClusterHandler) GetStatistics(c fiber.Ctx) error {
 //	@Summary		Get node information
 //	@Description	Retrieves detailed information about a specific node in the Garage storage cluster
 //	@Tags			Cluster
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			node_id	path		string										true	"ID of the node to retrieve information for"
@@ -124,6 +135,7 @@ func (h *ClusterHandler) GetNodeInfo(c fiber.Ctx) error {
 //	@Summary		Get node statistics
 //	@Description	Retrieves performance statistics and metrics for a specific node in the Garage storage cluster
 //	@Tags			Cluster
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			node_id	path		string										true	"ID of the node to retrieve statistics for"

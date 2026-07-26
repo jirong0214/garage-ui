@@ -39,7 +39,7 @@ func SetupRoutes(
 
 	// Health check endpoint (no auth required)
 	app.Get("/health", healthHandler.Check)
-	app.Get("/api/v1/health", healthHandler.Check)
+	app.Get("/api/v1/health", healthHandler.CheckAPI)
 
 	// Swagger documentation endpoint (no auth required)
 	app.Get("/docs/*", swagger.HandlerDefault)
@@ -115,11 +115,25 @@ func SetupRoutes(
 	// Directory routes (zero-byte directory markers)
 	api.Post("/buckets/:bucket/directories", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectWrite), objectHandler.CreateDirectory)
 
-	// Fiber v3 does not auto-decode wildcard params; fall back to the raw
-	// value when QueryUnescape fails.
+	// Canonical single-object routes pass the exact S3 key as a query
+	// parameter. S3 keys are opaque data and may contain slashes or end in
+	// names used by the legacy wildcard subroutes, so embedding them in a path
+	// cannot represent every valid key without ambiguity. Keep the wildcard
+	// routes below for existing Web clients while generated clients use these.
+	api.Get("/buckets/:bucket/object", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectRead), objectHandler.GetObject)
+	api.Head("/buckets/:bucket/object", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectRead), objectHandler.HeadObject)
+	api.Delete("/buckets/:bucket/object", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectDelete), objectHandler.DeleteObject)
+	api.Get("/buckets/:bucket/object/metadata", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectRead), objectHandler.GetObjectMetadata)
+	api.Get("/buckets/:bucket/object/thumbnail", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectRead), objectHandler.GetThumbnail)
+	api.Get("/buckets/:bucket/object/presign", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectRead), objectHandler.GetPresignedURL)
+	api.Get("/buckets/:bucket/object/preview-url", az.Require(authz.BucketFromParam("bucket"), authz.PermObjectRead), objectHandler.GetPreviewURL)
+
+	// Fiber v3 does not auto-decode wildcard params. Decode path escaping while
+	// preserving literal "+", which is data in a path rather than a query-space
+	// encoding.
 	decodeObjectKey := func(c fiber.Ctx) string {
 		raw := c.Params("*")
-		if decoded, err := url.QueryUnescape(raw); err == nil {
+		if decoded, err := url.PathUnescape(raw); err == nil {
 			return decoded
 		}
 		return raw

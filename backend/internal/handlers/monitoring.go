@@ -26,6 +26,7 @@ func NewMonitoringHandler(adminService services.AdminService, s3Service services
 //	@Summary		Get system metrics
 //	@Description	Retrieves system metrics from the Garage Admin API for monitoring purposes
 //	@Tags			Monitoring
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		text/plain
 //	@Success		200	{string}	string										"System metrics in plain text format"
@@ -51,6 +52,7 @@ func (h *MonitoringHandler) GetMetrics(c fiber.Ctx) error {
 //	@Summary		Check Admin API health
 //	@Description	Performs a health check on the Garage Admin API to verify connectivity and availability
 //	@Tags			Monitoring
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	models.APIResponse{data=object{status=string,message=string}}	"Admin API is healthy"
@@ -77,6 +79,7 @@ func (h *MonitoringHandler) CheckAdminHealth(c fiber.Ctx) error {
 //	@Summary		Get dashboard metrics
 //	@Description	Retrieves aggregated metrics for the dashboard including storage, buckets, and request metrics
 //	@Tags			Monitoring
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	models.APIResponse{data=models.DashboardMetrics}	"Successfully retrieved dashboard metrics"

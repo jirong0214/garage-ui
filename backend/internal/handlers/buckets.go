@@ -49,8 +49,10 @@ func NewBucketHandler(adminService services.AdminService, s3Service services.S3S
 //	@Tags			Buckets
 //	@Accept			json
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Success		200	{object}	models.APIResponse{data=models.BucketListResponse}	"Successfully retrieved list of buckets"
 //	@Failure		500	{object}	models.APIResponse{error=models.APIError}			"Failed to list buckets"
+//	@ID				listBuckets
 //	@Router			/api/v1/buckets [get]
 func (h *BucketHandler) ListBuckets(c fiber.Ctx) error {
 	ctx := c.Context()
@@ -121,6 +123,7 @@ func (h *BucketHandler) ListBuckets(c fiber.Ctx) error {
 //	@Summary		Create a new bucket
 //	@Description	Creates a new bucket in the Garage storage system
 //	@Tags			Buckets
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			payload	body		models.CreateBucketRequest										true	"Bucket creation payload"
@@ -172,6 +175,7 @@ func (h *BucketHandler) CreateBucket(c fiber.Ctx) error {
 //	@Summary		Delete a bucket
 //	@Description	Deletes an existing bucket from the Garage storage system. Set recursive=true to empty it first.
 //	@Tags			Buckets
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			name	path		string															true	"Name of the bucket to delete"
@@ -238,6 +242,7 @@ func (h *BucketHandler) DeleteBucket(c fiber.Ctx) error {
 //	@Summary		Get bucket information
 //	@Description	Retrieves detailed information about a specific bucket including creation date and region
 //	@Tags			Buckets
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			name	path		string										true	"Name of the bucket to retrieve information for"
@@ -283,6 +288,7 @@ func (h *BucketHandler) GetBucketInfo(c fiber.Ctx) error {
 //	@Summary		Grant bucket permissions
 //	@Description	Grants read/write/owner permissions for an access key on a specific bucket
 //	@Tags			Buckets
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			name	path		string												true	"Name of the bucket"
@@ -396,6 +402,7 @@ func (h *BucketHandler) GrantBucketPermission(c fiber.Ctx) error {
 //	@Summary		Update bucket website configuration
 //	@Description	Enables or disables static website hosting for a bucket
 //	@Tags			Buckets
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			name	path		string												true	"Name of the bucket"
@@ -470,6 +477,7 @@ func (h *BucketHandler) UpdateBucketWebsite(c fiber.Ctx) error {
 //	@Summary		Update bucket quotas
 //	@Description	Sets or clears the max size (bytes) and max object count quotas for a bucket. A null field clears that quota (unlimited).
 //	@Tags			Buckets
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			name	path		string												true	"Name of the bucket"

@@ -40,8 +40,7 @@ func AuthMiddleware(cfg *config.AuthConfig, authService *auth.Service) fiber.Han
 		// both positions without weakening the contract: it only ever
 		// resolves the exact bucket and key named in the URL.
 		if pt := c.Query("pt"); pt != "" && c.Method() == fiber.MethodGet {
-			bucket, _ := previewRouteParts(c)
-			key := previewObjectKey(c)
+			bucket, key := previewRequestTarget(c)
 			if bucket != "" && key != "" && authService.ValidatePreviewToken(pt, bucket, key) == nil {
 				c.Locals(auth.PreviewTokenLocalsKey, &auth.PreviewClaims{Bucket: bucket, Key: key})
 				enrichRequestLogger(c, "preview-token", "preview_token")
@@ -124,6 +123,28 @@ func authMethodsEnabled(cfg *config.AuthConfig) string {
 	return strings.Join(methods, "+")
 }
 
+// previewRequestTarget resolves the exact object named by either the canonical
+// query-key content route or the legacy wildcard content route. Canonical
+// JSON subroutes do not match the exact "/object" suffix and therefore cannot
+// be opened with a preview token.
+func previewRequestTarget(c fiber.Ctx) (bucket, key string) {
+	const prefix = "/api/v1/buckets/"
+	requestPath := c.Path()
+	if strings.HasPrefix(requestPath, prefix) {
+		rest := requestPath[len(prefix):]
+		if slash := strings.IndexByte(rest, '/'); slash >= 0 && rest[slash+1:] == "object" {
+			bucket = rest[:slash]
+			if decodedBucket, err := url.PathUnescape(bucket); err == nil {
+				bucket = decodedBucket
+			}
+			return bucket, c.Query("key")
+		}
+	}
+
+	bucket, _ = previewRouteParts(c)
+	return bucket, previewObjectKey(c)
+}
+
 // previewRouteParts extracts the bucket and raw (still percent-encoded)
 // object key from a request path shaped like
 // "/api/v1/buckets/<bucket>/objects/<key>", the only shape the object GET
@@ -170,7 +191,7 @@ func previewObjectKey(c fiber.Ctx) string {
 	if raw == "" || strings.HasSuffix(raw, "/") {
 		return ""
 	}
-	decoded, err := url.QueryUnescape(raw)
+	decoded, err := url.PathUnescape(raw)
 	if err != nil {
 		decoded = raw
 	}

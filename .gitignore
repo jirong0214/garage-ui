@@ -67,6 +67,7 @@ docs/**/*.md
 !docs/garage-setup.md
 !docs/access-control.md
 !docs/object-jobs.md
+!docs/mobile-api-compatibility.md
 **/state**
 **/content**
 

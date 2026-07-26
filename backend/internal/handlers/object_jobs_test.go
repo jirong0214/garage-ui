@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,11 +17,15 @@ import (
 )
 
 type objectJobServiceStub struct {
-	created *models.ObjectJob
-	job     *models.ObjectJob
+	created   *models.ObjectJob
+	job       *models.ObjectJob
+	createErr error
 }
 
 func (s *objectJobServiceStub) Create(_ context.Context, owner string, req models.CreateObjectJobRequest, _ string) (*models.ObjectJob, error) {
+	if s.createErr != nil {
+		return nil, s.createErr
+	}
 	s.created = &models.ObjectJob{ID: "job-1", Owner: owner, Operation: req.Operation, Status: models.ObjectJobStatusQueued}
 	return s.created, nil
 }
@@ -60,6 +65,32 @@ func TestObjectJobHandlerCreateReturnsAccepted(t *testing.T) {
 	}
 	if service.created == nil || service.created.Owner != "alice" {
 		t.Fatalf("created = %+v", service.created)
+	}
+}
+
+func TestObjectJobHandlerCreateClassifiesErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+		want int
+	}{
+		{name: "validation", err: services.ErrInvalidObjectJob, want: http.StatusBadRequest},
+		{name: "storage", err: errors.New("database unavailable"), want: http.StatusInternalServerError},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler := NewObjectJobHandler(&objectJobServiceStub{createErr: tc.err})
+			app := fiber.New()
+			app.Post("/jobs", handler.Create)
+			req := httptest.NewRequest(http.MethodPost, "/jobs", strings.NewReader(`{"operation":"copy"}`))
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp.StatusCode != tc.want {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tc.want)
+			}
+		})
 	}
 }
 

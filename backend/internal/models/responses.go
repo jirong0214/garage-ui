@@ -2,6 +2,8 @@ package models
 
 import "time"
 
+const APIContractVersion = "1.0.0"
+
 // DashboardMetrics represents aggregated metrics for the dashboard
 type DashboardMetrics struct {
 	TotalSize     int64         `json:"totalSize"`
@@ -33,9 +35,74 @@ type APIError struct {
 
 // HealthResponse represents the health check response
 type HealthResponse struct {
-	Status    string    `json:"status"`
-	Timestamp time.Time `json:"timestamp"`
-	Version   string    `json:"version"`
+	Status     string    `json:"status"`
+	Timestamp  time.Time `json:"timestamp"`
+	Version    string    `json:"version"`
+	APIVersion string    `json:"apiVersion"`
+}
+
+type AuthMethodConfig struct {
+	Enabled bool `json:"enabled"`
+}
+
+type AdminAuthMethodConfig struct {
+	Enabled           bool `json:"enabled"`
+	BootstrapRequired bool `json:"bootstrap_required"`
+}
+
+type OIDCAuthMethodConfig struct {
+	Enabled  bool   `json:"enabled"`
+	Provider string `json:"provider,omitempty"`
+}
+
+type AuthConfigResponse struct {
+	Admin AdminAuthMethodConfig `json:"admin"`
+	OIDC  OIDCAuthMethodConfig  `json:"oidc"`
+	Token AuthMethodConfig      `json:"token"`
+}
+
+type SessionUser struct {
+	Username   string `json:"username"`
+	Email      string `json:"email,omitempty"`
+	Name       string `json:"name,omitempty"`
+	AuthMethod string `json:"auth_method,omitempty"`
+}
+
+type LoginResponse struct {
+	Success bool        `json:"success"`
+	Token   string      `json:"token"`
+	User    SessionUser `json:"user"`
+}
+
+type CurrentUserResponse struct {
+	Success bool        `json:"success"`
+	User    SessionUser `json:"user"`
+}
+
+type CapabilityFeatures struct {
+	ClusterStatistics bool `json:"clusterStatistics"`
+	NodeInfo          bool `json:"nodeInfo"`
+	NodeStatistics    bool `json:"nodeStatistics"`
+}
+
+type AccessControlBinding struct {
+	BucketPrefixes []string `json:"bucket_prefixes"`
+	Permissions    []string `json:"permissions"`
+}
+
+type AccessControlCapabilities struct {
+	Enabled            bool                   `json:"enabled"`
+	Subject            string                 `json:"subject,omitempty"`
+	IsAdmin            bool                   `json:"is_admin,omitempty"`
+	Bindings           []AccessControlBinding `json:"bindings,omitempty"`
+	ClusterPermissions []string               `json:"cluster_permissions,omitempty"`
+}
+
+type CapabilitiesResponse struct {
+	APIVersion       string                    `json:"apiVersion"`
+	GarageAPIVersion string                    `json:"garageApiVersion"`
+	Features         CapabilityFeatures        `json:"features"`
+	AccessControl    AccessControlCapabilities `json:"access_control"`
 }
 
 // BucketInfo represents information about a bucket

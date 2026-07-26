@@ -90,11 +90,44 @@ type ObjectHandler struct {
 	thumbnails    ThumbnailProvider
 }
 
+// objectKeyFromRequest returns the exact S3 key selected by the canonical
+// query-parameter routes or, for compatibility, the legacy wildcard routes.
+// Object keys are data rather than path structure; query parameters avoid
+// ambiguity for slashes and keys ending in reserved legacy suffixes.
+func objectKeyFromRequest(c fiber.Ctx) string {
+	if key, ok := c.Locals("objectKey").(string); ok && key != "" {
+		return key
+	}
+	if key := c.Query("key"); key != "" {
+		return key
+	}
+	return c.Params("key")
+}
+
 func (h *ObjectHandler) SetThumbnailProvider(provider ThumbnailProvider) {
 	h.thumbnails = provider
 }
 
 // GetThumbnail returns an on-demand, disk-cached PNG thumbnail.
+//
+//	@Summary		Get an object thumbnail
+//	@Description	Returns a generated PNG thumbnail. The object key is passed as a query parameter so every valid S3 key is unambiguous.
+//	@Tags			Objects
+//	@Produce		image/png
+//	@Security		BearerAuth
+//	@Param			bucket	path		string										true	"Bucket name"
+//	@Param			key		query		string										true	"Exact object key"
+//	@Param			size	query		int											false	"Square size in pixels, 32-512 (default 96)"
+//	@Param			v		query		string										false	"Source version used for immutable caching"
+//	@Success		200		{file}		binary										"PNG thumbnail"
+//	@Success		304		{string}	string										"Not modified"
+//	@Failure		400		{object}	models.APIResponse{error=models.APIError}	"Invalid key or size"
+//	@Failure		413		{object}	models.APIResponse{error=models.APIError}	"Source exceeds thumbnail limits"
+//	@Failure		415		{object}	models.APIResponse{error=models.APIError}	"Unsupported image type"
+//	@Failure		500		{object}	models.APIResponse{error=models.APIError}	"Thumbnail generation failed"
+//	@Failure		501		{object}	models.APIResponse{error=models.APIError}	"Thumbnail generation disabled"
+//	@ID				getObjectThumbnail
+//	@Router			/api/v1/buckets/{bucket}/object/thumbnail [get]
 func (h *ObjectHandler) GetThumbnail(c fiber.Ctx) error {
 	if h.thumbnails == nil {
 		return c.Status(fiber.StatusNotImplemented).JSON(
@@ -102,7 +135,7 @@ func (h *ObjectHandler) GetThumbnail(c fiber.Ctx) error {
 		)
 	}
 	bucket := c.Params("bucket")
-	key, _ := c.Locals("objectKey").(string)
+	key := objectKeyFromRequest(c)
 	if bucket == "" || key == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(
 			models.ErrorResponse(models.ErrCodeBadRequest, "Bucket name and object key are required"),
@@ -164,6 +197,7 @@ func NewObjectHandler(s3Service services.S3Storage, previewTokens PreviewTokenMi
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			bucket				path		string												true	"Name of the bucket to list objects from"
 //	@Param			prefix				query		string												false	"Filter objects by prefix"
 //	@Param			search				query		string												false	"Recursively search object keys under prefix by case-insensitive substring (best-effort; bypasses max_keys and continuation_token)"
@@ -173,6 +207,7 @@ func NewObjectHandler(s3Service services.S3Storage, previewTokens PreviewTokenMi
 //	@Failure		400					{object}	models.APIResponse{error=models.APIError}			"Invalid request parameters"
 //	@Failure		404					{object}	models.APIResponse{error=models.APIError}			"Bucket not found"
 //	@Failure		500					{object}	models.APIResponse{error=models.APIError}			"Failed to list objects"
+//	@ID				listObjects
 //	@Router			/api/v1/buckets/{bucket}/objects [get]
 func (h *ObjectHandler) ListObjects(c fiber.Ctx) error {
 	ctx := c.Context()
@@ -228,6 +263,7 @@ func (h *ObjectHandler) ListObjects(c fiber.Ctx) error {
 //	@Summary		Upload object to bucket
 //	@Description	Uploads an object to the specified bucket using multipart/form-data
 //	@Tags			Objects
+//	@Security		BearerAuth
 //	@Accept			multipart/form-data
 //	@Produce		json
 //	@Param			bucket	path		string													true	"Name of the bucket to upload the object to"
@@ -292,6 +328,7 @@ func (h *ObjectHandler) UploadObject(c fiber.Ctx) error {
 //	@Summary		Create directory in bucket
 //	@Description	Creates a zero-byte object whose key ends with "/" so that S3 clients display it as an empty folder.
 //	@Tags			Objects
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			bucket	path		string												true	"Name of the bucket"
@@ -344,6 +381,7 @@ func (h *ObjectHandler) CreateDirectory(c fiber.Ctx) error {
 //	@Summary		Copy an object
 //	@Description	Copies one object to a destination bucket and key using S3 server-side copy.
 //	@Tags			Objects
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			bucket	path		string										true	"Source bucket"
@@ -363,6 +401,7 @@ func (h *ObjectHandler) CopyObject(c fiber.Ctx) error {
 //	@Summary		Move or rename an object
 //	@Description	Moves one object to a destination bucket and key. A same-bucket move is a rename.
 //	@Tags			Objects
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			bucket	path		string										true	"Source bucket"
@@ -450,20 +489,21 @@ func (h *ObjectHandler) transferObject(c fiber.Ctx, move bool) error {
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		application/octet-stream
+//	@Security		BearerAuth
 //	@Param			bucket		path		string										true	"Name of the bucket containing the object"
-//	@Param			key			path		string										true	"Key (path) of the object"
+//	@Param			key			query		string										true	"Exact object key"
 //	@Param			download	query		bool										false	"Set to true to download the object as an attachment"
 //	@Success		200			{file}		binary										"Successfully retrieved the object"
+//	@Success		206			{file}		binary										"Partial object content"
 //	@Failure		400			{object}	models.APIResponse{error=models.APIError}	"Bucket name and object key are required"
 //	@Failure		404			{object}	models.APIResponse{error=models.APIError}	"Object not found"
-//	@Router			/api/v1/buckets/{bucket}/objects/{key} [get]
+//	@Failure		416			{object}	models.APIResponse{error=models.APIError}	"Requested range is not satisfiable"
+//	@ID				getObject
+//	@Router			/api/v1/buckets/{bucket}/object [get]
 func (h *ObjectHandler) GetObject(c fiber.Ctx) error {
 	bucketName := c.Params("bucket")
 
-	key, ok := c.Locals("objectKey").(string)
-	if !ok || key == "" {
-		key = c.Params("key")
-	}
+	key := objectKeyFromRequest(c)
 
 	if bucketName == "" || key == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -570,13 +610,15 @@ func (h *ObjectHandler) getObjectRange(c fiber.Ctx, bucketName, key, rangeHeader
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			bucket	path		string													true	"Name of the bucket containing the object"
-//	@Param			key		path		string													true	"Key (path) of the object"
+//	@Param			key		query		string													true	"Exact object key"
 //	@Success		200		{object}	models.APIResponse{data=models.ObjectDeleteResponse}	"Successfully deleted the object"
 //	@Failure		400		{object}	models.APIResponse{error=models.APIError}				"Bucket name and object key are required"
 //	@Failure		404		{object}	models.APIResponse{error=models.APIError}				"Object not found"
 //	@Failure		500		{object}	models.APIResponse{error=models.APIError}				"Failed to delete object"
-//	@Router			/api/v1/buckets/{bucket}/objects/{key} [delete]
+//	@ID				deleteObject
+//	@Router			/api/v1/buckets/{bucket}/object [delete]
 func (h *ObjectHandler) DeleteObject(c fiber.Ctx) error {
 	ctx := c.Context()
 
@@ -584,10 +626,7 @@ func (h *ObjectHandler) DeleteObject(c fiber.Ctx) error {
 	bucketName := c.Params("bucket")
 
 	// Get object key from locals (set by route handler) or from params
-	key, ok := c.Locals("objectKey").(string)
-	if !ok || key == "" {
-		key = c.Params("key")
-	}
+	key := objectKeyFromRequest(c)
 
 	if bucketName == "" || key == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -633,12 +672,14 @@ func (h *ObjectHandler) DeleteObject(c fiber.Ctx) error {
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			bucket	path		string										true	"Name of the bucket containing the object"
-//	@Param			key		path		string										true	"Key (path) of the object"
+//	@Param			key		query		string										true	"Exact object key"
 //	@Success		200		{object}	models.APIResponse{data=models.ObjectInfo}	"Successfully retrieved object metadata"
 //	@Failure		400		{object}	models.APIResponse{error=models.APIError}	"Bucket name and object key are required"
 //	@Failure		404		{object}	models.APIResponse{error=models.APIError}	"Object not found"
-//	@Router			/api/v1/buckets/{bucket}/objects/{key}/metadata [get]
+//	@ID				getObjectMetadata
+//	@Router			/api/v1/buckets/{bucket}/object/metadata [get]
 func (h *ObjectHandler) GetObjectMetadata(c fiber.Ctx) error {
 	ctx := c.Context()
 
@@ -646,10 +687,7 @@ func (h *ObjectHandler) GetObjectMetadata(c fiber.Ctx) error {
 	bucketName := c.Params("bucket")
 
 	// Get object key from locals (set by route handler) or from params
-	key, ok := c.Locals("objectKey").(string)
-	if !ok || key == "" {
-		key = c.Params("key")
-	}
+	key := objectKeyFromRequest(c)
 
 	if bucketName == "" || key == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -669,6 +707,22 @@ func (h *ObjectHandler) GetObjectMetadata(c fiber.Ctx) error {
 	return c.JSON(models.SuccessResponse(metadata))
 }
 
+// HeadObject returns object headers without a response body.
+//
+//	@Summary		Head an object
+//	@Tags			Objects
+//	@Security		BearerAuth
+//	@Param			bucket	path	string	true	"Name of the bucket containing the object"
+//	@Param			key		query	string	true	"Exact object key"
+//	@Success		200
+//	@Failure		400	{object}	models.APIResponse{error=models.APIError}
+//	@Failure		404	{object}	models.APIResponse{error=models.APIError}
+//	@ID				headObject
+//	@Router			/api/v1/buckets/{bucket}/object [head]
+func (h *ObjectHandler) HeadObject(c fiber.Ctx) error {
+	return h.GetObjectMetadata(c)
+}
+
 // GetPresignedURL generates a pre-signed URL for accessing an object
 //
 //	@Summary		Get pre-signed URL for object
@@ -676,14 +730,16 @@ func (h *ObjectHandler) GetObjectMetadata(c fiber.Ctx) error {
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			bucket		path		string													true	"Name of the bucket containing the object"
-//	@Param			key			path		string													true	"Key (path) of the object"
+//	@Param			key			query		string													true	"Exact object key"
 //	@Param			expires_in	query		int														false	"Expiration time in seconds for the pre-signed URL (default: 3600 seconds)"
 //	@Success		200			{object}	models.APIResponse{data=models.PresignedURLResponse}	"Successfully generated pre-signed URL"
 //	@Failure		400			{object}	models.APIResponse{error=models.APIError}				"Invalid request parameters"
 //	@Failure		404			{object}	models.APIResponse{error=models.APIError}				"Object not found"
 //	@Failure		500			{object}	models.APIResponse{error=models.APIError}				"Failed to generate pre-signed URL"
-//	@Router			/api/v1/buckets/{bucket}/objects/{key}/presigned-url [get]
+//	@ID				getObjectPresignedURL
+//	@Router			/api/v1/buckets/{bucket}/object/presign [get]
 func (h *ObjectHandler) GetPresignedURL(c fiber.Ctx) error {
 	ctx := c.Context()
 
@@ -691,10 +747,7 @@ func (h *ObjectHandler) GetPresignedURL(c fiber.Ctx) error {
 	bucketName := c.Params("bucket")
 
 	// Get object key from locals (set by route handler) or from params
-	key, ok := c.Locals("objectKey").(string)
-	if !ok || key == "" {
-		key = c.Params("key")
-	}
+	key := objectKeyFromRequest(c)
 
 	if bucketName == "" || key == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -756,19 +809,18 @@ func (h *ObjectHandler) GetPresignedURL(c fiber.Ctx) error {
 //	@Description	Returns a relative URL carrying a short-lived token that authorizes streaming this object. Media elements cannot send an Authorization header, so the token rides in the URL instead.
 //	@Tags			Objects
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			bucket	path		string												true	"Name of the bucket containing the object"
-//	@Param			key		path		string												true	"Key (path) of the object"
+//	@Param			key		query		string												true	"Exact object key"
 //	@Success		200		{object}	models.APIResponse{data=models.PreviewURLResponse}	"Preview URL minted"
 //	@Failure		400		{object}	models.APIResponse{error=models.APIError}			"Bucket name and object key are required"
 //	@Failure		500		{object}	models.APIResponse{error=models.APIError}			"Failed to mint the preview token"
-//	@Router			/api/v1/buckets/{bucket}/objects/{key}/preview-url [get]
+//	@ID				getObjectPreviewURL
+//	@Router			/api/v1/buckets/{bucket}/object/preview-url [get]
 func (h *ObjectHandler) GetPreviewURL(c fiber.Ctx) error {
 	bucketName := c.Params("bucket")
 
-	key, ok := c.Locals("objectKey").(string)
-	if !ok || key == "" {
-		key = c.Params("key")
-	}
+	key := objectKeyFromRequest(c)
 
 	if bucketName == "" || key == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -784,7 +836,7 @@ func (h *ObjectHandler) GetPreviewURL(c fiber.Ctx) error {
 	}
 
 	previewURL := "/api/v1/buckets/" + url.PathEscape(bucketName) +
-		"/objects/" + url.PathEscape(key) + "?pt=" + url.QueryEscape(token)
+		"/object?key=" + url.QueryEscape(key) + "&pt=" + url.QueryEscape(token)
 
 	return c.JSON(models.SuccessResponse(models.PreviewURLResponse{
 		URL:       previewURL,
@@ -797,6 +849,7 @@ func (h *ObjectHandler) GetPreviewURL(c fiber.Ctx) error {
 //	@Summary		Delete multiple objects from bucket
 //	@Description	Deletes multiple objects stored in the specified bucket
 //	@Tags			Objects
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			bucket	path		string																true	"Name of the bucket containing the objects"
@@ -894,6 +947,7 @@ func (h *ObjectHandler) DeleteMultipleObjects(c fiber.Ctx) error {
 //	@Summary		Upload multiple objects to bucket
 //	@Description	Uploads multiple objects to the specified bucket using multipart/form-data. Accepts unlimited number of files and handles them in a loop.
 //	@Tags			Objects
+//	@Security		BearerAuth
 //	@Accept			multipart/form-data
 //	@Produce		json
 //	@Param			bucket	path		string															true	"Name of the bucket to upload the objects to"

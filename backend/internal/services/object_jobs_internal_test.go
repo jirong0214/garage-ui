@@ -3,12 +3,39 @@ package services
 import (
 	"context"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
 	"Noooste/garage-ui/internal/config"
 	"Noooste/garage-ui/internal/models"
 )
+
+func TestNormalizeObjectJobRequestPreservesOpaqueKeys(t *testing.T) {
+	req := models.CreateObjectJobRequest{
+		Operation:         models.ObjectJobOperationCopy,
+		SourceBucket:      "source",
+		Objects:           []string{" leading.txt", "/root.txt", "trailing.txt ", "a+b#?%.txt", "中文.txt"},
+		Prefixes:          []string{" folder ", "/root-prefix", "目录"},
+		DestinationBucket: "destination",
+		DestinationPrefix: " target ",
+	}
+	if err := normalizeObjectJobRequest(&req); err != nil {
+		t.Fatalf("normalizeObjectJobRequest: %v", err)
+	}
+
+	wantObjects := []string{" leading.txt", "/root.txt", "trailing.txt ", "a+b#?%.txt", "中文.txt"}
+	wantPrefixes := []string{" folder /", "/root-prefix/", "目录/"}
+	if !reflect.DeepEqual(req.Objects, wantObjects) {
+		t.Errorf("objects = %#v, want exact %#v", req.Objects, wantObjects)
+	}
+	if !reflect.DeepEqual(req.Prefixes, wantPrefixes) {
+		t.Errorf("prefixes = %#v, want exact %#v", req.Prefixes, wantPrefixes)
+	}
+	if req.DestinationPrefix != " target /" {
+		t.Errorf("destinationPrefix = %q, want exact key prefix with trailing slash", req.DestinationPrefix)
+	}
+}
 
 type resumeMoveS3 struct {
 	S3Storage

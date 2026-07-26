@@ -96,13 +96,14 @@ func newEnabledPolicyFixture(t *testing.T) (*routeFixture, string) {
 	s3 := &mocks.S3Mock{}
 
 	app := fiber.New()
+	objectHandler := handlers.NewObjectHandler(s3, svc)
 	SetupRoutes(
 		app,
 		cfg,
 		svc,
 		handlers.NewHealthHandler("test"),
 		handlers.NewBucketHandler(admin, s3, nil),
-		handlers.NewObjectHandler(s3, svc),
+		objectHandler,
 		handlers.NewUserHandler(admin),
 		handlers.NewClusterHandler(admin),
 		handlers.NewMonitoringHandler(admin, s3),
@@ -120,7 +121,7 @@ func newEnabledPolicyFixture(t *testing.T) (*routeFixture, string) {
 		t.Fatalf("GenerateSessionToken: %v", err)
 	}
 
-	return &routeFixture{App: app, Admin: admin, S3: s3, Auth: svc, Cfg: cfg}, token
+	return &routeFixture{App: app, Admin: admin, S3: s3, Auth: svc, ObjectHandler: objectHandler, Cfg: cfg}, token
 }
 
 // TestWildcardObjectRoutes_EnforceAuthzViaGroupCascade locks in the Fiber
@@ -239,7 +240,7 @@ func TestPreviewTokenGrantsObjectGET(t *testing.T) {
 	f, _ := newEnabledPolicyFixture(t)
 
 	// The full-object body echoes the key the handler was actually asked to
-	// serve (the decoded c.Params("*")). Asserting the streamed body equals
+	// serve. Asserting the streamed body equals
 	// the exact key the token was minted for makes any future divergence
 	// between the validated key and the served key fail loudly here rather
 	// than hide behind a constant body.
@@ -258,7 +259,7 @@ func TestPreviewTokenGrantsObjectGET(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MintPreviewToken: %v", err)
 	}
-	tokenized := "/api/v1/buckets/allowed-data/objects/media%2Fclip.mp4?pt=" + url.QueryEscape(token)
+	tokenized := "/api/v1/buckets/allowed-data/object?key=" + url.QueryEscape(mintedKey) + "&pt=" + url.QueryEscape(token)
 
 	// No Authorization header anywhere in this test.
 	do := func(method, path, rangeHeader string) *http.Response {
@@ -290,13 +291,13 @@ func TestPreviewTokenGrantsObjectGET(t *testing.T) {
 	}
 
 	// The token never opens the JSON subroutes or other objects.
-	if resp := do("GET", "/api/v1/buckets/allowed-data/objects/media%2Fclip.mp4%2Fmetadata?pt="+url.QueryEscape(token), ""); resp.StatusCode != 401 {
+	if resp := do("GET", "/api/v1/buckets/allowed-data/object/metadata?key="+url.QueryEscape(mintedKey)+"&pt="+url.QueryEscape(token), ""); resp.StatusCode != 401 {
 		t.Errorf("metadata with token: status = %d, want 401", resp.StatusCode)
 	}
-	if resp := do("GET", "/api/v1/buckets/allowed-data/objects/other.mp4?pt="+url.QueryEscape(token), ""); resp.StatusCode != 401 {
+	if resp := do("GET", "/api/v1/buckets/allowed-data/object?key=other.mp4&pt="+url.QueryEscape(token), ""); resp.StatusCode != 401 {
 		t.Errorf("other object with token: status = %d, want 401", resp.StatusCode)
 	}
-	if resp := do("GET", "/api/v1/buckets/allowed-data/objects/media%2Fclip.mp4", ""); resp.StatusCode != 401 {
+	if resp := do("GET", "/api/v1/buckets/allowed-data/object?key="+url.QueryEscape(mintedKey), ""); resp.StatusCode != 401 {
 		t.Errorf("no token, no auth: status = %d, want 401", resp.StatusCode)
 	}
 }

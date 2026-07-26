@@ -23,6 +23,8 @@ type ObjectJobService interface {
 	Close() error
 }
 
+var ErrInvalidObjectJob = errors.New("invalid object job")
+
 type ObjectJobManager struct {
 	s3        S3Storage
 	store     *objectJobStore
@@ -87,7 +89,7 @@ func (m *ObjectJobManager) Close() error {
 
 func (m *ObjectJobManager) Create(_ context.Context, owner string, req models.CreateObjectJobRequest, idempotencyKey string) (*models.ObjectJob, error) {
 	if err := normalizeObjectJobRequest(&req); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrInvalidObjectJob, err)
 	}
 	id := uuid.NewString()
 	if idempotencyKey != "" {
@@ -558,7 +560,6 @@ func uniqueObjectKeys(values []string, prefix bool) []string {
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(values))
 	for _, value := range values {
-		value = strings.TrimLeft(strings.TrimSpace(value), "/")
 		if prefix {
 			value = normalizeObjectPrefix(value)
 		}
@@ -588,7 +589,6 @@ func uniqueObjectKeys(values []string, prefix bool) []string {
 }
 
 func normalizeObjectPrefix(value string) string {
-	value = strings.TrimLeft(strings.TrimSpace(value), "/")
 	if value != "" && !strings.HasSuffix(value, "/") {
 		value += "/"
 	}

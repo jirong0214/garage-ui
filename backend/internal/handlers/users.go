@@ -26,6 +26,7 @@ func NewUserHandler(adminService services.AdminService) *UserHandler {
 //	@Summary		List all users
 //	@Description	Retrieves a list of all users/access keys
 //	@Tags			Users
+//	@Security		BearerAuth
 //	@Produce		json
 //	@Success		200	{object}	models.APIResponse{data=models.UserListResponse}	"List of users retrieved successfully"
 //	@Failure		500	{object}	models.APIResponse{error=models.APIError}			"Failed to list users"
@@ -109,6 +110,7 @@ func convertBucketPermissionsToBucketPermissions(buckets []models.KeyBucketInfo)
 //	@Summary		Create a new user
 //	@Description	Creates a new user/access key with optional name
 //	@Tags			Users
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		models.CreateUserRequest					true	"User creation request"
@@ -169,6 +171,7 @@ func (h *UserHandler) CreateUser(c fiber.Ctx) error {
 //	@Summary		Delete a user
 //	@Description	Deletes a specific user/access key
 //	@Tags			Users
+//	@Security		BearerAuth
 //	@Produce		json
 //	@Param			access_key	path		string											true	"Access key of the user to delete"
 //	@Success		200			{object}	models.APIResponse{data=map[string]interface{}}	"User deleted successfully"
@@ -204,6 +207,7 @@ func (h *UserHandler) DeleteUser(c fiber.Ctx) error {
 //	@Summary		Get user information
 //	@Description	Retrieves information about a specific user/access key
 //	@Tags			Users
+//	@Security		BearerAuth
 //	@Produce		json
 //	@Param			access_key	path		string										true	"Access key of the user to retrieve"
 //	@Success		200			{object}	models.APIResponse{data=models.UserInfo}	"User information retrieved successfully"
@@ -256,6 +260,7 @@ func (h *UserHandler) GetUser(c fiber.Ctx) error {
 //	@Summary		Get user secret key
 //	@Description	Retrieves the secret access key for a specific user/access key
 //	@Tags			Users
+//	@Security		BearerAuth
 //	@Produce		json
 //	@Param			access_key	path		string										true	"Access key of the user to retrieve secret for"
 //	@Success		200			{object}	models.APIResponse{data=map[string]string}	"Secret key retrieved successfully"
@@ -291,6 +296,7 @@ func (h *UserHandler) GetUserSecretKey(c fiber.Ctx) error {
 //	@Summary		Update user permissions
 //	@Description	Updates the permissions and settings for a specific user/access key
 //	@Tags			Users
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		json
 //	@Param			access_key	path		string										true	"Access key of the user to update"

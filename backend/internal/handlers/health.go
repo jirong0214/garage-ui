@@ -28,13 +28,27 @@ func NewHealthHandler(version string) *HealthHandler {
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	models.APIResponse{data=models.HealthResponse}	"Service is healthy"
-//	@Router			/api/v1/health [get]
+//	@ID				getHealth
+//	@Router			/health [get]
 func (h *HealthHandler) Check(c fiber.Ctx) error {
 	response := models.HealthResponse{
-		Status:    "healthy",
-		Timestamp: time.Now(),
-		Version:   h.version,
+		Status:     "healthy",
+		Timestamp:  time.Now(),
+		Version:    h.version,
+		APIVersion: models.APIContractVersion,
 	}
 
 	return c.JSON(models.SuccessResponse(response))
+}
+
+// CheckAPI is the authenticated-route-compatible health alias.
+//
+//	@Summary		Health check API alias
+//	@Tags			Health
+//	@Produce		json
+//	@Success		200	{object}	models.APIResponse{data=models.HealthResponse}
+//	@ID				getAPIHealth
+//	@Router			/api/v1/health [get]
+func (h *HealthHandler) CheckAPI(c fiber.Ctx) error {
+	return h.Check(c)
 }

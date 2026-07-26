@@ -28,12 +28,14 @@ func NewObjectJobHandler(jobs services.ObjectJobService) *ObjectJobHandler {
 //	@Tags			Object Jobs
 //	@Accept			json
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			Idempotency-Key	header		string							false	"Retry-safe request key"
 //	@Param			request			body		models.CreateObjectJobRequest	true	"Job specification"
 //	@Success		202				{object}	models.APIResponse{data=models.ObjectJob}
 //	@Failure		400				{object}	models.APIResponse{error=models.APIError}
 //	@Failure		403				{object}	models.APIResponse{error=models.APIError}
 //	@Failure		500				{object}	models.APIResponse{error=models.APIError}
+//	@ID				createObjectJob
 //	@Router			/api/v1/object-jobs [post]
 func (h *ObjectJobHandler) Create(c fiber.Ctx) error {
 	var req models.CreateObjectJobRequest
@@ -50,6 +52,11 @@ func (h *ObjectJobHandler) Create(c fiber.Ctx) error {
 	}
 	job, err := h.jobs.Create(c.Context(), requestOwner(c), req, idempotencyKey)
 	if err != nil {
+		if !errors.Is(err, services.ErrInvalidObjectJob) {
+			return c.Status(fiber.StatusInternalServerError).JSON(
+				models.ErrorResponse(models.ErrCodeInternalError, "Failed to create object job"),
+			)
+		}
 		return c.Status(fiber.StatusBadRequest).JSON(
 			models.ErrorResponse(models.ErrCodeBadRequest, err.Error()),
 		)
@@ -62,8 +69,11 @@ func (h *ObjectJobHandler) Create(c fiber.Ctx) error {
 //	@Summary		List object jobs
 //	@Tags			Object Jobs
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			limit	query		int	false	"Maximum jobs, 1-100"
 //	@Success		200		{object}	models.APIResponse{data=models.ObjectJobList}
+//	@Failure		500		{object}	models.APIResponse{error=models.APIError}
+//	@ID				listObjectJobs
 //	@Router			/api/v1/object-jobs [get]
 func (h *ObjectJobHandler) List(c fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
@@ -81,9 +91,12 @@ func (h *ObjectJobHandler) List(c fiber.Ctx) error {
 //	@Summary		Get object job
 //	@Tags			Object Jobs
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			id	path		string	true	"Job ID"
 //	@Success		200	{object}	models.APIResponse{data=models.ObjectJob}
 //	@Failure		404	{object}	models.APIResponse{error=models.APIError}
+//	@Failure		500	{object}	models.APIResponse{error=models.APIError}
+//	@ID				getObjectJob
 //	@Router			/api/v1/object-jobs/{id} [get]
 func (h *ObjectJobHandler) Get(c fiber.Ctx) error {
 	job, err := h.jobs.Get(c.Params("id"))
@@ -103,10 +116,14 @@ func (h *ObjectJobHandler) Get(c fiber.Ctx) error {
 //	@Summary		List object job failures
 //	@Tags			Object Jobs
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			id		path		string	true	"Job ID"
 //	@Param			offset	query		int		false	"Zero-based offset"
 //	@Param			limit	query		int		false	"Page size, 1-200"
 //	@Success		200		{object}	models.APIResponse{data=models.ObjectJobFailureList}
+//	@Failure		404		{object}	models.APIResponse{error=models.APIError}
+//	@Failure		500		{object}	models.APIResponse{error=models.APIError}
+//	@ID				listObjectJobFailures
 //	@Router			/api/v1/object-jobs/{id}/failures [get]
 func (h *ObjectJobHandler) Failures(c fiber.Ctx) error {
 	job, err := h.jobs.Get(c.Params("id"))
@@ -135,8 +152,12 @@ func (h *ObjectJobHandler) Failures(c fiber.Ctx) error {
 //	@Summary		Cancel object job
 //	@Tags			Object Jobs
 //	@Produce		json
+//	@Security		BearerAuth
 //	@Param			id	path		string	true	"Job ID"
 //	@Success		200	{object}	models.APIResponse{data=models.ObjectJob}
+//	@Failure		404	{object}	models.APIResponse{error=models.APIError}
+//	@Failure		500	{object}	models.APIResponse{error=models.APIError}
+//	@ID				cancelObjectJob
 //	@Router			/api/v1/object-jobs/{id}/cancel [post]
 func (h *ObjectJobHandler) Cancel(c fiber.Ctx) error {
 	job, err := h.jobs.Get(c.Params("id"))

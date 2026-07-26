@@ -23,11 +23,12 @@ import (
 
 // routeFixture bundles everything a routes test needs.
 type routeFixture struct {
-	App   *fiber.App
-	Admin *mocks.AdminMock
-	S3    *mocks.S3Mock
-	Auth  *auth.Service
-	Cfg   *config.Config
+	App           *fiber.App
+	Admin         *mocks.AdminMock
+	S3            *mocks.S3Mock
+	Auth          *auth.Service
+	ObjectHandler *handlers.ObjectHandler
+	Cfg           *config.Config
 }
 
 // newTestApp builds a fully-wired fiber.App via SetupRoutes. The cfgMutator
@@ -65,13 +66,14 @@ func newTestApp(t *testing.T, cfgMutator func(*config.Config)) *routeFixture {
 	az := authz.NewMiddleware(policy, authz.NewTeamResolver(policy, nil), authz.NewAuthorizer())
 
 	app := fiber.New()
+	objectHandler := handlers.NewObjectHandler(s3, svc)
 	SetupRoutes(
 		app,
 		cfg,
 		svc,
 		handlers.NewHealthHandler("test"),
 		handlers.NewBucketHandler(admin, s3, nil),
-		handlers.NewObjectHandler(s3, svc),
+		objectHandler,
 		handlers.NewUserHandler(admin),
 		handlers.NewClusterHandler(admin),
 		handlers.NewMonitoringHandler(admin, s3),
@@ -79,7 +81,7 @@ func newTestApp(t *testing.T, cfgMutator func(*config.Config)) *routeFixture {
 		az,
 	)
 
-	return &routeFixture{App: app, Admin: admin, S3: s3, Auth: svc, Cfg: cfg}
+	return &routeFixture{App: app, Admin: admin, S3: s3, Auth: svc, ObjectHandler: objectHandler, Cfg: cfg}
 }
 
 // expectStatus sends req and asserts the status code.
@@ -202,6 +204,14 @@ func TestRoutes_AllAPIRoutesRegistered(t *testing.T) {
 		{"POST", "/api/v1/buckets/b1/objects/"},
 		{"POST", "/api/v1/buckets/b1/objects/upload-multiple"},
 		{"POST", "/api/v1/buckets/b1/objects/delete-multiple"},
+		// Canonical unambiguous single-object routes
+		{"GET", "/api/v1/buckets/b1/object?key=folder%2Ffile.txt"},
+		{"HEAD", "/api/v1/buckets/b1/object?key=folder%2Ffile.txt"},
+		{"DELETE", "/api/v1/buckets/b1/object?key=folder%2Ffile.txt"},
+		{"GET", "/api/v1/buckets/b1/object/metadata?key=folder%2Ffile.txt"},
+		{"GET", "/api/v1/buckets/b1/object/thumbnail?key=folder%2Ffile.txt"},
+		{"GET", "/api/v1/buckets/b1/object/presign?key=folder%2Ffile.txt"},
+		{"GET", "/api/v1/buckets/b1/object/preview-url?key=folder%2Ffile.txt"},
 		// Object wildcard routes
 		{"GET", "/api/v1/buckets/b1/objects/folder/file.txt"},
 		{"GET", "/api/v1/buckets/b1/objects/folder/file.txt/metadata"},

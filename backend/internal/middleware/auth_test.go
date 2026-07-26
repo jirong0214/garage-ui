@@ -426,6 +426,8 @@ func newPreviewTokenApp(t *testing.T, authCfg *config.AuthConfig, svc *auth.Serv
 		return c.SendString("claims:" + claims.Bucket + "/" + claims.Key)
 	}
 	app.Get("/api/v1/buckets/:bucket/objects/*", handler)
+	app.Get("/api/v1/buckets/:bucket/object", handler)
+	app.Get("/api/v1/buckets/:bucket/object/metadata", handler)
 	app.Delete("/api/v1/buckets/:bucket/objects/*", handler)
 	return app
 }
@@ -456,6 +458,39 @@ func TestAuthMiddleware_ValidPreviewTokenAllowsObjectGET(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	if string(body) != "claims:b1/dir/clip.mp4" {
 		t.Errorf("body = %q, want the preview claims set in locals", body)
+	}
+}
+
+func TestAuthMiddleware_ValidPreviewTokenAllowsCanonicalObjectGET(t *testing.T) {
+	authCfg := previewAuthConfig()
+	svc := newAuthSvc(t, authCfg)
+	app := newPreviewTokenApp(t, authCfg, svc)
+
+	key := "目录/a#b?% file.mp4"
+	token, _, err := svc.MintPreviewToken("b1", key, time.Minute)
+	if err != nil {
+		t.Fatalf("MintPreviewToken: %v", err)
+	}
+	requestURL := "/api/v1/buckets/b1/object?key=" + url.QueryEscape(key) + "&pt=" + url.QueryEscape(token)
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, requestURL, nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "claims:b1/"+key {
+		t.Errorf("body = %q, want exact canonical query key", body)
+	}
+
+	metadataURL := "/api/v1/buckets/b1/object/metadata?key=" + url.QueryEscape(key) + "&pt=" + url.QueryEscape(token)
+	resp, err = app.Test(httptest.NewRequest(http.MethodGet, metadataURL, nil))
+	if err != nil {
+		t.Fatalf("metadata app.Test: %v", err)
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("metadata status = %d, want 401", resp.StatusCode)
 	}
 }
 
@@ -583,6 +618,7 @@ func TestPreviewObjectKey(t *testing.T) {
 		want string
 	}{
 		{name: "plain key decodes", path: "/api/v1/buckets/b/objects/dir%2Fclip.mp4", want: "dir/clip.mp4"},
+		{name: "literal plus is preserved", path: "/api/v1/buckets/b/objects/a+b.mp4", want: "a+b.mp4"},
 		{name: "unparseable route returns empty", path: "/not-a-bucket-route", want: ""},
 		// A key that genuinely ends in a slash is legitimate when the SPA sends
 		// it as one encoded segment ("dir%2F"): raw has no literal trailing

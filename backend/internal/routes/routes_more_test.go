@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"Noooste/garage-ui/internal/config"
 	"Noooste/garage-ui/internal/models"
+	"Noooste/garage-ui/internal/services"
 )
 
 // newNoAuthFixture builds a fixture with both admin and OIDC disabled. The
@@ -28,6 +30,120 @@ func newNoAuthFixture(t *testing.T) *routeFixture {
 
 func plainReq(method, path string, body io.Reader) *http.Request {
 	return httptest.NewRequest(method, path, body)
+}
+
+type routeThumbnailProvider struct {
+	key *string
+}
+
+func (p routeThumbnailProvider) Get(_ context.Context, _ string, key string, _ int) (*services.ThumbnailResult, error) {
+	*p.key = key
+	return &services.ThumbnailResult{Data: []byte("png"), ETag: "etag"}, nil
+}
+
+func TestRoutes_CanonicalObjectKeyCompatibility(t *testing.T) {
+	f := newNoAuthFixture(t)
+
+	var gotKey string
+	f.S3.GetObjectFn = func(_ context.Context, _ string, key string) (io.ReadCloser, *models.ObjectInfo, error) {
+		gotKey = key
+		return io.NopCloser(strings.NewReader("ok")), &models.ObjectInfo{
+			Key:         key,
+			Size:        2,
+			ContentType: "text/plain",
+		}, nil
+	}
+
+	keys := []string{
+		"image.jpg",
+		"folder/image.jpg",
+		"Screenshot 01.png",
+		"中文文件名.jpg",
+		"a#b?.txt",
+		"percent%name.txt",
+		"emoji-😀.png",
+		"directory-marker/",
+		"reserved/metadata",
+		"reserved/thumbnail",
+		"reserved/presign",
+		"reserved/preview-url",
+	}
+	for _, key := range keys {
+		t.Run(key, func(t *testing.T) {
+			gotKey = ""
+			requestURL := "/api/v1/buckets/b1/object?" + url.Values{"key": {key}}.Encode()
+			resp, err := f.App.Test(plainReq(http.MethodGet, requestURL, nil))
+			if err != nil {
+				t.Fatalf("app.Test: %v", err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("status = %d, want 200", resp.StatusCode)
+			}
+			if gotKey != key {
+				t.Errorf("service key = %q, want %q", gotKey, key)
+			}
+		})
+	}
+}
+
+func TestRoutes_CanonicalObjectEndpointsPreserveExactKey(t *testing.T) {
+	f := newNoAuthFixture(t)
+	key := " 目录/a+b#?% file.txt/metadata "
+	var gotKey string
+
+	f.S3.GetObjectFn = func(_ context.Context, _ string, key string) (io.ReadCloser, *models.ObjectInfo, error) {
+		gotKey = key
+		return io.NopCloser(strings.NewReader("ok")), &models.ObjectInfo{Key: key, Size: 2, ContentType: "text/plain"}, nil
+	}
+	f.S3.GetObjectMetadataFn = func(_ context.Context, _ string, key string) (*models.ObjectInfo, error) {
+		gotKey = key
+		return &models.ObjectInfo{Key: key, Size: 2, ContentType: "text/plain"}, nil
+	}
+	f.S3.ObjectExistsFn = func(_ context.Context, _ string, key string) (bool, error) {
+		gotKey = key
+		return true, nil
+	}
+	f.S3.GetPresignedURLFn = func(_ context.Context, _ string, key string, _ time.Duration) (string, error) {
+		gotKey = key
+		return "https://signed.example/object", nil
+	}
+	f.S3.DeleteObjectFn = func(_ context.Context, _ string, key string) error {
+		gotKey = key
+		return nil
+	}
+	f.ObjectHandler.SetThumbnailProvider(routeThumbnailProvider{key: &gotKey})
+
+	encoded := url.Values{"key": {key}}.Encode()
+	cases := []struct {
+		method string
+		path   string
+		want   int
+	}{
+		{http.MethodGet, "/api/v1/buckets/b1/object?" + encoded, http.StatusOK},
+		{http.MethodHead, "/api/v1/buckets/b1/object?" + encoded, http.StatusOK},
+		{http.MethodGet, "/api/v1/buckets/b1/object/metadata?" + encoded, http.StatusOK},
+		{http.MethodGet, "/api/v1/buckets/b1/object/thumbnail?" + encoded, http.StatusOK},
+		{http.MethodGet, "/api/v1/buckets/b1/object/presign?" + encoded, http.StatusOK},
+		{http.MethodGet, "/api/v1/buckets/b1/object/preview-url?" + encoded, http.StatusOK},
+		{http.MethodDelete, "/api/v1/buckets/b1/object?" + encoded, http.StatusOK},
+	}
+	for _, tc := range cases {
+		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+			gotKey = ""
+			resp, err := f.App.Test(plainReq(tc.method, tc.path, nil))
+			if err != nil {
+				t.Fatalf("app.Test: %v", err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != tc.want {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tc.want)
+			}
+			if gotKey != key && !strings.Contains(tc.path, "/preview-url?") {
+				t.Errorf("service key = %q, want exact %q", gotKey, key)
+			}
+		})
+	}
 }
 
 func TestRoutes_ObjectWildcard_GET_DefaultRoutesToGetObject(t *testing.T) {
@@ -120,10 +236,9 @@ func TestRoutes_ObjectWildcard_GET_PreviewURLSuffixRoutesToPreviewURL(t *testing
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	// The dispatch trims the /preview-url suffix, so the key becomes sub/clip.mp4,
-	// percent-encoded whole (slash to %2F) in the returned URL, with a pt token.
-	if !strings.Contains(body.Data.URL, "/api/v1/buckets/b1/objects/sub%2Fclip.mp4?pt=") {
-		t.Errorf("url = %q, want the whole-encoded key with a pt token", body.Data.URL)
+	// The legacy request returns the canonical unambiguous query-key URL.
+	if !strings.Contains(body.Data.URL, "/api/v1/buckets/b1/object?key=sub%2Fclip.mp4&pt=") {
+		t.Errorf("url = %q, want the canonical query-key URL with a pt token", body.Data.URL)
 	}
 }
 
@@ -193,6 +308,25 @@ func TestRoutes_ObjectWildcard_URLDecodedBeforeDispatch(t *testing.T) {
 	defer resp.Body.Close()
 	if gotKey != "with space/file.txt" {
 		t.Errorf("decoded key = %q, want 'with space/file.txt'", gotKey)
+	}
+}
+
+func TestRoutes_ObjectWildcard_PreservesLiteralPlus(t *testing.T) {
+	f := newNoAuthFixture(t)
+
+	var gotKey string
+	f.S3.GetObjectFn = func(_ context.Context, _, key string) (io.ReadCloser, *models.ObjectInfo, error) {
+		gotKey = key
+		return io.NopCloser(strings.NewReader("")), &models.ObjectInfo{Key: key}, nil
+	}
+
+	resp, err := f.App.Test(plainReq(http.MethodGet, "/api/v1/buckets/b1/objects/a+b.txt", nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if gotKey != "a+b.txt" {
+		t.Errorf("decoded key = %q, want literal plus preserved", gotKey)
 	}
 }
 
