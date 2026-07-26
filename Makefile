@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs clean ps health dev-build dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs push stop
+.PHONY: help build up down restart logs clean ps health dev-build dev-up dev-down dev-restart dev-logs prod-up prod-down prod-restart prod-logs push stop docs api-client
 
 # Variables
 DOCKER_COMPOSE = docker compose

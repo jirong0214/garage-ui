@@ -83,6 +83,8 @@ export const getObject = <ThrowOnError extends boolean = false>(options: Options
 
 /**
  * Head an object
+ *
+ * Returns the same object representation headers as GET without transferring the object body.
  */
 export const headObject = <ThrowOnError extends boolean = false>(options: Options<HeadObjectData, ThrowOnError>): RequestResult<HeadObjectResponses, HeadObjectErrors, ThrowOnError> => (options.client ?? client).head<HeadObjectResponses, HeadObjectErrors, ThrowOnError>({
     security: [{ name: 'Authorization', type: 'apiKey' }],

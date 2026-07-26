@@ -710,7 +710,9 @@ func (h *ObjectHandler) GetObjectMetadata(c fiber.Ctx) error {
 // HeadObject returns object headers without a response body.
 //
 //	@Summary		Head an object
+//	@Description	Returns the same object representation headers as GET without transferring the object body.
 //	@Tags			Objects
+//	@Produce		application/octet-stream
 //	@Security		BearerAuth
 //	@Param			bucket	path	string	true	"Name of the bucket containing the object"
 //	@Param			key		query	string	true	"Exact object key"
@@ -720,7 +722,30 @@ func (h *ObjectHandler) GetObjectMetadata(c fiber.Ctx) error {
 //	@ID				headObject
 //	@Router			/api/v1/buckets/{bucket}/object [head]
 func (h *ObjectHandler) HeadObject(c fiber.Ctx) error {
-	return h.GetObjectMetadata(c)
+	bucketName := c.Params("bucket")
+	key := objectKeyFromRequest(c)
+	if bucketName == "" || key == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			models.ErrorResponse(models.ErrCodeBadRequest, "Bucket name and object key are required"),
+		)
+	}
+
+	info, err := h.s3Service.GetObjectMetadata(c.Context(), bucketName, key)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(
+			models.ErrorResponse(models.ErrCodeObjectNotFound, "Object not found: "+err.Error()),
+		)
+	}
+
+	c.Set("Content-Type", safeContentType(info.ContentType))
+	c.Set("X-Content-Type-Options", "nosniff")
+	c.Set("Accept-Ranges", "bytes")
+	c.Set("Content-Length", strconv.FormatInt(info.Size, 10))
+	c.Set("ETag", info.ETag)
+	c.Set("Last-Modified", info.LastModified.Format(time.RFC1123))
+	c.Set("Content-Disposition", contentDispositionHeader("inline", key))
+	c.Status(fiber.StatusOK)
+	return nil
 }
 
 // GetPresignedURL generates a pre-signed URL for accessing an object

@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -61,6 +62,7 @@ func newObjectsTestAppWithMinter(t *testing.T) (*fiber.App, *mocks.S3Mock, *mint
 	// Wildcard endpoints. Mount under :key for tests. Handlers prefer
 	// c.Locals("objectKey") but fall back to c.Params("key"), so :key works.
 	app.Get("/buckets/:bucket/objects/:key", h.GetObject)
+	app.Head("/buckets/:bucket/object", h.HeadObject)
 	app.Get("/buckets/:bucket/objects/:key/metadata", h.GetObjectMetadata)
 	app.Get("/buckets/:bucket/objects/:key/presigned", h.GetPresignedURL)
 	app.Get("/buckets/:bucket/objects/:key/preview-url", h.GetPreviewURL)
@@ -367,6 +369,92 @@ func TestGetObjectMetadata_NotFound404(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", resp.StatusCode)
+	}
+}
+
+// --- HeadObject ---
+
+func TestHeadObject_ReturnsRepresentationHeadersForExactQueryKey(t *testing.T) {
+	app, s3 := newObjectsTestApp(t)
+	key := " 目录/a+b#?% file.html "
+	lastModified := time.Date(2026, time.July, 26, 12, 34, 56, 0, time.UTC)
+	s3.GetObjectMetadataFn = func(_ context.Context, bucket, gotKey string) (*models.ObjectInfo, error) {
+		if bucket != "b1" || gotKey != key {
+			t.Fatalf("metadata args = (%q, %q), want (%q, %q)", bucket, gotKey, "b1", key)
+		}
+		return &models.ObjectInfo{
+			Key:          gotKey,
+			Size:         12345,
+			ContentType:  "text/html; charset=utf-8",
+			ETag:         `"source-etag"`,
+			LastModified: lastModified,
+		}, nil
+	}
+
+	requestURL := "/buckets/b1/object?" + url.Values{"key": {key}}.Encode()
+	resp, err := app.Test(httptest.NewRequest(http.MethodHead, requestURL, nil))
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Content-Type"); got != "application/octet-stream" {
+		t.Errorf("Content-Type = %q, want application/octet-stream", got)
+	}
+	if got := resp.Header.Get("Content-Length"); got != "12345" {
+		t.Errorf("Content-Length = %q, want 12345", got)
+	}
+	if got := resp.Header.Get("ETag"); got != `"source-etag"` {
+		t.Errorf("ETag = %q, want source etag", got)
+	}
+	if got := resp.Header.Get("Last-Modified"); got != lastModified.Format(time.RFC1123) {
+		t.Errorf("Last-Modified = %q, want %q", got, lastModified.Format(time.RFC1123))
+	}
+	if got := resp.Header.Get("Accept-Ranges"); got != "bytes" {
+		t.Errorf("Accept-Ranges = %q, want bytes", got)
+	}
+	if got := resp.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("X-Content-Type-Options = %q, want nosniff", got)
+	}
+	disposition := resp.Header.Get("Content-Disposition")
+	if !strings.HasPrefix(disposition, "inline;") || !strings.Contains(disposition, "filename*=") {
+		t.Errorf("Content-Disposition = %q, want safe inline filename", disposition)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	if len(body) != 0 {
+		t.Errorf("HEAD body length = %d, want 0", len(body))
+	}
+}
+
+func TestHeadObject_BadRequestAndNotFound(t *testing.T) {
+	app, s3 := newObjectsTestApp(t)
+	s3.GetObjectMetadataFn = func(_ context.Context, _, _ string) (*models.ObjectInfo, error) {
+		return nil, errors.New("not found")
+	}
+
+	for _, tc := range []struct {
+		name string
+		url  string
+		want int
+	}{
+		{name: "missing key", url: "/buckets/b1/object", want: http.StatusBadRequest},
+		{name: "object not found", url: "/buckets/b1/object?key=missing.txt", want: http.StatusNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := app.Test(httptest.NewRequest(http.MethodHead, tc.url, nil))
+			if err != nil {
+				t.Fatalf("app.Test: %v", err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != tc.want {
+				t.Fatalf("status = %d, want %d", resp.StatusCode, tc.want)
+			}
+		})
 	}
 }
 

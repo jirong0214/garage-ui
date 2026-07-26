@@ -959,6 +959,8 @@ paths:
       tags:
       - Objects
     head:
+      description: Returns the same object representation headers as GET without transferring
+        the object body.
       operationId: headObject
       parameters:
       - description: Name of the bucket containing the object
@@ -971,6 +973,8 @@ paths:
         name: key
         required: true
         type: string
+      produces:
+      - application/octet-stream
       responses:
         "200":
           description: OK

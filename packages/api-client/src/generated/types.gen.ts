@@ -659,8 +659,10 @@ export type HeadObjectResponses = {
     /**
      * OK
      */
-    200: unknown;
+    200: Blob | File;
 };
+
+export type HeadObjectResponse = HeadObjectResponses[keyof HeadObjectResponses];
 
 export type GetObjectMetadataData = {
     body?: never;

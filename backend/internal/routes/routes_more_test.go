@@ -98,7 +98,13 @@ func TestRoutes_CanonicalObjectEndpointsPreserveExactKey(t *testing.T) {
 	}
 	f.S3.GetObjectMetadataFn = func(_ context.Context, _ string, key string) (*models.ObjectInfo, error) {
 		gotKey = key
-		return &models.ObjectInfo{Key: key, Size: 2, ContentType: "text/plain"}, nil
+		return &models.ObjectInfo{
+			Key:          key,
+			Size:         2,
+			ContentType:  "text/plain",
+			ETag:         `"route-etag"`,
+			LastModified: time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC),
+		}, nil
 	}
 	f.S3.ObjectExistsFn = func(_ context.Context, _ string, key string) (bool, error) {
 		gotKey = key
@@ -141,6 +147,23 @@ func TestRoutes_CanonicalObjectEndpointsPreserveExactKey(t *testing.T) {
 			}
 			if gotKey != key && !strings.Contains(tc.path, "/preview-url?") {
 				t.Errorf("service key = %q, want exact %q", gotKey, key)
+			}
+			if tc.method == http.MethodHead {
+				if got := resp.Header.Get("Content-Type"); got != "text/plain" {
+					t.Errorf("HEAD Content-Type = %q, want text/plain", got)
+				}
+				if got := resp.Header.Get("Content-Length"); got != "2" {
+					t.Errorf("HEAD Content-Length = %q, want 2", got)
+				}
+				if got := resp.Header.Get("ETag"); got != `"route-etag"` {
+					t.Errorf("HEAD ETag = %q, want route etag", got)
+				}
+				if got := resp.Header.Get("Accept-Ranges"); got != "bytes" {
+					t.Errorf("HEAD Accept-Ranges = %q, want bytes", got)
+				}
+				if got := resp.Header.Get("Content-Disposition"); !strings.HasPrefix(got, "inline;") {
+					t.Errorf("HEAD Content-Disposition = %q, want inline", got)
+				}
 			}
 		})
 	}
