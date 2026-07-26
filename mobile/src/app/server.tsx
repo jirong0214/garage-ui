@@ -6,6 +6,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { z } from 'zod';
 
 import { useSessionStore } from '@/features/auth/session/session-store';
+import { assertCompatibleApiVersion } from '@/features/server/configuration/api-version';
 import type { ServerProfile } from '@/features/server/configuration/server-model';
 import { isDebugLanHttpEnabled } from '@/features/server/configuration/server-runtime';
 import { normalizeServerUrl } from '@/features/server/configuration/server-url';
@@ -28,6 +29,7 @@ export default function ServerScreen() {
     mutationFn: async ({ url }: FormData) => {
       const baseUrl = normalizeServerUrl(url, isDebugLanHttpEnabled());
       const result = await testServer(baseUrl);
+      assertCompatibleApiVersion(result.health.apiVersion, __DEV__);
       const profile: ServerProfile = {
         id: `server-${Date.now()}`,
         baseUrl,
