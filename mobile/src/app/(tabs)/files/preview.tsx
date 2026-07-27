@@ -1,11 +1,11 @@
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Image } from 'expo-image';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useSessionStore } from '@/features/auth/session/session-store';
 import {
@@ -14,6 +14,7 @@ import {
   mintObjectPreviewUrl,
 } from '@/features/storage/object-preview/object-preview-api';
 import { previewKind } from '@/features/storage/object-preview/preview-kind';
+import { enqueueObjectDownload } from '@/features/transfers/download/Services/download-coordinator';
 import { InlineError, PrimaryButton } from '@/shared/ui/components';
 import { t } from '@/shared/i18n/strings';
 import { colors } from '@/shared/ui/theme';
@@ -21,6 +22,7 @@ import { colors } from '@/shared/ui/theme';
 export default function ObjectPreviewScreen() {
   const { bucket, key } = useLocalSearchParams<{ bucket: string; key: string }>();
   const profile = useSessionStore((state) => state.server);
+  const queryClient = useQueryClient();
   const metadata = useQuery({
     queryKey: ['object-metadata', profile?.id, bucket, key],
     queryFn: () => fetchObjectMetadata(profile!, bucket, key),
@@ -34,6 +36,14 @@ export default function ObjectPreviewScreen() {
     error: string | null;
   } | null>(null);
   const currentPreviewState = previewState?.requestKey === requestKey ? previewState : null;
+  const download = useMutation({
+    mutationFn: () =>
+      enqueueObjectDownload(profile!, bucket, key, metadata.data?.size ?? null),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['transfers', profile?.id] });
+      router.push('/(tabs)/transfers');
+    },
+  });
 
   useEffect(() => {
     let active = true;
@@ -74,6 +84,21 @@ export default function ObjectPreviewScreen() {
               />
             </View>
             <Metadata object={metadata.data} bucket={bucket} />
+            <PrimaryButton
+              disabled={!profile}
+              label={t('download')}
+              loading={download.isPending}
+              onPress={() => download.mutate()}
+            />
+            {download.isError ? (
+              <InlineError
+                message={
+                  download.error instanceof Error
+                    ? download.error.message
+                    : t('transferActionFailed')
+                }
+              />
+            ) : null}
           </>
         ) : null}
       </View>

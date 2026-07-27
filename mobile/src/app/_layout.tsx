@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 import { useSessionStore } from '@/features/auth/session/session-store';
+import { TransferRuntime } from '@/features/transfers/runtime/Views/TransferRuntime';
 
 export default function RootLayout() {
   const [queryClient] = useState(
@@ -35,6 +36,7 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <TransferRuntime />
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal' }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />

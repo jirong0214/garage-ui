@@ -27,6 +27,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             },
       },
     },
-    plugins: [...(staticConfig.plugins ?? []), 'expo-localization'],
+    plugins: [
+      ...(staticConfig.plugins ?? []),
+      'expo-localization',
+      'expo-sharing',
+      './plugins/with-release-ats',
+    ],
   };
 };

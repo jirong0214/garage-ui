@@ -6,6 +6,9 @@
       "@/*": [
         "./src/*"
       ],
+      "@garage-transfer": [
+        "./modules/garage-transfer"
+      ],
       "@/assets/*": [
         "./assets/*"
       ]
