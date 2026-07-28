@@ -971,7 +971,7 @@ export type ListObjectsResponses = {
 
 export type ListObjectsResponse = ListObjectsResponses[keyof ListObjectsResponses];
 
-export type PostApiV1BucketsByBucketObjectsData = {
+export type UploadObjectData = {
     body: {
         /**
          * File to upload
@@ -992,7 +992,7 @@ export type PostApiV1BucketsByBucketObjectsData = {
     url: '/api/v1/buckets/{bucket}/objects';
 };
 
-export type PostApiV1BucketsByBucketObjectsErrors = {
+export type UploadObjectErrors = {
     /**
      * Invalid request parameters
      */
@@ -1000,9 +1000,21 @@ export type PostApiV1BucketsByBucketObjectsErrors = {
         error?: ModelsApiError;
     };
     /**
-     * Bucket not found
+     * Authentication required
      */
-    404: ModelsApiResponse & {
+    401: ModelsApiResponse & {
+        error?: ModelsApiError;
+    };
+    /**
+     * Object write permission required
+     */
+    403: ModelsApiResponse & {
+        error?: ModelsApiError;
+    };
+    /**
+     * Request body exceeds the server limit
+     */
+    413: ModelsApiResponse & {
         error?: ModelsApiError;
     };
     /**
@@ -1013,9 +1025,9 @@ export type PostApiV1BucketsByBucketObjectsErrors = {
     };
 };
 
-export type PostApiV1BucketsByBucketObjectsError = PostApiV1BucketsByBucketObjectsErrors[keyof PostApiV1BucketsByBucketObjectsErrors];
+export type UploadObjectError = UploadObjectErrors[keyof UploadObjectErrors];
 
-export type PostApiV1BucketsByBucketObjectsResponses = {
+export type UploadObjectResponses = {
     /**
      * Object uploaded successfully
      */
@@ -1024,7 +1036,7 @@ export type PostApiV1BucketsByBucketObjectsResponses = {
     };
 };
 
-export type PostApiV1BucketsByBucketObjectsResponse = PostApiV1BucketsByBucketObjectsResponses[keyof PostApiV1BucketsByBucketObjectsResponses];
+export type UploadObjectResponse = UploadObjectResponses[keyof UploadObjectResponses];
 
 export type PostApiV1BucketsByBucketObjectsCopyData = {
     /**
@@ -1188,7 +1200,7 @@ export type PostApiV1BucketsByBucketObjectsMoveResponses = {
 
 export type PostApiV1BucketsByBucketObjectsMoveResponse = PostApiV1BucketsByBucketObjectsMoveResponses[keyof PostApiV1BucketsByBucketObjectsMoveResponses];
 
-export type PostApiV1BucketsByBucketObjectsUploadMultipleData = {
+export type UploadMultipleObjectsData = {
     body: {
         /**
          * Files to upload (can be multiple)
@@ -1205,7 +1217,7 @@ export type PostApiV1BucketsByBucketObjectsUploadMultipleData = {
     url: '/api/v1/buckets/{bucket}/objects/upload-multiple';
 };
 
-export type PostApiV1BucketsByBucketObjectsUploadMultipleErrors = {
+export type UploadMultipleObjectsErrors = {
     /**
      * Invalid request parameters
      */
@@ -1213,9 +1225,21 @@ export type PostApiV1BucketsByBucketObjectsUploadMultipleErrors = {
         error?: ModelsApiError;
     };
     /**
-     * Bucket not found
+     * Authentication required
      */
-    404: ModelsApiResponse & {
+    401: ModelsApiResponse & {
+        error?: ModelsApiError;
+    };
+    /**
+     * Object write permission required
+     */
+    403: ModelsApiResponse & {
+        error?: ModelsApiError;
+    };
+    /**
+     * Request body exceeds the server limit
+     */
+    413: ModelsApiResponse & {
         error?: ModelsApiError;
     };
     /**
@@ -1226,18 +1250,24 @@ export type PostApiV1BucketsByBucketObjectsUploadMultipleErrors = {
     };
 };
 
-export type PostApiV1BucketsByBucketObjectsUploadMultipleError = PostApiV1BucketsByBucketObjectsUploadMultipleErrors[keyof PostApiV1BucketsByBucketObjectsUploadMultipleErrors];
+export type UploadMultipleObjectsError = UploadMultipleObjectsErrors[keyof UploadMultipleObjectsErrors];
 
-export type PostApiV1BucketsByBucketObjectsUploadMultipleResponses = {
+export type UploadMultipleObjectsResponses = {
     /**
-     * Objects uploaded successfully (including partial failures)
+     * All objects uploaded successfully
      */
     201: ModelsApiResponse & {
         data?: ModelsObjectUploadMultipleResponse;
     };
+    /**
+     * Some objects uploaded and some failed
+     */
+    207: ModelsApiResponse & {
+        data?: ModelsObjectUploadMultipleResponse;
+    };
 };
 
-export type PostApiV1BucketsByBucketObjectsUploadMultipleResponse = PostApiV1BucketsByBucketObjectsUploadMultipleResponses[keyof PostApiV1BucketsByBucketObjectsUploadMultipleResponses];
+export type UploadMultipleObjectsResponse = UploadMultipleObjectsResponses[keyof UploadMultipleObjectsResponses];
 
 export type DeleteApiV1BucketsByNameData = {
     body?: never;

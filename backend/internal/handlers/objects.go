@@ -261,6 +261,7 @@ func (h *ObjectHandler) ListObjects(c fiber.Ctx) error {
 // UploadObject uploads an object to a bucket
 //
 //	@Summary		Upload object to bucket
+//	@ID				uploadObject
 //	@Description	Uploads an object to the specified bucket using multipart/form-data
 //	@Tags			Objects
 //	@Security		BearerAuth
@@ -271,7 +272,9 @@ func (h *ObjectHandler) ListObjects(c fiber.Ctx) error {
 //	@Param			key		formData	string													false	"Object key (path in bucket). If not provided, the filename will be used"
 //	@Success		201		{object}	models.APIResponse{data=models.ObjectUploadResponse}	"Object uploaded successfully"
 //	@Failure		400		{object}	models.APIResponse{error=models.APIError}				"Invalid request parameters"
-//	@Failure		404		{object}	models.APIResponse{error=models.APIError}				"Bucket not found"
+//	@Failure		401		{object}	models.APIResponse{error=models.APIError}				"Authentication required"
+//	@Failure		403		{object}	models.APIResponse{error=models.APIError}				"Object write permission required"
+//	@Failure		413		{object}	models.APIResponse{error=models.APIError}				"Request body exceeds the server limit"
 //	@Failure		500		{object}	models.APIResponse{error=models.APIError}				"Failed to upload object"
 //	@Router			/api/v1/buckets/{bucket}/objects [post]
 func (h *ObjectHandler) UploadObject(c fiber.Ctx) error {
@@ -970,16 +973,20 @@ func (h *ObjectHandler) DeleteMultipleObjects(c fiber.Ctx) error {
 // UploadMultipleObjects uploads multiple objects to a bucket
 //
 //	@Summary		Upload multiple objects to bucket
-//	@Description	Uploads multiple objects to the specified bucket using multipart/form-data. Accepts unlimited number of files and handles them in a loop.
+//	@ID				uploadMultipleObjects
+//	@Description	Uploads one or more objects to the specified bucket using multipart/form-data. Requests remain subject to server and proxy body-size limits.
 //	@Tags			Objects
 //	@Security		BearerAuth
 //	@Accept			multipart/form-data
 //	@Produce		json
 //	@Param			bucket	path		string															true	"Name of the bucket to upload the objects to"
 //	@Param			files	formData	file															true	"Files to upload (can be multiple)"
-//	@Success		201		{object}	models.APIResponse{data=models.ObjectUploadMultipleResponse}	"Objects uploaded successfully (including partial failures)"
+//	@Success		201		{object}	models.APIResponse{data=models.ObjectUploadMultipleResponse}	"All objects uploaded successfully"
+//	@Success		207		{object}	models.APIResponse{data=models.ObjectUploadMultipleResponse}	"Some objects uploaded and some failed"
 //	@Failure		400		{object}	models.APIResponse{error=models.APIError}						"Invalid request parameters"
-//	@Failure		404		{object}	models.APIResponse{error=models.APIError}						"Bucket not found"
+//	@Failure		401		{object}	models.APIResponse{error=models.APIError}						"Authentication required"
+//	@Failure		403		{object}	models.APIResponse{error=models.APIError}						"Object write permission required"
+//	@Failure		413		{object}	models.APIResponse{error=models.APIError}						"Request body exceeds the server limit"
 //	@Failure		500		{object}	models.APIResponse{error=models.APIError}						"Failed to upload objects"
 //	@Router			/api/v1/buckets/{bucket}/objects/upload-multiple [post]
 func (h *ObjectHandler) UploadMultipleObjects(c fiber.Ctx) error {

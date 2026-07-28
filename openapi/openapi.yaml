@@ -1393,6 +1393,7 @@ paths:
       consumes:
       - multipart/form-data
       description: Uploads an object to the specified bucket using multipart/form-data
+      operationId: uploadObject
       parameters:
       - description: Name of the bucket to upload the object to
         in: path
@@ -1430,8 +1431,26 @@ paths:
                 error:
                   $ref: '#/definitions/models.APIError'
               type: object
-        "404":
-          description: Bucket not found
+        "401":
+          description: Authentication required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "403":
+          description: Object write permission required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "413":
+          description: Request body exceeds the server limit
           schema:
             allOf:
             - $ref: '#/definitions/models.APIResponse'
@@ -1669,8 +1688,9 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Uploads multiple objects to the specified bucket using multipart/form-data.
-        Accepts unlimited number of files and handles them in a loop.
+      description: Uploads one or more objects to the specified bucket using multipart/form-data.
+        Requests remain subject to server and proxy body-size limits.
+      operationId: uploadMultipleObjects
       parameters:
       - description: Name of the bucket to upload the objects to
         in: path
@@ -1686,7 +1706,16 @@ paths:
       - application/json
       responses:
         "201":
-          description: Objects uploaded successfully (including partial failures)
+          description: All objects uploaded successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.ObjectUploadMultipleResponse'
+              type: object
+        "207":
+          description: Some objects uploaded and some failed
           schema:
             allOf:
             - $ref: '#/definitions/models.APIResponse'
@@ -1703,8 +1732,26 @@ paths:
                 error:
                   $ref: '#/definitions/models.APIError'
               type: object
-        "404":
-          description: Bucket not found
+        "401":
+          description: Authentication required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "403":
+          description: Object write permission required
+          schema:
+            allOf:
+            - $ref: '#/definitions/models.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/models.APIError'
+              type: object
+        "413":
+          description: Request body exceeds the server limit
           schema:
             allOf:
             - $ref: '#/definitions/models.APIResponse'

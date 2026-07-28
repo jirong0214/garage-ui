@@ -65,6 +65,35 @@ prefix, search term, and stable ordering. It is intentionally deferred rather
 than approximated on the client, because a client-generated offset would cause
 duplicates or omissions while objects change.
 
+## Foreground upload fallback
+
+The currently deployed upload contract is the authenticated API proxy:
+
+```text
+POST /api/v1/buckets/{bucket}/objects
+multipart fields: file (required), key (optional)
+```
+
+Mobile always sends an explicit UTF-8 `key` in the multipart body. It must not
+percent-encode the key before adding it to the form; slashes, spaces, Unicode,
+`#`, `?`, and `%` are body data rather than URL syntax. Each mobile transfer
+uses the single-file endpoint so cancellation and retry remain item-scoped.
+The multiple-file endpoint cannot assign an explicit prefix per file.
+
+This proxy is a foreground fallback. It has no resumable upload identifier and
+cannot remain reliable across process suspension. API contract `1.x` does not
+yet provide the permission-checked upload-session endpoints described by the
+mobile PRD, nor a presigned PUT URL. A future additive contract must validate
+write permission, key, size and MIME type, limit signed URL lifetime, and
+provide complete/abort semantics without exposing S3 credentials.
+
+The generated client now uses stable `uploadObject` and
+`uploadMultipleObjects` operation names. Runtime paths and successful response
+formats are unchanged. The OpenAPI response declarations match runtime
+behavior: authentication and authorization failures are `401`/`403`,
+oversized bodies are `413`, and partial multi-file success is `207`; the
+previously documented upload `404` was not emitted by the handlers.
+
 ## Additive changes
 
 The canonical object routes and `apiVersion` fields are additive. Existing

@@ -882,6 +882,35 @@ func TestUploadObject_ExplicitKeyOverridesFilename(t *testing.T) {
 	}
 }
 
+func TestUploadObject_PreservesSpecialCharactersInFormKey(t *testing.T) {
+	app, s3 := newObjectsTestApp(t)
+	const objectKey = "目录/空 格#?%中文.txt"
+	s3.UploadObjectFn = func(_ context.Context, _, key string, _ io.Reader, _ string) (*models.ObjectUploadResponse, error) {
+		if key != objectKey {
+			t.Errorf("key = %q, want %q", key, objectKey)
+		}
+		return &models.ObjectUploadResponse{Key: key}, nil
+	}
+	body, ct := buildMultipart(t, map[string]string{"key": objectKey}, map[string]struct {
+		Filename    string
+		Content     []byte
+		ContentType string
+	}{
+		"file": {Filename: "source.txt", Content: []byte("x"), ContentType: "text/plain"},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/buckets/b1/objects", bytes.NewReader(body))
+	req.Header.Set("Content-Type", ct)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d, want 201\nbody: %s", resp.StatusCode, raw)
+	}
+}
+
 func TestUploadObject_MissingFileReturns400(t *testing.T) {
 	app, _ := newObjectsTestApp(t)
 	body, ct := buildMultipart(t, map[string]string{"key": "k"}, nil)
