@@ -4,16 +4,20 @@ public final class GarageTransferModule: Module {
   public func definition() -> ModuleDefinition {
     Name("GarageTransfer")
 
-    Events("onDownloadSnapshot")
+    Events("onDownloadSnapshot", "onUploadSnapshot")
 
     OnStartObserving {
       BackgroundDownloadManager.shared.onSnapshot = { [weak self] snapshot in
         self?.sendEvent("onDownloadSnapshot", snapshot.eventBody)
       }
+      ForegroundUploadManager.shared.onSnapshot = { [weak self] snapshot in
+        self?.sendEvent("onUploadSnapshot", snapshot.eventBody)
+      }
     }
 
     OnStopObserving {
       BackgroundDownloadManager.shared.onSnapshot = nil
+      ForegroundUploadManager.shared.onSnapshot = nil
     }
 
     AsyncFunction("enqueueDownload") {
@@ -35,6 +39,39 @@ public final class GarageTransferModule: Module {
 
     AsyncFunction("removeDownloadedFile") { (transferId: String) in
       BackgroundDownloadManager.shared.removeDownloadedFile(transferId: transferId)
+    }
+
+    AsyncFunction("enqueueUpload") {
+      (
+        transferId: String,
+        url: String,
+        sourceUri: String,
+        fileName: String,
+        contentType: String,
+        objectKey: String,
+        authorization: String
+      ) -> [String: Any?] in
+      try ForegroundUploadManager.shared.enqueue(
+        transferId: transferId,
+        urlString: url,
+        sourceUri: sourceUri,
+        fileName: fileName,
+        contentType: contentType,
+        objectKey: objectKey,
+        authorization: authorization
+      ).eventBody
+    }
+
+    AsyncFunction("cancelUpload") { (transferId: String) in
+      ForegroundUploadManager.shared.cancel(transferId: transferId)
+    }
+
+    AsyncFunction("getUploadSnapshots") { () -> [[String: Any?]] in
+      ForegroundUploadManager.shared.snapshots().map(\.eventBody)
+    }
+
+    AsyncFunction("removeUploadSource") { (transferId: String) in
+      try ForegroundUploadManager.shared.removeUploadSource(transferId: transferId)
     }
   }
 }

@@ -23,6 +23,7 @@ export interface TransferRecord {
   bucket: string;
   key: string;
   fileName: string;
+  contentType: string | null;
   localUri: string | null;
   bytesTransferred: number;
   bytesTotal: number | null;
@@ -42,6 +43,7 @@ export interface CreateTransferInput {
   bucket: string;
   key: string;
   fileName: string;
+  contentType?: string | null;
   localUri?: string | null;
   bytesTotal?: number | null;
 }

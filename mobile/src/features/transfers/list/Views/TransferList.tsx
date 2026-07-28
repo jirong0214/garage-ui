@@ -190,7 +190,7 @@ const TransferCard = memo(function TransferCard({
         {transferCanRetry(record.status) ? (
           <ActionButton label={t('retryTransfer')} onPress={() => onRetry(record)} />
         ) : null}
-        {transferCanShare(record.status) ? (
+        {transferCanShare(record) ? (
           <ActionButton label={t('shareTransfer')} onPress={() => onShare(record)} />
         ) : null}
         {transferCanRemove(record.status) ? (
@@ -206,7 +206,7 @@ const TransferCard = memo(function TransferCard({
 });
 
 function StatusBadge({ status }: { status: TransferStatus }) {
-  const active = status === 'downloading' || status === 'retrying';
+  const active = status === 'downloading' || status === 'uploading' || status === 'retrying';
   const completed = status === 'completed';
   const failed = status === 'failed';
 
@@ -256,6 +256,7 @@ function statusLabel(status: TransferStatus): string {
     waiting: 'transferWaiting',
     preparing: 'transferPreparing',
     downloading: 'transferDownloading',
+    uploading: 'transferUploading',
     retrying: 'transferRetrying',
     completed: 'transferCompleted',
     failed: 'transferFailed',

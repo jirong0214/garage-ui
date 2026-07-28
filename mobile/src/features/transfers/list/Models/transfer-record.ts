@@ -2,6 +2,7 @@ export type TransferStatus =
   | 'waiting'
   | 'preparing'
   | 'downloading'
+  | 'uploading'
   | 'retrying'
   | 'completed'
   | 'failed'
@@ -9,6 +10,7 @@ export type TransferStatus =
 
 export type TransferRecord = {
   id: string;
+  direction: 'download' | 'upload';
   name: string;
   detail?: string | null;
   status: TransferStatus;
@@ -28,6 +30,7 @@ export function transferCanCancel(status: TransferStatus): boolean {
     status === 'waiting' ||
     status === 'preparing' ||
     status === 'downloading' ||
+    status === 'uploading' ||
     status === 'retrying'
   );
 }
@@ -36,8 +39,8 @@ export function transferCanRetry(status: TransferStatus): boolean {
   return status === 'failed' || status === 'cancelled';
 }
 
-export function transferCanShare(status: TransferStatus): boolean {
-  return status === 'completed';
+export function transferCanShare(record: TransferRecord): boolean {
+  return record.direction === 'download' && record.status === 'completed';
 }
 
 export function transferCanRemove(status: TransferStatus): boolean {

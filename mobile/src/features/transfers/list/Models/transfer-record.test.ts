@@ -15,6 +15,7 @@ import {
 function record(overrides: Partial<TransferRecord> = {}): TransferRecord {
   return {
     id: 'transfer-1',
+    direction: 'download',
     name: 'archive.zip',
     status: 'downloading',
     transferredBytes: 512,
@@ -46,19 +47,20 @@ describe('transfer presentation', () => {
   });
 
   it('exposes only actions appropriate for each status', () => {
-    const active: TransferStatus[] = ['waiting', 'preparing', 'downloading', 'retrying'];
+    const active: TransferStatus[] = ['waiting', 'preparing', 'downloading', 'uploading', 'retrying'];
     const retryable: TransferStatus[] = ['failed', 'cancelled'];
 
     active.forEach((status) => expect(transferCanCancel(status)).toBe(true));
     retryable.forEach((status) => expect(transferCanRetry(status)).toBe(true));
-    expect(transferCanShare('completed')).toBe(true);
+    expect(transferCanShare(record({ status: 'completed' }))).toBe(true);
+    expect(transferCanShare(record({ direction: 'upload', status: 'completed' }))).toBe(false);
     (['completed', 'failed', 'cancelled'] as TransferStatus[]).forEach((status) =>
       expect(transferCanRemove(status)).toBe(true),
     );
 
     expect(transferCanCancel('completed')).toBe(false);
     expect(transferCanRetry('downloading')).toBe(false);
-    expect(transferCanShare('failed')).toBe(false);
+    expect(transferCanShare(record({ status: 'failed' }))).toBe(false);
     expect(transferCanRemove('waiting')).toBe(false);
   });
 });

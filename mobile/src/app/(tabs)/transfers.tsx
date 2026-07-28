@@ -6,6 +6,8 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useSessionStore } from '@/features/auth/session/session-store';
 import { iosBackgroundDownloadEngine } from '@/features/transfers/download/Services/ios-background-download-engine';
 import { retryObjectDownload } from '@/features/transfers/download/Services/download-coordinator';
+import { iosForegroundUploadEngine } from '@/features/objects/upload/Services/ios-foreground-upload-engine';
+import { retryObjectUpload } from '@/features/objects/upload/Services/upload-coordinator';
 import type { TransferRecord as TransferListRecord } from '@/features/transfers/list/Models/transfer-record';
 import { TransferList } from '@/features/transfers/list/Views/TransferList';
 import type { TransferRecord } from '@/features/transfers/queue/Models/transfer-record';
@@ -41,20 +43,30 @@ export default function TransfersScreen() {
   const onCancel = useCallback(
     (record: TransferListRecord) => {
       mutation.mutate(async () => {
-        await iosBackgroundDownloadEngine.cancel(record.id);
+        const queueRecord = recordById(record);
+        if (!queueRecord) return;
+        if (queueRecord.direction === 'upload') {
+          await iosForegroundUploadEngine.cancel(record.id);
+        } else {
+          await iosBackgroundDownloadEngine.cancel(record.id);
+        }
         const current = await getTransfer(record.id);
         if (current && !['completed', 'failed', 'cancelled'].includes(current.state)) {
           await updateTransferState(record.id, { state: 'cancelled' });
         }
       });
     },
-    [mutation],
+    [mutation, recordById],
   );
   const onRetry = useCallback(
     (record: TransferListRecord) => {
       const queueRecord = recordById(record);
       if (!profile || !queueRecord) return;
-      mutation.mutate(() => retryObjectDownload(profile, queueRecord));
+      mutation.mutate(() =>
+        queueRecord.direction === 'upload'
+          ? retryObjectUpload(profile, queueRecord)
+          : retryObjectDownload(profile, queueRecord),
+      );
     },
     [mutation, profile, recordById],
   );
@@ -75,11 +87,16 @@ export default function TransfersScreen() {
   const onRemove = useCallback(
     (record: TransferListRecord) => {
       mutation.mutate(async () => {
-        await iosBackgroundDownloadEngine.removeDownloadedFile(record.id);
+        const queueRecord = recordById(record);
+        if (queueRecord?.direction === 'upload') {
+          await iosForegroundUploadEngine.removeSource(record.id);
+        } else {
+          await iosBackgroundDownloadEngine.removeDownloadedFile(record.id);
+        }
         await removeTransfer(record.id);
       });
     },
-    [mutation],
+    [mutation, recordById],
   );
 
   return (
@@ -104,9 +121,10 @@ export default function TransfersScreen() {
 function toListRecord(record: TransferRecord): TransferListRecord {
   return {
     id: record.id,
+    direction: record.direction,
     name: record.fileName,
     detail: `${record.bucket} / ${record.key}`,
-    status: record.state === 'uploading' ? 'preparing' : record.state,
+    status: record.state,
     transferredBytes: record.bytesTransferred,
     totalBytes: record.bytesTotal,
     errorMessage: record.errorMessage,

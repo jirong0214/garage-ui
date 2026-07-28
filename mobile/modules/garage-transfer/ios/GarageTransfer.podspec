@@ -1,8 +1,8 @@
 Pod::Spec.new do |s|
   s.name           = 'GarageTransfer'
   s.version        = '1.0.0'
-  s.summary        = 'Garage UI background transfer support'
-  s.description    = 'Background URLSession downloads for the Garage UI mobile app.'
+  s.summary        = 'Garage UI native transfer support'
+  s.description    = 'Background downloads and secure foreground uploads for the Garage UI mobile app.'
   s.author         = 'Garage UI'
   s.homepage       = 'https://github.com/jirong0214/garage-ui'
   s.platforms      = {

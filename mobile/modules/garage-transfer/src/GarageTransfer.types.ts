@@ -10,6 +10,18 @@ export type DownloadSnapshot = {
   errorCode: string | null;
 };
 
+export type UploadSnapshotState = 'uploading' | 'completed' | 'failed' | 'cancelled';
+
+export type UploadSnapshot = {
+  transferId: string;
+  state: UploadSnapshotState;
+  bytesTransferred: number;
+  bytesTotal: number;
+  localUri: string | null;
+  errorCode: string | null;
+};
+
 export type GarageTransferEvents = {
   onDownloadSnapshot(snapshot: DownloadSnapshot): void;
+  onUploadSnapshot(snapshot: UploadSnapshot): void;
 };

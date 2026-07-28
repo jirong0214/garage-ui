@@ -31,6 +31,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...(staticConfig.plugins ?? []),
       'expo-localization',
       'expo-sharing',
+      'expo-document-picker',
+      [
+        'expo-image-picker',
+        {
+          photosPermission: 'Allow Garage UI to select photos and videos for upload.',
+          cameraPermission: 'Allow Garage UI to take photos for upload.',
+          microphonePermission: false,
+        },
+      ],
       './plugins/with-release-ats',
     ],
   };

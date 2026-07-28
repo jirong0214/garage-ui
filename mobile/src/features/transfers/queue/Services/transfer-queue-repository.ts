@@ -28,6 +28,7 @@ async function database(): Promise<SQLite.SQLiteDatabase> {
       bucket TEXT NOT NULL,
       object_key TEXT NOT NULL,
       file_name TEXT NOT NULL,
+      content_type TEXT,
       local_uri TEXT,
       bytes_transferred INTEGER NOT NULL DEFAULT 0 CHECK (bytes_transferred >= 0),
       bytes_total INTEGER CHECK (bytes_total IS NULL OR bytes_total >= 0),
@@ -44,6 +45,10 @@ async function database(): Promise<SQLite.SQLiteDatabase> {
     CREATE INDEX IF NOT EXISTS transfer_queue_server_state
       ON transfer_queue (server_id, state);
     `);
+    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(transfer_queue)');
+    if (!columns.some((column) => column.name === 'content_type')) {
+      await db.execAsync('ALTER TABLE transfer_queue ADD COLUMN content_type TEXT;');
+    }
     return db;
   });
   return databasePromise;

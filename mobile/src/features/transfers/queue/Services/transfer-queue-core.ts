@@ -31,6 +31,7 @@ export interface TransferRow {
   bucket: string;
   object_key: string;
   file_name: string;
+  content_type: string | null;
   local_uri: string | null;
   bytes_transferred: number;
   bytes_total: number | null;
@@ -44,7 +45,7 @@ export interface TransferRow {
 }
 
 const selectColumns = `
-  id, direction, state, server_id, bucket, object_key, file_name, local_uri,
+  id, direction, state, server_id, bucket, object_key, file_name, content_type, local_uri,
   bytes_transferred, bytes_total, attempt_count, error_code, error_message,
   created_at, updated_at, started_at, finished_at
 `;
@@ -66,6 +67,7 @@ export class TransferQueueRepository {
     const timestamp = this.now();
     const record: TransferRecord = {
       ...input,
+      contentType: input.contentType ?? null,
       localUri: input.localUri ?? null,
       state: 'waiting',
       bytesTransferred: progress.bytesTransferred,
@@ -81,10 +83,10 @@ export class TransferQueueRepository {
 
     await this.database.runAsync(
       `INSERT INTO transfer_queue (
-         id, direction, state, server_id, bucket, object_key, file_name, local_uri,
-         bytes_transferred, bytes_total, attempt_count, error_code, error_message,
+         id, direction, state, server_id, bucket, object_key, file_name, content_type,
+         local_uri, bytes_transferred, bytes_total, attempt_count, error_code, error_message,
          created_at, updated_at, started_at, finished_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       record.id,
       record.direction,
       record.state,
@@ -92,6 +94,7 @@ export class TransferQueueRepository {
       record.bucket,
       record.key,
       record.fileName,
+      record.contentType,
       record.localUri,
       record.bytesTransferred,
       record.bytesTotal,
@@ -237,6 +240,7 @@ export function mapTransferRow(row: TransferRow): TransferRecord {
     bucket: row.bucket,
     key: row.object_key,
     fileName: row.file_name,
+    contentType: row.content_type,
     localUri: row.local_uri,
     bytesTransferred: progress.bytesTransferred,
     bytesTotal: progress.bytesTotal,

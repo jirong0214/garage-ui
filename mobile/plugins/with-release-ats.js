@@ -18,6 +18,10 @@ module.exports = function withReleaseAts(config) {
 
     project.addBuildPhase([], 'PBXShellScriptBuildPhase', buildPhaseName, nativeTargetId, {
       shellPath: '/bin/sh',
+      // Make Xcode schedule this phase after ProcessInfoPlistFile. Without this
+      // dependency, Xcode may regenerate the product plist after the script and
+      // silently restore a Debug LAN exception in a Release artifact.
+      inputPaths: ['"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)"'],
       shellScript: `# Release builds must never inherit the Debug LAN HTTP exception.
 if [ "$CONFIGURATION" != "Debug" ]; then
   PLIST_PATH="\${TARGET_BUILD_DIR}/\${INFOPLIST_PATH}"

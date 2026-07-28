@@ -31,7 +31,6 @@ final class BackgroundDownloadManager: NSObject, URLSessionDownloadDelegate {
   func enqueue(transferId: String, urlString: String, fileName: String) throws -> DownloadSnapshot {
     guard
       let url = URL(string: urlString),
-      let url = URL(string: urlString),
       let scheme = url.scheme?.lowercased()
     else {
       throw GarageTransferError.invalidDownloadUrl
@@ -201,7 +200,7 @@ final class BackgroundDownloadManager: NSObject, URLSessionDownloadDelegate {
     guard let metadata = DownloadTaskMetadata.decode(task.taskDescription) else {
       return
     }
-    taskLock.withLock {
+    _ = taskLock.withLock {
       tasksByTransferId.removeValue(forKey: metadata.transferId)
     }
     guard let error else {

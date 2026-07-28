@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { useSessionStore } from '@/features/auth/session/session-store';
+import { UploadComposer } from '@/features/objects/upload/Views/UploadComposer';
 import type { ServerProfile } from '@/features/server/configuration/server-model';
 import { ObjectThumbnail } from '@/features/storage/object-preview/thumbnail';
 import { t } from '@/shared/i18n/strings';
@@ -154,9 +155,16 @@ export default function ObjectBrowserScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: prefix ? prefix.split('/').filter(Boolean).at(-1) : bucket }} />
+      <Stack.Screen
+        options={{
+          title: prefix ? prefix.split('/').filter(Boolean).at(-1) : bucket,
+        }}
+      />
       <View style={styles.screen}>
         <View style={styles.controls}>
+          <View style={styles.actionRow}>
+            <UploadComposer bucket={bucket} prefix={prefix} profile={server} />
+          </View>
           <TextInput
             accessibilityLabel={t('searchObjects')}
             autoCapitalize="none"
@@ -307,6 +315,7 @@ function sortLabel(mode: BrowserSortMode): string {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   controls: { gap: 8, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10 },
+  actionRow: { minHeight: 44, alignItems: 'flex-end', justifyContent: 'center' },
   search: {
     minHeight: 44,
     borderRadius: 11,
