@@ -37,6 +37,7 @@ func TestCapabilities_V2(t *testing.T) {
 				services.Capabilities
 				RefreshTokens  bool `json:"refreshTokens"`
 				DeviceSessions bool `json:"deviceSessions"`
+				ObjectJobs     bool `json:"objectJobs"`
 			} `json:"features"`
 		} `json:"data"`
 	}
@@ -54,6 +55,9 @@ func TestCapabilities_V2(t *testing.T) {
 	}
 	if !body.Data.Features.RefreshTokens || !body.Data.Features.DeviceSessions {
 		t.Errorf("device auth features = %+v, want true", body.Data.Features)
+	}
+	if !body.Data.Features.ObjectJobs {
+		t.Errorf("objectJobs = false, want true")
 	}
 }
 
@@ -110,6 +114,32 @@ func TestCapabilities_DeviceAuthDisabled(t *testing.T) {
 	}
 	if body.Data.Features.RefreshTokens || body.Data.Features.DeviceSessions {
 		t.Fatalf("device auth features = %+v, want false", body.Data.Features)
+	}
+}
+
+func TestCapabilities_ObjectJobsDisabled(t *testing.T) {
+	app := fiber.New()
+	h := NewCapabilitiesHandler("v2", services.CapabilitiesV2(), false, true, false)
+	app.Get("/capabilities", h.GetCapabilities)
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/capabilities", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var body struct {
+		Data struct {
+			Features struct {
+				ObjectJobs bool `json:"objectJobs"`
+			} `json:"features"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Data.Features.ObjectJobs {
+		t.Fatal("objectJobs = true, want false")
 	}
 }
 

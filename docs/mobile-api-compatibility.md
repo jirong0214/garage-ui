@@ -52,6 +52,14 @@ historical access-only JWT response and does not create a device session.
 Capabilities advertise the additive `refreshTokens` and `deviceSessions`
 features. Garage admin tokens and S3 credentials are never mobile API inputs.
 
+Capabilities also advertise `features.objectJobs`. Mobile must hide durable
+copy, move, and recursive delete actions when this value is false because the
+object-job routes are not registered when the backend feature is disabled.
+Folder rename uses a durable move job with one source prefix,
+`replaceSourcePrefix: true`, and an exact replacement `destinationPrefix`.
+Older clients omit the additive flag and retain the existing behavior that
+preserves the selected folder name below the destination prefix.
+
 ## Deferred: paginated object search
 
 Prefix browsing supports `continuation_token`, but the current `search`

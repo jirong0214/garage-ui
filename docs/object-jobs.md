@@ -14,6 +14,9 @@ prefix into concrete object operations in a durable backend job.
   `archive/2026/<relative-key>`.
 - Explicit objects are placed directly below `destinationPrefix` using their
   base name.
+- A single selected folder can be renamed by setting `replaceSourcePrefix` to
+  `true`. In that mode, `destinationPrefix` is the exact replacement root and
+  the request must contain exactly one prefix and no explicit objects.
 - A same-bucket folder cannot target itself or one of its descendants.
 - `skip` leaves an existing destination untouched and counts it as skipped.
   `overwrite` replaces it.
@@ -39,6 +42,20 @@ to the authenticated user and retained for the lifetime of the job record.
   "prefixes": ["albums/2026/"],
   "destinationBucket": "archive",
   "destinationPrefix": "imports/",
+  "conflictPolicy": "skip"
+}
+```
+
+Folder rename example:
+
+```json
+{
+  "operation": "move",
+  "sourceBucket": "pics",
+  "prefixes": ["albums/old-name/"],
+  "destinationBucket": "pics",
+  "destinationPrefix": "albums/new-name/",
+  "replaceSourcePrefix": true,
   "conflictPolicy": "skip"
 }
 ```

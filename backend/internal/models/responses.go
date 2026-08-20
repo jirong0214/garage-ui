@@ -109,6 +109,7 @@ type CapabilityFeatures struct {
 	NodeStatistics    bool `json:"nodeStatistics"`
 	RefreshTokens     bool `json:"refreshTokens"`
 	DeviceSessions    bool `json:"deviceSessions"`
+	ObjectJobs        bool `json:"objectJobs"`
 }
 
 type AccessControlBinding struct {

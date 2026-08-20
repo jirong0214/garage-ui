@@ -107,7 +107,8 @@ func (m *ObjectJobManager) Create(_ context.Context, owner string, req models.Cr
 		Status: models.ObjectJobStatusQueued, Phase: "queued",
 		SourceBucket: req.SourceBucket, Objects: req.Objects, Prefixes: req.Prefixes,
 		DestinationBucket: req.DestinationBucket, DestinationPrefix: req.DestinationPrefix,
-		ConflictPolicy: req.ConflictPolicy, CreatedAt: time.Now().UTC(),
+		ReplaceSourcePrefix: req.ReplaceSourcePrefix,
+		ConflictPolicy:      req.ConflictPolicy, CreatedAt: time.Now().UTC(),
 	}
 	created, err := m.store.createJob(job)
 	if err != nil {
@@ -487,6 +488,9 @@ func (m *ObjectJobManager) prefixDestination(job *models.ObjectJob, prefix, key 
 	if job.Operation == models.ObjectJobOperationDelete {
 		return ""
 	}
+	if job.ReplaceSourcePrefix {
+		return job.DestinationPrefix + strings.TrimPrefix(key, prefix)
+	}
 	root := job.DestinationPrefix + objectBaseName(strings.TrimSuffix(prefix, "/")) + "/"
 	return root + strings.TrimPrefix(key, prefix)
 }
@@ -532,6 +536,7 @@ func normalizeObjectJobRequest(req *models.CreateObjectJobRequest) error {
 	req.Objects = filteredObjects
 	if req.Operation == models.ObjectJobOperationDelete {
 		req.DestinationBucket, req.DestinationPrefix, req.ConflictPolicy = "", "", ""
+		req.ReplaceSourcePrefix = false
 		return nil
 	}
 	if req.DestinationBucket == "" {
@@ -539,6 +544,9 @@ func normalizeObjectJobRequest(req *models.CreateObjectJobRequest) error {
 	}
 	if req.ConflictPolicy != models.ObjectJobConflictSkip && req.ConflictPolicy != models.ObjectJobConflictOverwrite {
 		return fmt.Errorf("conflictPolicy must be skip or overwrite")
+	}
+	if req.ReplaceSourcePrefix && (len(req.Prefixes) != 1 || len(req.Objects) != 0) {
+		return fmt.Errorf("replaceSourcePrefix requires exactly one prefix and no explicit objects")
 	}
 	if req.SourceBucket == req.DestinationBucket {
 		for _, key := range req.Objects {
@@ -548,6 +556,9 @@ func normalizeObjectJobRequest(req *models.CreateObjectJobRequest) error {
 		}
 		for _, prefix := range req.Prefixes {
 			target := req.DestinationPrefix + objectBaseName(strings.TrimSuffix(prefix, "/")) + "/"
+			if req.ReplaceSourcePrefix {
+				target = req.DestinationPrefix
+			}
 			if target == prefix || strings.HasPrefix(target, prefix) {
 				return fmt.Errorf("a prefix cannot be copied or moved to itself or one of its descendants")
 			}

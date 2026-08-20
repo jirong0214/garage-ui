@@ -15,18 +15,24 @@ type CapabilitiesHandler struct {
 	capabilities         services.Capabilities
 	accessControlEnabled bool
 	deviceAuthEnabled    bool
+	objectJobsEnabled    bool
 }
 
-func NewCapabilitiesHandler(apiVersion string, capabilities services.Capabilities, accessControlEnabled bool, deviceAuthEnabled ...bool) *CapabilitiesHandler {
+func NewCapabilitiesHandler(apiVersion string, capabilities services.Capabilities, accessControlEnabled bool, featureFlags ...bool) *CapabilitiesHandler {
 	deviceAuth := true
-	if len(deviceAuthEnabled) > 0 {
-		deviceAuth = deviceAuthEnabled[0]
+	objectJobs := true
+	if len(featureFlags) > 0 {
+		deviceAuth = featureFlags[0]
+	}
+	if len(featureFlags) > 1 {
+		objectJobs = featureFlags[1]
 	}
 	return &CapabilitiesHandler{
 		apiVersion:           apiVersion,
 		capabilities:         capabilities,
 		accessControlEnabled: accessControlEnabled,
 		deviceAuthEnabled:    deviceAuth,
+		objectJobsEnabled:    objectJobs,
 	}
 }
 
@@ -66,6 +72,7 @@ func (h *CapabilitiesHandler) GetCapabilities(c fiber.Ctx) error {
 			NodeStatistics:    h.capabilities.NodeStatistics,
 			RefreshTokens:     h.deviceAuthEnabled,
 			DeviceSessions:    h.deviceAuthEnabled,
+			ObjectJobs:        h.objectJobsEnabled,
 		},
 		AccessControl: ac,
 	}))

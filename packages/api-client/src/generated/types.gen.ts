@@ -126,6 +126,7 @@ export type ModelsCapabilityFeatures = {
     deviceSessions?: boolean;
     nodeInfo?: boolean;
     nodeStatistics?: boolean;
+    objectJobs?: boolean;
     refreshTokens?: boolean;
 };
 
@@ -145,6 +146,7 @@ export type ModelsCreateObjectJobRequest = {
     objects?: Array<string>;
     operation: 'copy' | 'move' | 'delete';
     prefixes?: Array<string>;
+    replaceSourcePrefix?: boolean;
     sourceBucket: string;
 };
 
@@ -273,6 +275,7 @@ export type ModelsObjectJob = {
     prefixes?: Array<string>;
     processed?: number;
     progress?: number;
+    replaceSourcePrefix?: boolean;
     skipped?: number;
     sourceBucket?: string;
     startedAt?: string;

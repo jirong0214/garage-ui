@@ -203,6 +203,8 @@ definitions:
         type: boolean
       nodeStatistics:
         type: boolean
+      objectJobs:
+        type: boolean
       refreshTokens:
         type: boolean
     type: object
@@ -245,6 +247,8 @@ definitions:
         items:
           type: string
         type: array
+      replaceSourcePrefix:
+        type: boolean
       sourceBucket:
         type: string
     required:
@@ -483,6 +487,8 @@ definitions:
         type: integer
       progress:
         type: number
+      replaceSourcePrefix:
+        type: boolean
       skipped:
         type: integer
       sourceBucket:

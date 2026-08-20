@@ -122,6 +122,7 @@ func main() {
 		adminResult.Capabilities,
 		cfg.AccessControl != nil,
 		cfg.Auth.Admin.Enabled,
+		cfg.ObjectJobs.Enabled,
 	)
 
 	logger.Info().Msg("Initializing S3 service")

@@ -194,6 +194,51 @@ func TestObjectJobRequestRejectsDestinationInsideSource(t *testing.T) {
 	}
 }
 
+func TestObjectJobManagerRenamesFolderPrefix(t *testing.T) {
+	var copied, deleted string
+	s3 := &mocks.S3Mock{
+		ListObjectsRecursiveFn: func(_ context.Context, _, prefix string, _ int, _ string) (*services.RecursiveObjectPage, error) {
+			return &services.RecursiveObjectPage{Objects: []models.ObjectInfo{{Key: prefix + "nested/中文 #?%.txt", Size: 2}}}, nil
+		},
+		CopyObjectFn: func(_ context.Context, _, source, _, destination string, _ bool) (*models.ObjectTransferResponse, error) {
+			copied = source + "->" + destination
+			return &models.ObjectTransferResponse{}, nil
+		},
+		DeleteObjectFn: func(_ context.Context, _, key string) error {
+			deleted = key
+			return nil
+		},
+	}
+	manager := newJobManager(t, s3)
+	job, err := manager.Create(context.Background(), "alice", models.CreateObjectJobRequest{
+		Operation: models.ObjectJobOperationMove, SourceBucket: "pics",
+		Prefixes: []string{"albums/old/"}, DestinationBucket: "pics",
+		DestinationPrefix: "albums/新名字/", ReplaceSourcePrefix: true,
+	}, "")
+	if err != nil {
+		t.Fatalf("create rename: %v", err)
+	}
+	if completed := waitForJob(t, manager, job.ID); completed.Succeeded != 1 {
+		t.Fatalf("rename job: %+v", completed)
+	}
+	wantSource := "albums/old/nested/中文 #?%.txt"
+	if copied != wantSource+"->albums/新名字/nested/中文 #?%.txt" || deleted != wantSource {
+		t.Fatalf("copied = %q, deleted = %q", copied, deleted)
+	}
+}
+
+func TestObjectJobRequestRejectsInvalidSourcePrefixReplacement(t *testing.T) {
+	manager := newJobManager(t, &mocks.S3Mock{})
+	_, err := manager.Create(context.Background(), "alice", models.CreateObjectJobRequest{
+		Operation: models.ObjectJobOperationMove, SourceBucket: "pics",
+		Prefixes: []string{"one/", "two/"}, DestinationBucket: "pics",
+		DestinationPrefix: "renamed/", ReplaceSourcePrefix: true,
+	}, "")
+	if err == nil {
+		t.Fatal("expected single-prefix validation error")
+	}
+}
+
 func TestObjectJobRequestRejectsObjectMappedOntoItself(t *testing.T) {
 	manager := newJobManager(t, &mocks.S3Mock{})
 	_, err := manager.Create(context.Background(), "alice", models.CreateObjectJobRequest{
