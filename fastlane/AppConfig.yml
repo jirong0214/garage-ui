@@ -1,0 +1,22 @@
+app:
+  name: GarageUI
+  bundle_id: dev.garageui.mobile
+  team_id: Z6SA7DN2WY
+
+xcode:
+  workspace: mobile/ios/GarageUI.xcworkspace
+  scheme: GarageUI
+  configuration: Release
+
+firebase:
+  project_id: immich-uploader-geekouc
+  project_number: "205173771414"
+  app_id: "1:205173771414:ios:0bc5127a0f0c3391de46b7"
+  groups: internal
+
+distribution:
+  export_method: ad-hoc
+  output_directory: build/firebase
+  ipa_name: GarageUI.ipa
+  profile_filename: GarageUI_AdHoc.mobileprovision
+  profile_name: "iOS Team Ad Hoc Provisioning Profile: dev.garageui.mobile"

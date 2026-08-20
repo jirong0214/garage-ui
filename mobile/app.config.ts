@@ -16,6 +16,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       ...staticConfig.ios,
       infoPlist: {
+        // Fastlane supplies CURRENT_PROJECT_VERSION per release. Keeping the
+        // native plist dynamic prevents Expo prebuild from freezing it at 1.
+        CFBundleVersion: '$(CURRENT_PROJECT_VERSION)',
         NSAppTransportSecurity: debugLanHttp
           ? {
               NSAllowsArbitraryLoads: true,

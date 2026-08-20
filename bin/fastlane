@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+script_directory="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+app_root="$(CDPATH= cd -- "$script_directory/.." && pwd)"
+toolkit_root="${IOS_RELEASE_TOOLKIT_PATH:-$script_directory/../../ios-release-toolkit}"
+
+if [ ! -x "$toolkit_root/bin/fastlane" ]; then
+  echo "iOS release toolkit not found at: $toolkit_root" >&2
+  exit 1
+fi
+
+IOS_RELEASE_APP_ROOT="$app_root" exec "$toolkit_root/bin/fastlane" "$@"

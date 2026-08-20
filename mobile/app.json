@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
+      "appleTeamId": "Z6SA7DN2WY",
       "bundleIdentifier": "dev.garageui.mobile",
       "deploymentTarget": "17.0",
       "supportsTablet": true

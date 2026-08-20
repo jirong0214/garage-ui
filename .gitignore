@@ -72,3 +72,15 @@ docs/**/*.md
 **/content**
 
 **/worktrees
+
+# iOS Ad Hoc release artifacts and local credentials
+.bundle/
+vendor/bundle/
+build/
+fastlane/.env
+!fastlane/.env.example
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+*.ipa
+*.dSYM.zip
