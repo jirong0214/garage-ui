@@ -35,6 +35,11 @@ describe('transferProgress', () => {
     expect(transferProgress(record({ totalBytes: null }))).toBeNull();
     expect(transferProgress(record({ totalBytes: Number.NaN }))).toBeNull();
   });
+
+  it('uses an explicit server-side progress fraction when supplied', () => {
+    expect(transferProgress(record({ progressFraction: 0.25, totalBytes: null }))).toBe(0.25);
+    expect(transferProgress(record({ progressFraction: 2 }))).toBe(1);
+  });
 });
 
 describe('transfer presentation', () => {
@@ -62,5 +67,20 @@ describe('transfer presentation', () => {
     expect(transferCanRetry('downloading')).toBe(false);
     expect(transferCanShare(record({ status: 'failed' }))).toBe(false);
     expect(transferCanRemove('waiting')).toBe(false);
+  });
+
+  it('honors action capabilities supplied by a server-side job', () => {
+    const job = record({
+      direction: 'object-job',
+      status: 'failed',
+      canCancel: false,
+      canRetry: false,
+      canShare: false,
+      canRemove: false,
+    });
+    expect(transferCanCancel(job)).toBe(false);
+    expect(transferCanRetry(job)).toBe(false);
+    expect(transferCanShare(job)).toBe(false);
+    expect(transferCanRemove(job)).toBe(false);
   });
 });

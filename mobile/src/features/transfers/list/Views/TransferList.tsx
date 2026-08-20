@@ -173,27 +173,28 @@ const TransferCard = memo(function TransferCard({
         </View>
       </View>
 
-      {record.status === 'failed' && record.errorMessage ? (
+      {(record.status === 'failed' || record.status === 'completed_with_errors') &&
+      record.errorMessage ? (
         <Text accessibilityRole="alert" style={styles.failure}>
           {record.errorMessage}
         </Text>
       ) : null}
 
       <View style={styles.actions}>
-        {transferCanCancel(record.status) ? (
+        {transferCanCancel(record) ? (
           <ActionButton
             destructive
             label={t('cancelTransfer')}
             onPress={() => onCancel(record)}
           />
         ) : null}
-        {transferCanRetry(record.status) ? (
+        {transferCanRetry(record) ? (
           <ActionButton label={t('retryTransfer')} onPress={() => onRetry(record)} />
         ) : null}
         {transferCanShare(record) ? (
           <ActionButton label={t('shareTransfer')} onPress={() => onShare(record)} />
         ) : null}
-        {transferCanRemove(record.status) ? (
+        {transferCanRemove(record) ? (
           <ActionButton
             destructive={record.status !== 'completed'}
             label={t('removeTransfer')}
@@ -206,9 +207,14 @@ const TransferCard = memo(function TransferCard({
 });
 
 function StatusBadge({ status }: { status: TransferStatus }) {
-  const active = status === 'downloading' || status === 'uploading' || status === 'retrying';
+  const active =
+    status === 'downloading' ||
+    status === 'uploading' ||
+    status === 'retrying' ||
+    status === 'processing' ||
+    status === 'cancelling';
   const completed = status === 'completed';
-  const failed = status === 'failed';
+  const failed = status === 'failed' || status === 'completed_with_errors';
 
   return (
     <View
@@ -252,7 +258,7 @@ function ActionButton({
 }
 
 function statusLabel(status: TransferStatus): string {
-  const key: Record<TransferStatus, StringKey> = {
+  const key: Partial<Record<TransferStatus, StringKey>> = {
     waiting: 'transferWaiting',
     preparing: 'transferPreparing',
     downloading: 'transferDownloading',
@@ -262,7 +268,11 @@ function statusLabel(status: TransferStatus): string {
     failed: 'transferFailed',
     cancelled: 'transferCancelled',
   };
-  return t(key[status]);
+  const translatedKey = key[status];
+  if (translatedKey) return t(translatedKey);
+  if (status === 'processing') return t('transferProcessing');
+  if (status === 'cancelling') return t('transferCancelling');
+  return t('transferCompletedWithErrors');
 }
 
 function TransferSeparator() {
