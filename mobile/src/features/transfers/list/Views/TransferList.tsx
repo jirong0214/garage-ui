@@ -280,13 +280,14 @@ function TransferSeparator() {
 }
 
 const styles = StyleSheet.create({
-  listContent: { paddingBottom: 24 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
   separator: { height: 12 },
   state: {
     minHeight: 120,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
+    marginHorizontal: 16,
     padding: 20,
     borderRadius: 14,
     backgroundColor: colors.surface,
@@ -294,6 +295,7 @@ const styles = StyleSheet.create({
   stateText: { color: colors.secondaryLabel, fontSize: 15, lineHeight: 21 },
   errorState: {
     gap: 12,
+    marginHorizontal: 16,
     padding: 14,
     borderRadius: 14,
     backgroundColor: colors.surface,
@@ -320,6 +322,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    marginHorizontal: 16,
     padding: 20,
     borderRadius: 14,
     backgroundColor: colors.surface,
