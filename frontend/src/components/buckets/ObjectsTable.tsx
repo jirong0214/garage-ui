@@ -1,633 +1,250 @@
-import {useEffect, useMemo, useState} from 'react';
-import {useLocation, useNavigate} from 'react-router-dom';
+import type {MouseEvent, ReactNode} from 'react';
 import {Button, buttonVariants} from '@/components/ui/button';
-import {Checkbox} from '@/components/ui/checkbox';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {ChevronLeft, ChevronRight, Copy, Download, FolderIcon, Link2, Loader2, MoreVertical, MoveRight, Pencil, Trash2} from 'lucide-react';
-import {Select, SelectOption} from '@/components/ui/select';
+import {DropdownMenu, DropdownMenuContent, DropdownMenuTrigger} from '@/components/ui/dropdown-menu';
+import {Copy, Download, Link2, Loader2, MoreVertical} from 'lucide-react';
 import {downloadObject, formatBytes, formatObjectModifiedTime} from '@/lib/file-utils';
-import type {Bucket, S3Object} from '@/types';
-import {buildPublicObjectUrl, copyText} from '@/lib/utils';
-import {toast} from 'sonner';
-import {ShareObjectDialog} from './ShareObjectDialog';
+import type {S3Object} from '@/types';
+import type {ObjectsContentProps} from './ObjectsContent';
 import {ObjectThumbnail} from './ObjectThumbnail';
-import {ObjectTransferDialog, type ObjectTransferMode} from './ObjectTransferDialog';
 
-interface ObjectsTableProps {
-  bucketName: string;
-  publicBaseURL?: string;
-  canShare: boolean;
-  transferDestinationBuckets?: Bucket[];
-  canMove?: boolean;
-  canRename?: boolean;
-  objects: S3Object[];
-  currentPath: string;
-  searchQuery: string;
-  filterQuery: string;
-  deepSearch: boolean;
-  selectedFileKeys: Set<string>;
-  selectedFolderKeys: Set<string>;
-  isDragActive: boolean;
-  isLoading?: boolean;
-  isTruncated?: boolean;
-  nextContinuationToken?: string;
-  itemsPerPage: number;
-  onNavigateToFolder: (key: string) => void;
-  // Optional so the parent can withhold them when the user lacks delete
-  // permission; canDelete (below) is derived from onDeleteObject.
-  onDeleteObject?: (object: S3Object) => void;
-  onDeleteFolder?: (object: S3Object) => void;
-  onCopyFolder?: (object: S3Object) => void;
-  onMoveFolder?: (object: S3Object) => void;
-  onToggleFileSelection: (key: string) => void;
-  onToggleFolderSelection: (key: string) => void;
-  // Receives the keys of the currently *visible* (filtered) rows so selection
-  // stays aligned with what the search is actually showing.
-  onSelectAll: (fileKeys: string[], folderKeys: string[]) => void;
-  onPageChange: (token?: string) => void;
-  onItemsPerPageChange: (count: number) => void;
-  onTransferComplete?: () => Promise<void>;
-  initialPageToken?: string;
-  initialItemsPerPage?: number;
-}
-
-type SortColumn = 'name' | 'size' | 'modified';
-type SortDirection = 'asc' | 'desc';
-interface SortPreference {
-  column: SortColumn;
-  direction: SortDirection;
-}
-
-const SORT_STORAGE_KEY = 'garage-ui:objects-sort';
-const DEFAULT_SORT: SortPreference = {column: 'name', direction: 'asc'};
-
-function loadSortPreference(): SortPreference {
-  try {
-    const stored = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY) ?? 'null') as Partial<SortPreference> | null;
-    const column = stored?.column;
-    const direction = stored?.direction;
-    if (
-      (column === 'name' || column === 'size' || column === 'modified') &&
-      (direction === 'asc' || direction === 'desc')
-    ) {
-      return {column, direction};
-    }
-  } catch {
-    // Ignore unavailable storage and malformed values.
-  }
-  return DEFAULT_SORT;
-}
-
-function saveSortPreference(preference: SortPreference) {
-  try {
-    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(preference));
-  } catch {
-    // Sorting still works when storage is unavailable.
-  }
+interface Props extends Pick<
+  ObjectsContentProps,
+  | 'bucketName'
+  | 'currentPath'
+  | 'selectedFileKeys'
+  | 'selectedFolderKeys'
+  | 'searchQuery'
+  | 'isDragActive'
+  | 'publicBaseURL'
+  | 'canShare'
+  | 'canRename'
+  | 'transferDestinationBuckets'
+  | 'canMove'
+  | 'onDeleteObject'
+> {
+  pageObjects: S3Object[];
+  canSelect: boolean;
+  sortColumn: 'name' | 'size' | 'modified';
+  sortDirection: 'asc' | 'desc';
+  handleSort: (column: 'name' | 'size' | 'modified') => void;
+  isLoading: boolean;
+  copyPublicURL: (key: string) => Promise<void>;
+  renderMutationItems: (object: S3Object) => ReactNode;
+  onActivate: (object: S3Object, event: MouseEvent<HTMLElement>) => void;
+  onShare: (object: S3Object) => void;
 }
 
 export function ObjectsTable({
   bucketName,
-  publicBaseURL,
-  canShare,
-  transferDestinationBuckets = [],
-  canMove = false,
-  canRename = false,
-  objects,
   currentPath,
-  searchQuery,
-  filterQuery,
-  deepSearch,
+  pageObjects,
+  canSelect,
   selectedFileKeys,
   selectedFolderKeys,
+  sortColumn,
+  sortDirection,
+  handleSort,
+  isLoading,
+  searchQuery,
   isDragActive,
-  isLoading = false,
-  isTruncated = false,
-  nextContinuationToken,
-  itemsPerPage,
-  onNavigateToFolder,
+  publicBaseURL,
+  canShare,
+  canRename,
+  transferDestinationBuckets = [],
+  canMove,
   onDeleteObject,
-  onDeleteFolder,
-  onCopyFolder,
-  onMoveFolder,
-  onToggleFileSelection,
-  onToggleFolderSelection,
-  onSelectAll,
-  onPageChange,
-  onItemsPerPageChange,
-  onTransferComplete,
-  initialPageToken,
-  initialItemsPerPage,
-}: ObjectsTableProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const canDelete = Boolean(onDeleteObject);
-  const canSelect = canDelete || transferDestinationBuckets.length > 0 || canMove;
-  const [sortPreference, setSortPreference] = useState<SortPreference>(loadSortPreference);
-  const {column: sortColumn, direction: sortDirection} = sortPreference;
-  // Store tokens for each page: [undefined (page 1), token1 (page 2), token2 (page 3), ...]
-  const [pageTokens, setPageTokens] = useState<(string | undefined)[]>([undefined]);
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [initialized, setInitialized] = useState(false);
-  const [shareObject, setShareObject] = useState<S3Object | null>(null);
-  const [transfer, setTransfer] = useState<{object: S3Object; mode: ObjectTransferMode} | null>(null);
-
-  const copyPublicURL = async (key: string) => {
-    if (!publicBaseURL) return;
-    try {
-      await copyText(buildPublicObjectUrl(publicBaseURL, key));
-      toast.success('Public URL copied');
-    } catch {
-      toast.error('Failed to copy');
-    }
-  };
-
-  // Initialize from URL params on first load
-  useEffect(() => {
-    if (!initialized && initialItemsPerPage && initialItemsPerPage !== itemsPerPage) {
-      onItemsPerPageChange(initialItemsPerPage);
-      setInitialized(true);
-    }
-    if (!initialized && initialPageToken && initialPageToken !== nextContinuationToken) {
-      // If we have an initial page token, trigger page change
-      onPageChange(initialPageToken);
-      setInitialized(true);
-    }
-    if (!initialized && !initialPageToken && !initialItemsPerPage) {
-      setInitialized(true);
-    }
-  }, [initialized, initialPageToken, initialItemsPerPage, itemsPerPage, nextContinuationToken, onPageChange, onItemsPerPageChange]);
-
-  const filteredObjects = useMemo(() => {
-    // Filter on the debounced query, not the raw input, so the list only
-    // updates once typing pauses (matches the debounced server request).
-    const query = filterQuery.toLowerCase();
-    const filtered = objects.filter((obj) => obj.key.toLowerCase().includes(query));
-    return [...filtered].sort((a, b) => {
-      const aIsFolder = a.isFolder ? 1 : 0;
-      const bIsFolder = b.isFolder ? 1 : 0;
-      if (aIsFolder !== bIsFolder) return bIsFolder - aIsFolder;
-
-      let compareValue = 0;
-      switch (sortColumn) {
-        case 'name': {
-          const aName = a.key.replace(currentPath, '').replace(/\/$/, '').toLowerCase();
-          const bName = b.key.replace(currentPath, '').replace(/\/$/, '').toLowerCase();
-          compareValue = aName.localeCompare(bName);
-          break;
-        }
-        case 'size':
-          compareValue = a.size - b.size;
-          break;
-        case 'modified': {
-          const aDate = new Date(a.lastModified).getTime();
-          const bDate = new Date(b.lastModified).getTime();
-          compareValue = aDate - bDate;
-          break;
-        }
-      }
-
-      return sortDirection === 'asc' ? compareValue : -compareValue;
-    });
-  }, [objects, filterQuery, sortColumn, sortDirection, currentPath]);
-
-  // Effect 2: Reset pagination on path navigation or when a search begins/ends.
-  // Search results are a single flat list, so page-token state must not leak
-  // across the search/browse boundary.
-  useEffect(() => {
-    setPageTokens([undefined]);
-    setCurrentPageIndex(0);
-  }, [currentPath, searchQuery, deepSearch]);
-
-  // Update page tokens when we get a new next token
-  useEffect(() => {
-    if (nextContinuationToken && isTruncated) {
-      setPageTokens(prev => {
-        const newTokens = [...prev];
-        // Only add the token if we don't have it yet
-        const nextIndex = currentPageIndex + 1;
-        if (nextIndex >= newTokens.length) {
-          newTokens[nextIndex] = nextContinuationToken;
-        }
-        return newTokens;
-      });
-    }
-  }, [nextContinuationToken, isTruncated, currentPageIndex]);
-
-  // Prefix search and normal browsing are server-paginated (query folded into
-  // the prefix; continuation tokens for pages). Deep search loads the whole
-  // capped result set in one response, so we paginate that on the client by
-  // itemsPerPage instead of dumping every match at once.
-  const isDeepSearching = deepSearch && searchQuery.trim().length > 0;
-  const clientPaginated = isDeepSearching;
-  const totalPages = clientPaginated
-    ? Math.max(1, Math.ceil(filteredObjects.length / itemsPerPage))
-    : 1;
-  // Clamp during render (not via a setState effect) so a shrinking result set
-  // or a larger page size can't strand us on an out-of-range page.
-  const pageIndex = clientPaginated ? Math.min(currentPageIndex, totalPages - 1) : currentPageIndex;
-  const pageObjects = clientPaginated
-    ? filteredObjects.slice(pageIndex * itemsPerPage, (pageIndex + 1) * itemsPerPage)
-    : filteredObjects;
-  const hasPrevious = pageIndex > 0;
-  const hasNext = clientPaginated ? pageIndex < totalPages - 1 : isTruncated;
-
-  const handleNextPage = () => {
-    if (!hasNext) return;
-    // Client-paginated (deep search): just advance the slice, no server fetch.
-    if (clientPaginated) {
-      setCurrentPageIndex(pageIndex + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    if (nextContinuationToken) {
-      const nextIndex = currentPageIndex + 1;
-      setCurrentPageIndex(nextIndex);
-      onPageChange(nextContinuationToken);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  const handlePreviousPage = () => {
-    if (!hasPrevious) return;
-    if (clientPaginated) {
-      setCurrentPageIndex(pageIndex - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    const prevIndex = currentPageIndex - 1;
-    setCurrentPageIndex(prevIndex);
-    onPageChange(pageTokens[prevIndex]);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleItemsPerPageChange = (value: string) => {
-    onItemsPerPageChange(Number(value));
-    setPageTokens([undefined]); // Reset to first page
-    setCurrentPageIndex(0);
-  };
-
-  const handleSort = (column: SortColumn) => {
-    const nextPreference: SortPreference = sortColumn === column
-      ? {column, direction: sortDirection === 'asc' ? 'desc' : 'asc'}
-      : {column, direction: 'asc'};
-    setSortPreference(nextPreference);
-    saveSortPreference(nextPreference);
-  };
-
+  copyPublicURL,
+  renderMutationItems,
+  onActivate,
+  onShare,
+}: Props) {
   return (
-    <>
-      <div className="overflow-x-auto">
-        <TooltipProvider>
+    <div className="overflow-x-auto">
+      <TooltipProvider>
         <Table className="table-fixed min-w-[970px] sm:min-w-[1100px]">
           <TableHeader>
-          <TableRow>
-            {canSelect && (
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  // Scope select-all to the rows actually on screen (pageObjects).
-                  // In normal/prefix browsing this equals filteredObjects; in
-                  // client-paginated deep search it is just the visible page, so
-                  // one click never selects hidden matches for a destructive delete.
-                  checked={
-                    pageObjects.length > 0 &&
-                    pageObjects.every(obj =>
-                      obj.isFolder ? selectedFolderKeys.has(obj.key) : selectedFileKeys.has(obj.key),
-                    )
-                  }
-                  onCheckedChange={() =>
-                    onSelectAll(
-                      pageObjects.filter(obj => !obj.isFolder).map(obj => obj.key),
-                      pageObjects.filter(obj => obj.isFolder).map(obj => obj.key),
-                    )
-                  }
-                  aria-label="Select all objects"
-                />
+            <TableRow>
+              <TableHead
+                className="w-[300px] cursor-pointer hover:bg-muted/50"
+                onClick={() => handleSort('name')}
+              >
+                Objects {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
-            )}
-          <TableHead
-            className="w-[300px] cursor-pointer hover:bg-muted/50"
-            onClick={() => handleSort('name')}
-          >
-            Objects {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
-          </TableHead>
-          <TableHead className="hidden w-[130px] sm:table-cell">Type</TableHead>
-          <TableHead
-            className="w-[90px] cursor-pointer hover:bg-muted/50"
-            onClick={() => handleSort('size')}
-          >
-            Size {sortColumn === 'size' && (sortDirection === 'asc' ? '↑' : '↓')}
-          </TableHead>
-          <TableHead
-            className="w-[160px] cursor-pointer hover:bg-muted/50"
-            onClick={() => handleSort('modified')}
-          >
-            Modified {sortColumn === 'modified' && (sortDirection === 'asc' ? '↑' : '↓')}
-          </TableHead>
-          <TableHead className="w-[360px]">
-            <span className="sr-only">Actions</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {isLoading ? (
-          <TableRow>
-            <TableCell colSpan={canSelect ? 6 : 5} className="text-center py-12">
-              <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Loading objects...</span>
-              </div>
-            </TableCell>
-          </TableRow>
-        ) : filteredObjects.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={canSelect ? 6 : 5} className="text-center py-12 text-muted-foreground">
-              {searchQuery
-                ? 'No objects found matching your search'
-                : isDragActive
-                ? 'Drop files or folders here'
-                : 'No objects in this location'}
-            </TableCell>
-          </TableRow>
-        ) : (
-          pageObjects.map((obj) => (
-            <TableRow key={obj.key}>
-              {canSelect && (
-                <TableCell className="w-[50px]">
-                  {obj.isFolder ? (
-                    <Checkbox
-                      checked={selectedFolderKeys.has(obj.key)}
-                      onCheckedChange={() => onToggleFolderSelection(obj.key)}
-                      aria-label={`Select folder ${obj.key}`}
-                    />
-                  ) : (
-                    <Checkbox
-                      checked={selectedFileKeys.has(obj.key)}
-                      onCheckedChange={() => onToggleFileSelection(obj.key)}
-                      aria-label={`Select file ${obj.key}`}
-                    />
-                  )}
-                </TableCell>
-              )}
-              <TableCell className="w-[300px]">
-                <div className="flex min-w-0 items-center gap-2">
-                  <ObjectThumbnail bucketName={bucketName} object={obj} />
-                  {obj.isFolder ? (
-                    <button
-                      onClick={() => onNavigateToFolder(obj.key)}
-                      title={obj.key.replace(currentPath, '').replace(/\/$/, '')}
-                      className="line-clamp-2 min-w-0 flex-1 cursor-pointer break-all text-left font-medium underline hover:text-primary"
-                    >
-                      {obj.key.replace(currentPath, '').replace(/\/$/, '')}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => navigate(
-                        `/buckets/${bucketName}/objects/${encodeURIComponent(obj.key)}`,
-                        {state: {objectListHref: `${location.pathname}${location.search}`}},
-                      )}
-                      title={obj.key.replace(currentPath, '')}
-                      className="line-clamp-2 min-w-0 flex-1 cursor-pointer break-all text-left font-medium hover:text-primary hover:underline"
-                    >
-                      {obj.key.replace(currentPath, '')}
-                    </button>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell className="hidden w-[130px] sm:table-cell">
-                <span
-                  className="line-clamp-2 break-all text-muted-foreground"
-                  title={obj.isFolder ? 'Directory' : (obj.contentType || 'application/octet-stream')}
-                >
-                  {obj.isFolder ? 'Directory' : (obj.contentType || 'application/octet-stream')}
-                </span>
-              </TableCell>
-              <TableCell className="w-[90px]">{obj.isFolder ? null : formatBytes(obj.size)}</TableCell>
-              <TableCell className="w-[160px]">
-                {obj.lastModified ? (() => {
-                  const d = new Date(obj.lastModified);
-                  return <span className="text-muted-foreground">{formatObjectModifiedTime(d)}</span>;
-                })() : null}
-              </TableCell>
-              <TableCell className="w-[360px]">
-                <div className="flex items-center justify-end gap-1">
-                  {!obj.isFolder && publicBaseURL && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="px-2 text-[13px]"
-                          onClick={() => copyPublicURL(obj.key)}
-                          aria-label={`Copy public URL for ${obj.key}`}
-                        >
-                          <Copy className="h-4 w-4" />
-                          Public URL
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Copy public URL</TooltipContent>
-                    </Tooltip>
-                  )}
-                  {!obj.isFolder && canShare && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="px-2 text-[13px]"
-                          onClick={() => setShareObject(obj)}
-                          aria-label={`Create signed URL for ${obj.key}`}
-                        >
-                          <Link2 className="h-4 w-4" />
-                          Share
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Create signed URL</TooltipContent>
-                    </Tooltip>
-                  )}
-                  {!obj.isFolder && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="px-2 text-[13px]"
-                          onClick={() => downloadObject(bucketName, obj.key)}
-                          aria-label={`Download ${obj.key}`}
-                        >
-                          <Download className="h-4 w-4" />
-                          Download
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Download</TooltipContent>
-                    </Tooltip>
-                  )}
-                  {obj.isFolder ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      aria-label={`Actions for ${obj.key}`}
-                      className={buttonVariants({variant: 'ghost', size: 'icon-sm'})}
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onNavigateToFolder(obj.key)}>
-                        <FolderIcon className="h-4 w-4" />
-                        Open
-                      </DropdownMenuItem>
-                      {onCopyFolder && (
-                        <DropdownMenuItem onClick={() => onCopyFolder(obj)}>
-                          <Copy className="h-4 w-4" />
-                          Copy…
-                        </DropdownMenuItem>
-                      )}
-                      {onMoveFolder && (
-                        <DropdownMenuItem onClick={() => onMoveFolder(obj)}>
-                          <MoveRight className="h-4 w-4" />
-                          Move…
-                        </DropdownMenuItem>
-                      )}
-                      {onDeleteFolder && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => onDeleteFolder(obj)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete folder
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (canRename || transferDestinationBuckets.length > 0 || canMove || onDeleteObject) ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      aria-label={`Actions for ${obj.key}`}
-                      className={buttonVariants({variant: 'ghost', size: 'icon-sm'})}
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {canRename && (
-                        <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'rename'})}>
-                          <Pencil className="h-4 w-4" />
-                          Rename…
-                        </DropdownMenuItem>
-                      )}
-                      {transferDestinationBuckets.length > 0 && (
-                        <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'copy'})}>
-                          <Copy className="h-4 w-4" />
-                          Copy…
-                        </DropdownMenuItem>
-                      )}
-                      {canMove && (
-                        <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'move'})}>
-                          <MoveRight className="h-4 w-4" />
-                          Move…
-                        </DropdownMenuItem>
-                      )}
-                      {onDeleteObject && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => onDeleteObject(obj)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : null}
-                </div>
-              </TableCell>
+              <TableHead className="hidden w-[130px] sm:table-cell">Type</TableHead>
+              <TableHead
+                className="w-[90px] cursor-pointer hover:bg-muted/50"
+                onClick={() => handleSort('size')}
+              >
+                Size {sortColumn === 'size' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="w-[160px] cursor-pointer hover:bg-muted/50"
+                onClick={() => handleSort('modified')}
+              >
+                Modified {sortColumn === 'modified' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead className="w-[360px]">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-        </TooltipProvider>
-      </div>
-
-    {/* Pagination Controls */}
-    {(filteredObjects.length > 0 || hasPrevious) && (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-4 border-t bg-background">
-        {/* Items per page selector */}
-        <div className="flex items-center gap-2 text-sm relative z-10">
-          <span className="text-muted-foreground">Items per page:</span>
-          <Select value={itemsPerPage.toString()} onChange={handleItemsPerPageChange}>
-            <SelectOption value="10">10</SelectOption>
-            <SelectOption value="25">25</SelectOption>
-            <SelectOption value="50">50</SelectOption>
-            <SelectOption value="100">100</SelectOption>
-            <SelectOption value="200">200</SelectOption>
-          </Select>
-        </div>
-
-        {/* Pagination info and controls */}
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            {isDeepSearching
-              ? `Page ${pageIndex + 1} of ${totalPages} • ${filteredObjects.length} match${filteredObjects.length !== 1 ? 'es' : ''}${isTruncated ? ' (capped, refine to narrow)' : ''}`
-              : `Page ${pageIndex + 1} • Showing ${pageObjects.length} item${pageObjects.length !== 1 ? 's' : ''}`}
-          </span>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handlePreviousPage}
-              disabled={!hasPrevious}
-              className="h-8"
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleNextPage}
-              disabled={!hasNext}
-              className="h-8"
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    )}
-    <ShareObjectDialog
-      open={shareObject !== null}
-      onOpenChange={(open) => { if (!open) setShareObject(null); }}
-      bucketName={bucketName}
-      objectKey={shareObject?.key ?? ''}
-    />
-    <ObjectTransferDialog
-      open={transfer !== null}
-      onOpenChange={(open) => { if (!open) setTransfer(null); }}
-      mode={transfer?.mode ?? 'copy'}
-      sourceBucket={bucketName}
-      sourceKey={transfer?.object.key ?? ''}
-      destinationBuckets={transferDestinationBuckets}
-      onCompleted={() => { void onTransferComplete?.(); }}
-    />
-    </>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-12">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Loading objects...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : pageObjects.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                  {searchQuery
+                    ? 'No objects found matching your search'
+                    : isDragActive
+                      ? 'Drop files or folders here'
+                      : 'No objects in this location'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              pageObjects.map((obj) => {
+                const selected = obj.isFolder
+                  ? selectedFolderKeys.has(obj.key)
+                  : selectedFileKeys.has(obj.key);
+                return (
+                <TableRow
+                  key={obj.key}
+                  aria-selected={selected}
+                  onClick={(event) => onActivate(obj, event)}
+                  className={`cursor-pointer ${selected ? 'bg-[var(--accent-primary-soft)] ring-1 ring-inset ring-[var(--primary)]' : ''}`}
+                >
+                  <TableCell className="w-[300px]">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <ObjectThumbnail bucketName={bucketName} object={obj} />
+                      {obj.isFolder ? (
+                        <button
+                          title={`${obj.key.replace(currentPath, '').replace(/\/$/, '')}${canSelect ? ' · Cmd/Ctrl-click to select' : ''}`}
+                          className="line-clamp-2 min-w-0 flex-1 cursor-pointer break-all text-left font-medium underline hover:text-primary"
+                        >
+                          {obj.key.replace(currentPath, '').replace(/\/$/, '')}
+                        </button>
+                      ) : (
+                        <button
+                          title={`${obj.key.replace(currentPath, '')}${canSelect ? ' · Cmd/Ctrl-click to select' : ''}`}
+                          className="line-clamp-2 min-w-0 flex-1 cursor-pointer break-all text-left font-medium hover:text-primary hover:underline"
+                        >
+                          {obj.key.replace(currentPath, '')}
+                        </button>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden w-[130px] sm:table-cell">
+                    <span
+                      className="line-clamp-2 break-all text-muted-foreground"
+                      title={obj.isFolder ? 'Directory' : obj.contentType || 'application/octet-stream'}
+                    >
+                      {obj.isFolder ? 'Directory' : obj.contentType || 'application/octet-stream'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="w-[90px]">{obj.isFolder ? null : formatBytes(obj.size)}</TableCell>
+                  <TableCell className="w-[160px]">
+                    {obj.lastModified
+                      ? (() => {
+                          const d = new Date(obj.lastModified);
+                          return <span className="text-muted-foreground">{formatObjectModifiedTime(d)}</span>;
+                        })()
+                      : null}
+                  </TableCell>
+                  <TableCell className="w-[360px]" onClick={(event) => event.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      {!obj.isFolder && publicBaseURL && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="px-2 text-[13px]"
+                              onClick={() => copyPublicURL(obj.key)}
+                              aria-label={`Copy public URL for ${obj.key}`}
+                            >
+                              <Copy className="h-4 w-4" />
+                              Public URL
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Copy public URL</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {!obj.isFolder && canShare && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="px-2 text-[13px]"
+                              onClick={() => onShare(obj)}
+                              aria-label={`Create signed URL for ${obj.key}`}
+                            >
+                              <Link2 className="h-4 w-4" />
+                              Share
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Create signed URL</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {!obj.isFolder && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="px-2 text-[13px]"
+                              onClick={() => downloadObject(bucketName, obj.key)}
+                              aria-label={`Download ${obj.key}`}
+                            >
+                              <Download className="h-4 w-4" />
+                              Download
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Download</TooltipContent>
+                        </Tooltip>
+                      )}
+                      {obj.isFolder ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            aria-label={`Actions for ${obj.key}`}
+                            className={buttonVariants({variant: 'ghost', size: 'icon-sm'})}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">{renderMutationItems(obj)}</DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : canRename || transferDestinationBuckets.length > 0 || canMove || onDeleteObject ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            aria-label={`Actions for ${obj.key}`}
+                            className={buttonVariants({variant: 'ghost', size: 'icon-sm'})}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">{renderMutationItems(obj)}</DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </TooltipProvider>
+    </div>
   );
 }

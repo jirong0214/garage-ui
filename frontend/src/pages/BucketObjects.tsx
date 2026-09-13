@@ -1,25 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
-import { ObjectBrowserView } from '@/components/buckets/ObjectBrowserView';
-import { useBucketObjects } from '@/hooks/useBucketObjects';
-import { useBuckets } from '@/hooks/useApi';
-import { useBucketCan } from '@/hooks/usePermissions';
-import { useObjectListScrollRestoration } from '@/hooks/useObjectListScrollRestoration';
+import {useEffect, useRef, useState} from 'react';
+import {useLocation, useParams, useSearchParams} from 'react-router-dom';
+import {ObjectBrowserView} from '@/components/buckets/ObjectBrowserView';
+import {useBucketObjects} from '@/hooks/useBucketObjects';
+import {useBuckets} from '@/hooks/useApi';
+import {useBucketCan} from '@/hooks/usePermissions';
+import {useObjectListScrollRestoration} from '@/hooks/useObjectListScrollRestoration';
 
 export function BucketObjects() {
-  const { bucketName = '' } = useParams<{ bucketName: string }>();
+  const {bucketName = ''} = useParams<{bucketName: string}>();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: buckets = [] } = useBuckets();
+  const {data: buckets = []} = useBuckets();
   const bucket = buckets.find((b) => b.name === bucketName);
   const canBucket = useBucketCan();
   const canWrite = canBucket(bucket, 'object.write');
   const canDelete = canBucket(bucket, 'object.delete');
   const canRead = canBucket(bucket, 'object.read');
   const transferDestinationBuckets = canRead
-    ? buckets.filter((candidate) =>
-        canBucket(candidate, 'object.read') && canBucket(candidate, 'object.write'),
+    ? buckets.filter(
+        (candidate) => canBucket(candidate, 'object.read') && canBucket(candidate, 'object.write'),
       )
     : [];
   const canMove = canRead && canDelete && transferDestinationBuckets.length > 0;
@@ -32,25 +32,29 @@ export function BucketObjects() {
     searchParams.get('page') ?? undefined,
   );
   const [initialItemsPerPage, setInitialItemsPerPage] = useState<number>(
-    parseInt(searchParams.get('limit') ?? '25', 10),
+    parseInt(searchParams.get('limit') ?? '50', 10),
   );
 
   useEffect(() => {
     const prefix = searchParams.get('prefix') ?? '';
     if (prefix !== currentPath) setCurrentPath(prefix);
     setInitialPageToken(searchParams.get('page') ?? undefined);
-    setInitialItemsPerPage(parseInt(searchParams.get('limit') ?? '25', 10));
+    setInitialItemsPerPage(parseInt(searchParams.get('limit') ?? '50', 10));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const {
     objects,
+    continuousObjects,
     debouncedSearch,
     isLoading,
     isRefreshing,
     isNavigating,
     isTruncated,
     nextContinuationToken,
+    continuousIsTruncated,
+    isLoadingMore,
+    loadMoreError,
     itemsPerPage,
     setItemsPerPage,
     uploadFiles,
@@ -58,6 +62,7 @@ export function BucketObjects() {
     deleteObject,
     createDirectory,
     fetchObjects,
+    loadMoreObjects,
   } = useBucketObjects(bucketName, currentPath, searchQuery, deepSearch);
   useObjectListScrollRestoration(`${location.pathname}${location.search}`, isLoading);
 
@@ -76,7 +81,7 @@ export function BucketObjects() {
     const next = new URLSearchParams();
     if (currentPath) next.set('prefix', currentPath);
     if (token) next.set('page', token);
-    if (itemsPerPage !== 25) next.set('limit', String(itemsPerPage));
+    if (itemsPerPage !== 50) next.set('limit', String(itemsPerPage));
     setSearchParams(next);
   };
 
@@ -84,7 +89,7 @@ export function BucketObjects() {
     setItemsPerPage(count);
     const next = new URLSearchParams();
     if (currentPath) next.set('prefix', currentPath);
-    if (count !== 25) next.set('limit', String(count));
+    if (count !== 50) next.set('limit', String(count));
     setSearchParams(next);
   };
 
@@ -123,6 +128,7 @@ export function BucketObjects() {
         canMove={canMove}
         canRename={canRename}
         objects={objects}
+        continuousObjects={continuousObjects}
         currentPath={currentPath}
         searchQuery={searchQuery}
         filterQuery={debouncedSearch}
@@ -130,6 +136,9 @@ export function BucketObjects() {
         isLoading={isLoading}
         isTruncated={isTruncated}
         nextContinuationToken={nextContinuationToken}
+        continuousIsTruncated={continuousIsTruncated}
+        isLoadingMore={isLoadingMore}
+        loadMoreError={loadMoreError}
         itemsPerPage={itemsPerPage}
         onSearchChange={setSearchQuery}
         onDeepSearchChange={setDeepSearch}
@@ -141,6 +150,7 @@ export function BucketObjects() {
         onRefresh={handleRefresh}
         onTransferComplete={handleRefresh}
         onPageChange={handlePageChange}
+        onLoadMore={loadMoreObjects}
         onItemsPerPageChange={handleItemsPerPageChange}
         isRefreshing={isRefreshing}
         isNavigating={isNavigating}

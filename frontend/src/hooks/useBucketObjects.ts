@@ -6,8 +6,51 @@ import { toast } from 'sonner';
 // How long to wait after the last keystroke before actually searching. Keeps
 // typing from firing a request (and a client-side re-filter) on every key.
 const SEARCH_DEBOUNCE_MS = 750;
+const CONTINUOUS_CACHE_TTL_MS = 5 * 60 * 1000;
+const CONTINUOUS_CACHE_LIMIT = 12;
+
+interface ContinuousCacheEntry {
+  objects: S3Object[];
+  isTruncated: boolean;
+  nextToken?: string;
+  savedAt: number;
+}
+
+const continuousCache = new Map<string, ContinuousCacheEntry>();
+
+function makeContinuousCacheKey(
+  bucketName: string | null,
+  currentPath: string,
+  searchQuery: string,
+  deepSearch: boolean,
+  itemsPerPage: number,
+) {
+  return JSON.stringify([bucketName ?? '', currentPath, searchQuery, deepSearch, itemsPerPage]);
+}
+
+function readContinuousCache(key: string): ContinuousCacheEntry | undefined {
+  const entry = continuousCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() - entry.savedAt > CONTINUOUS_CACHE_TTL_MS) {
+    continuousCache.delete(key);
+    return undefined;
+  }
+  return entry;
+}
+
+function writeContinuousCache(key: string, entry: Omit<ContinuousCacheEntry, 'savedAt'>) {
+  continuousCache.delete(key);
+  continuousCache.set(key, {...entry, savedAt: Date.now()});
+  while (continuousCache.size > CONTINUOUS_CACHE_LIMIT) {
+    const oldestKey = continuousCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    continuousCache.delete(oldestKey);
+  }
+}
 
 export function useBucketObjects(bucketName: string | null, currentPath: string = '', searchQuery: string = '', deepSearch: boolean = false) {
+  const initialContinuousKey = makeContinuousCacheKey(bucketName, currentPath, searchQuery.trim(), deepSearch, 50);
+  const initialContinuous = readContinuousCache(initialContinuousKey);
   const [objects, setObjects] = useState<S3Object[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -15,7 +58,12 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
   const [error, setError] = useState<Error | null>(null);
   const [isTruncated, setIsTruncated] = useState(false);
   const [nextContinuationToken, setNextContinuationToken] = useState<string | undefined>(undefined);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [continuousObjects, setContinuousObjects] = useState<S3Object[]>(initialContinuous?.objects ?? []);
+  const [continuousIsTruncated, setContinuousIsTruncated] = useState(initialContinuous?.isTruncated ?? false);
+  const [continuousNextToken, setContinuousNextToken] = useState<string | undefined>(initialContinuous?.nextToken);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<Error | null>(null);
   const [currentContinuationToken, setCurrentContinuationToken] = useState<string | undefined>(undefined);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const previousPathRef = useRef<string>(currentPath);
@@ -25,12 +73,20 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
   // search starts, older in-flight responses are discarded instead of clobbering
   // the current view (e.g. a slow search resolving after the query was cleared).
   const fetchSeqRef = useRef(0);
+  const loadingMoreRef = useRef(false);
 
   // Prefix search (the default) narrows the Garage listing to keys starting with
   // the query, within the current folder — server-side, paginated, and O(matches)
   // like the AWS S3 / R2 consoles. Deep search instead uses a recursive scan
   // (see searchObjects) and does not touch listPrefix.
   const listPrefix = debouncedSearch && !deepSearch ? currentPath + debouncedSearch : currentPath;
+  const continuousCacheKey = makeContinuousCacheKey(
+    bucketName,
+    currentPath,
+    debouncedSearch,
+    deepSearch,
+    itemsPerPage,
+  );
 
   const fetchObjects = useCallback(async (continuationToken?: string, isRefresh = false, isNav = false) => {
     if (!bucketName) return;
@@ -51,6 +107,24 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
       setIsTruncated(response.isTruncated);
       setNextContinuationToken(response.nextContinuationToken);
       setCurrentContinuationToken(continuationToken);
+      if (!continuationToken) {
+        const cached = !isRefresh ? readContinuousCache(continuousCacheKey) : undefined;
+        const freshKeys = new Set(response.objects.map((object) => object.key));
+        const restoredObjects = cached
+          ? [...response.objects, ...cached.objects.filter((object) => !freshKeys.has(object.key))]
+          : response.objects;
+        const restoredIsTruncated = cached ? cached.isTruncated : response.isTruncated;
+        const restoredNextToken = cached ? cached.nextToken : response.nextContinuationToken;
+        setContinuousObjects(restoredObjects);
+        setContinuousIsTruncated(restoredIsTruncated);
+        setContinuousNextToken(restoredNextToken);
+        writeContinuousCache(continuousCacheKey, {
+          objects: restoredObjects,
+          isTruncated: restoredIsTruncated,
+          nextToken: restoredNextToken,
+        });
+        setLoadMoreError(null);
+      }
     } catch (err) {
       if (seq !== fetchSeqRef.current) return;
       setError(err as Error);
@@ -62,7 +136,39 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
         setIsNavigating(false);
       }
     }
-  }, [bucketName, listPrefix, itemsPerPage]);
+  }, [bucketName, continuousCacheKey, listPrefix, itemsPerPage]);
+
+  const loadMoreObjects = useCallback(async () => {
+    if (!bucketName || !continuousIsTruncated || !continuousNextToken || loadingMoreRef.current) return;
+
+    const seq = fetchSeqRef.current;
+    const token = continuousNextToken;
+    loadingMoreRef.current = true;
+    setIsLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const response = await objectsApi.list(bucketName, listPrefix, itemsPerPage, token);
+      if (seq !== fetchSeqRef.current) return;
+      setContinuousObjects((previous) => {
+        const existingKeys = new Set(previous.map((object) => object.key));
+        const appended = [...previous, ...response.objects.filter((object) => !existingKeys.has(object.key))];
+        writeContinuousCache(continuousCacheKey, {
+          objects: appended,
+          isTruncated: response.isTruncated,
+          nextToken: response.nextContinuationToken,
+        });
+        return appended;
+      });
+      setContinuousIsTruncated(response.isTruncated);
+      setContinuousNextToken(response.nextContinuationToken);
+    } catch (err) {
+      if (seq !== fetchSeqRef.current) return;
+      setLoadMoreError(err as Error);
+    } finally {
+      loadingMoreRef.current = false;
+      if (seq === fetchSeqRef.current) setIsLoadingMore(false);
+    }
+  }, [bucketName, continuousCacheKey, continuousIsTruncated, continuousNextToken, itemsPerPage, listPrefix]);
 
   const searchObjects = useCallback(async (query: string) => {
     if (!bucketName) return;
@@ -74,9 +180,17 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
       const response = await objectsApi.search(bucketName, query, currentPath || undefined);
       if (seq !== fetchSeqRef.current) return;
       setObjects(response.objects);
+      setContinuousObjects(response.objects);
       setIsTruncated(response.isTruncated);
+      setContinuousIsTruncated(response.isTruncated);
       // Search results are not token-paginated.
       setNextContinuationToken(undefined);
+      setContinuousNextToken(undefined);
+      setLoadMoreError(null);
+      writeContinuousCache(continuousCacheKey, {
+        objects: response.objects,
+        isTruncated: response.isTruncated,
+      });
       setCurrentContinuationToken(undefined);
     } catch (err) {
       if (seq !== fetchSeqRef.current) return;
@@ -85,7 +199,7 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
     } finally {
       if (seq === fetchSeqRef.current) setIsLoading(false);
     }
-  }, [bucketName, currentPath]);
+  }, [bucketName, continuousCacheKey, currentPath]);
 
   // Debounce the search query so we don't fire a recursive scan per keystroke.
   useEffect(() => {
@@ -204,6 +318,7 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
 
     try {
       setObjects(prev => prev.filter(obj => obj.key !== key));
+      setContinuousObjects(prev => prev.filter(obj => obj.key !== key));
 
       await objectsApi.delete(bucketName, key);
       toast.success(`Object "${key}" deleted successfully`);
@@ -224,6 +339,9 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
     try {
       const keySet = new Set(keys);
       setObjects(prev => prev.filter(obj =>
+        !keySet.has(obj.key) && !prefixes.some(prefix => obj.key.startsWith(prefix))
+      ));
+      setContinuousObjects(prev => prev.filter(obj =>
         !keySet.has(obj.key) && !prefixes.some(prefix => obj.key.startsWith(prefix))
       ));
 
@@ -260,6 +378,7 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
 
   return {
     objects,
+    continuousObjects,
     // The debounced query the current results reflect — use this (not the raw
     // input) to filter/label results so the view waits instead of twitching.
     debouncedSearch,
@@ -269,10 +388,14 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
     error,
     isTruncated,
     nextContinuationToken,
+    continuousIsTruncated,
+    isLoadingMore,
+    loadMoreError,
     currentContinuationToken,
     itemsPerPage,
     setItemsPerPage,
     fetchObjects,
+    loadMoreObjects,
     uploadFiles,
     uploadTasks,
     deleteObject,

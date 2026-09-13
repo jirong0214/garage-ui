@@ -2,7 +2,7 @@ import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes, useLocation} from 'react-router-dom';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {copyText} from '@/lib/utils';
-import {ObjectsTable} from './ObjectsTable';
+import {ObjectsContent} from './ObjectsContent';
 
 vi.mock('@/lib/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/utils')>()),
@@ -13,7 +13,7 @@ vi.mock('sonner', () => ({
   toast: {success: vi.fn(), error: vi.fn()},
 }));
 
-describe('ObjectsTable', () => {
+describe('ObjectsContent list view', () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -23,7 +23,7 @@ describe('ObjectsTable', () => {
 
     render(
       <MemoryRouter>
-        <ObjectsTable
+        <ObjectsContent
           bucketName="photos"
           publicBaseURL="https://cdn.example.com"
           canShare
@@ -91,7 +91,7 @@ describe('ObjectsTable', () => {
 
     const firstRender = render(
       <MemoryRouter>
-        <ObjectsTable {...props} />
+        <ObjectsContent {...props} />
       </MemoryRouter>,
     );
 
@@ -102,7 +102,7 @@ describe('ObjectsTable', () => {
 
     render(
       <MemoryRouter>
-        <ObjectsTable {...props} />
+        <ObjectsContent {...props} />
       </MemoryRouter>,
     );
 
@@ -116,7 +116,7 @@ describe('ObjectsTable', () => {
   it('shows copy, move, and rename actions when transfer permissions are available', () => {
     render(
       <MemoryRouter>
-        <ObjectsTable
+        <ObjectsContent
           bucketName="pics"
           canShare={false}
           transferDestinationBuckets={[{name: 'pics', creationDate: '2026-01-01T00:00:00Z', websiteAccess: false}]}
@@ -161,7 +161,7 @@ describe('ObjectsTable', () => {
 
     render(
       <MemoryRouter>
-        <ObjectsTable
+        <ObjectsContent
           bucketName="pics"
           canShare={false}
           objects={[folder]}
@@ -201,9 +201,10 @@ describe('ObjectsTable', () => {
   });
 
   it('allows selection for copy-only users without delete permission', () => {
+    const onToggleFileSelection = vi.fn();
     render(
       <MemoryRouter>
-        <ObjectsTable
+        <ObjectsContent
           bucketName="pics"
           canShare={false}
           transferDestinationBuckets={[{
@@ -225,7 +226,7 @@ describe('ObjectsTable', () => {
           isDragActive={false}
           itemsPerPage={25}
           onNavigateToFolder={vi.fn()}
-          onToggleFileSelection={vi.fn()}
+          onToggleFileSelection={onToggleFileSelection}
           onToggleFolderSelection={vi.fn()}
           onSelectAll={vi.fn()}
           onPageChange={vi.fn()}
@@ -234,7 +235,9 @@ describe('ObjectsTable', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('checkbox', {name: 'Select file photo.jpg'})).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', {name: 'photo.jpg'}), {ctrlKey: true});
+    expect(onToggleFileSelection).toHaveBeenCalledWith('photo.jpg');
     expect(screen.queryByText('Delete')).not.toBeInTheDocument();
   });
 
@@ -251,7 +254,7 @@ describe('ObjectsTable', () => {
           <Route
             path="/buckets/:bucketName/objects"
             element={(
-              <ObjectsTable
+              <ObjectsContent
                 bucketName="pics"
                 canShare={false}
                 objects={[{

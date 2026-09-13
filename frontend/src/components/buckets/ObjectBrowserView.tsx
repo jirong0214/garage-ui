@@ -1,13 +1,26 @@
-import {useCallback, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {useDropzone} from 'react-dropzone';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
-import {ObjectsTable} from './ObjectsTable';
+import {ObjectsContent} from './ObjectsContent';
 import {CreateDirectoryDialog} from './CreateDirectoryDialog';
 import {DeleteObjectDialog} from './DeleteObjectDialog';
 import {ConfirmDialog} from '@/components/ui/confirm-dialog';
 import {UploadProgress} from './UploadProgress';
-import {Copy, FolderPlus, MoveRight, RotateCwIcon, ScanSearch, Search, Trash, Upload} from 'lucide-react';
+import {
+  LayoutGrid,
+  List,
+  ListChecks,
+  Copy,
+  FolderPlus,
+  MoveRight,
+  RotateCwIcon,
+  ScanSearch,
+  Search,
+  Trash,
+  Upload,
+  X,
+} from 'lucide-react';
 import type {Bucket, ObjectJob, S3Object, UploadTask} from '@/types';
 import {objectJobsApi} from '@/lib/api';
 import {toast} from 'sonner';
@@ -22,6 +35,7 @@ interface ObjectBrowserViewProps {
   canMove: boolean;
   canRename: boolean;
   objects: S3Object[];
+  continuousObjects: S3Object[];
   currentPath: string;
   searchQuery: string;
   filterQuery: string;
@@ -29,6 +43,9 @@ interface ObjectBrowserViewProps {
   isLoading?: boolean;
   isTruncated?: boolean;
   nextContinuationToken?: string;
+  continuousIsTruncated: boolean;
+  isLoadingMore: boolean;
+  loadMoreError: Error | null;
   itemsPerPage: number;
   onSearchChange: (query: string) => void;
   onDeepSearchChange: (enabled: boolean) => void;
@@ -40,6 +57,7 @@ interface ObjectBrowserViewProps {
   onRefresh: () => Promise<void>;
   onTransferComplete: () => Promise<void>;
   onPageChange: (token?: string) => void;
+  onLoadMore: () => Promise<void>;
   onItemsPerPageChange: (count: number) => void;
   isRefreshing: boolean;
   isNavigating: boolean;
@@ -55,6 +73,7 @@ export function ObjectBrowserView({
   canMove,
   canRename,
   objects,
+  continuousObjects,
   currentPath,
   searchQuery,
   filterQuery,
@@ -62,6 +81,9 @@ export function ObjectBrowserView({
   isLoading = false,
   isTruncated = false,
   nextContinuationToken,
+  continuousIsTruncated,
+  isLoadingMore,
+  loadMoreError,
   itemsPerPage,
   onSearchChange,
   onDeepSearchChange,
@@ -73,18 +95,35 @@ export function ObjectBrowserView({
   onRefresh,
   onTransferComplete,
   onPageChange,
+  onLoadMore,
   onItemsPerPageChange,
   isRefreshing,
   isNavigating,
   initialPageToken,
   initialItemsPerPage,
 }: ObjectBrowserViewProps) {
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    try {
+      return localStorage.getItem('garage-ui:objects-view') === 'grid' ? 'grid' : 'list';
+    } catch {
+      return 'list';
+    }
+  });
+  const changeViewMode = (mode: 'list' | 'grid') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem('garage-ui:objects-view', mode);
+    } catch {
+      /* Storage is optional. */
+    }
+  };
   const [showUploadZone, setShowUploadZone] = useState(false);
   const [deleteObjectDialogOpen, setDeleteObjectDialogOpen] = useState(false);
   const [selectedObject, setSelectedObject] = useState<S3Object | null>(null);
   const [createDirDialogOpen, setCreateDirDialogOpen] = useState(false);
   const [selectedFileKeys, setSelectedFileKeys] = useState<Set<string>>(new Set());
   const [selectedFolderKeys, setSelectedFolderKeys] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
   const [jobSelection, setJobSelection] = useState<{
     operation: 'copy' | 'move';
     objects: string[];
@@ -98,10 +137,10 @@ export function ObjectBrowserView({
     }
   });
   // Holds the keys/prefixes awaiting confirmation in the bulk-delete dialog.
-  const [pendingDelete, setPendingDelete] = useState<{ keys: string[]; prefixes: string[] } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{keys: string[]; prefixes: string[]} | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const {getRootProps, getInputProps, isDragActive} = useDropzone({
     onDrop: async (acceptedFiles, _fileRejections, event) => {
       if (!onUploadFiles) return;
 
@@ -114,14 +153,16 @@ export function ObjectBrowserView({
       if (dragEvent.dataTransfer?.items) {
         // Use DataTransferItemList API to preserve folder structure
         const items = Array.from(dragEvent.dataTransfer.items);
-        await Promise.all(items.map(async (item: DataTransferItem) => {
-          if (item.kind === 'file') {
-            const entry = item.webkitGetAsEntry?.();
-            if (entry) {
-              await traverseFileTree(entry, '', filesWithPaths);
+        await Promise.all(
+          items.map(async (item: DataTransferItem) => {
+            if (item.kind === 'file') {
+              const entry = item.webkitGetAsEntry?.();
+              if (entry) {
+                await traverseFileTree(entry, '', filesWithPaths);
+              }
             }
-          }
-        }));
+          }),
+        );
       } else {
         // Fallback to standard files
         filesWithPaths.push(...acceptedFiles);
@@ -142,7 +183,7 @@ export function ObjectBrowserView({
           const fullPath = path + file.name;
           Object.defineProperty(file, 'webkitRelativePath', {
             value: fullPath,
-            writable: false
+            writable: false,
           });
           files.push(file);
           resolve();
@@ -162,6 +203,22 @@ export function ObjectBrowserView({
   };
 
   const selectedCount = selectedFileKeys.size + selectedFolderKeys.size;
+  const canSelect = Boolean(onDeleteObject) || transferDestinationBuckets.length > 0 || canMove;
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedFileKeys(new Set());
+    setSelectedFolderKeys(new Set());
+  }, []);
+
+  useEffect(() => {
+    if (!selectionMode) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') exitSelectionMode();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [exitSelectionMode, selectionMode]);
 
   const toggleInSet = (set: Set<string>, key: string) => {
     const next = new Set(set);
@@ -174,37 +231,21 @@ export function ObjectBrowserView({
   };
 
   const handleToggleFileSelection = (key: string) => {
-    setSelectedFileKeys(prev => toggleInSet(prev, key));
+    setSelectedFileKeys((prev) => toggleInSet(prev, key));
   };
 
   const handleToggleFolderSelection = (key: string) => {
-    setSelectedFolderKeys(prev => toggleInSet(prev, key));
+    setSelectedFolderKeys((prev) => toggleInSet(prev, key));
   };
 
-  // Select/deselect the currently visible (filtered) rows. The table passes the
-  // keys it is actually showing so this stays aligned with the search filter
-  // instead of operating on the full, unfiltered object list.
-  const handleSelectAll = (fileKeys: string[], folderKeys: string[]) => {
-    const allVisibleSelected =
-      fileKeys.length + folderKeys.length > 0 &&
-      fileKeys.every(k => selectedFileKeys.has(k)) &&
-      folderKeys.every(k => selectedFolderKeys.has(k));
-
-    if (allVisibleSelected) {
-      // Drop only the visible rows, leaving any off-screen selection intact.
-      setSelectedFileKeys(prev => {
-        const next = new Set(prev);
-        fileKeys.forEach(k => next.delete(k));
-        return next;
-      });
-      setSelectedFolderKeys(prev => {
-        const next = new Set(prev);
-        folderKeys.forEach(k => next.delete(k));
-        return next;
-      });
+  const handleReplaceSelection = (object: S3Object) => {
+    setSelectionMode(true);
+    if (object.isFolder) {
+      setSelectedFileKeys(new Set());
+      setSelectedFolderKeys(new Set([object.key]));
     } else {
-      setSelectedFileKeys(prev => new Set([...prev, ...fileKeys]));
-      setSelectedFolderKeys(prev => new Set([...prev, ...folderKeys]));
+      setSelectedFolderKeys(new Set());
+      setSelectedFileKeys(new Set([object.key]));
     }
   };
 
@@ -219,7 +260,7 @@ export function ObjectBrowserView({
 
   // Open the confirmation dialog for a single folder (recursive delete).
   const handleDeleteFolder = (folderKey: string) => {
-    setPendingDelete({ keys: [], prefixes: [folderKey] });
+    setPendingDelete({keys: [], prefixes: [folderKey]});
   };
 
   const handleConfirmBulkDelete = async () => {
@@ -250,23 +291,27 @@ export function ObjectBrowserView({
     }
   };
 
-  const handleJobCompleted = useCallback((job: ObjectJob) => {
-    try {
-      localStorage.removeItem('garage-ui:active-object-job');
-    } catch {
-      // Ignore unavailable storage.
-    }
-    if (job.status === 'completed') {
-      toast.success(`${job.operation[0].toUpperCase()}${job.operation.slice(1)} completed`);
-    } else if (job.status === 'completed_with_errors') {
-      toast.error(`${job.operation} completed with ${job.failed} failure${job.failed === 1 ? '' : 's'}`);
-    } else if (job.status === 'failed') {
-      toast.error(job.error || `${job.operation} failed`);
-    }
-    setSelectedFileKeys(new Set());
-    setSelectedFolderKeys(new Set());
-    void onTransferComplete();
-  }, [onTransferComplete]);
+  const handleJobCompleted = useCallback(
+    (job: ObjectJob) => {
+      try {
+        localStorage.removeItem('garage-ui:active-object-job');
+      } catch {
+        // Ignore unavailable storage.
+      }
+      if (job.status === 'completed') {
+        toast.success(`${job.operation[0].toUpperCase()}${job.operation.slice(1)} completed`);
+      } else if (job.status === 'completed_with_errors') {
+        toast.error(`${job.operation} completed with ${job.failed} failure${job.failed === 1 ? '' : 's'}`);
+      } else if (job.status === 'failed') {
+        toast.error(job.error || `${job.operation} failed`);
+      }
+      setSelectedFileKeys(new Set());
+      setSelectedFolderKeys(new Set());
+      setSelectionMode(false);
+      void onTransferComplete();
+    },
+    [onTransferComplete],
+  );
 
   const handleJobClosed = useCallback(() => {
     try {
@@ -297,79 +342,172 @@ export function ObjectBrowserView({
     <div>
       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex flex-1 items-center gap-2 max-w-full sm:max-w-md">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={deepSearch ? 'Deep search names…' : 'Search by name prefix…'}
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <Button
-              type="button"
-              variant={deepSearch ? 'primary' : 'secondary'}
-              onClick={() => onDeepSearchChange(!deepSearch)}
-              aria-pressed={deepSearch}
-              title={
-                deepSearch
-                  ? 'Deep search: ON. Matches names anywhere and descends into subfolders. Scans the bucket, results may be partial on very large buckets. Click for fast prefix search.'
-                  : 'Fast prefix search: matches the start of object names in this folder (like the AWS S3 / Cloudflare R2 console). Click to enable deep search (substring + subfolders).'
-              }
-              className="shrink-0"
-            >
-              <ScanSearch className="h-4 w-4" />
-              <span className="hidden sm:inline">Deep</span>
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {selectedCount > 0 && transferDestinationBuckets.length > 0 && (
-              <Button
-                variant="secondary"
-                onClick={() => setJobSelection({
-                  operation: 'copy',
-                  objects: Array.from(selectedFileKeys),
-                  prefixes: Array.from(selectedFolderKeys),
-                })}
-              >
-                <Copy /> Copy {selectedCount}
-              </Button>
-            )}
-            {selectedCount > 0 && canMove && (
-              <Button
-                variant="secondary"
-                onClick={() => setJobSelection({
-                  operation: 'move',
-                  objects: Array.from(selectedFileKeys),
-                  prefixes: Array.from(selectedFolderKeys),
-                })}
-              >
-                <MoveRight /> Move {selectedCount}
-              </Button>
-            )}
-            {onDeleteObject && selectedCount > 0 && (
-              <Button onClick={handleRequestBulkDelete} variant="destructive">
-                <Trash /> Delete {selectedCount}
-              </Button>
-            )}
-            {onUploadFiles && (
-              <Button variant="secondary" onClick={() => setShowUploadZone(!showUploadZone)} className="flex-1 sm:flex-initial">
-                <Upload className="h-4 w-4" />
-                <span className="hidden sm:inline">Upload</span>
-              </Button>
-            )}
-            {onCreateDirectory && (
-              <Button onClick={() => setCreateDirDialogOpen(true)} className="flex-1 sm:flex-initial">
-                <FolderPlus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Directory</span>
-              </Button>
-            )}
-            <Button variant="secondary" size="icon" onClick={onRefresh} title="Refresh" disabled={isRefreshing}>
-              <RotateCwIcon className={`h-4 w-4 transition-transform duration-500 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
+        <div
+          className={`sticky top-0 z-20 -mx-4 flex min-h-[62px] flex-col flex-wrap items-stretch justify-between gap-3 bg-[var(--background)] px-4 py-3 shadow-sm sm:-mx-6 sm:flex-row sm:items-center sm:px-6 ${selectionMode ? 'border-b-2 border-b-[var(--primary)]' : 'border-b border-b-[var(--border)]'}`}
+        >
+          {selectionMode ? (
+            <>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Exit selection"
+                  aria-pressed="true"
+                  title="Exit selection (Esc)"
+                  onClick={exitSelectionMode}
+                >
+                  <X />
+                </Button>
+                <span className="whitespace-nowrap font-medium">
+                  {selectedCount} selected
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {selectedCount > 0 && transferDestinationBuckets.length > 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setJobSelection({
+                        operation: 'copy',
+                        objects: Array.from(selectedFileKeys),
+                        prefixes: Array.from(selectedFolderKeys),
+                      })
+                    }
+                  >
+                    <Copy /> Copy
+                  </Button>
+                )}
+                {selectedCount > 0 && canMove && (
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setJobSelection({
+                        operation: 'move',
+                        objects: Array.from(selectedFileKeys),
+                        prefixes: Array.from(selectedFolderKeys),
+                      })
+                    }
+                  >
+                    <MoveRight /> Move
+                  </Button>
+                )}
+                {onDeleteObject && selectedCount > 0 && (
+                  <Button onClick={handleRequestBulkDelete} variant="destructive">
+                    <Trash /> Delete
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex max-w-full flex-1 items-center gap-2 sm:min-w-64 sm:max-w-md">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={deepSearch ? 'Deep search names…' : 'Search by name prefix…'}
+                    value={searchQuery}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant={deepSearch ? 'primary' : 'secondary'}
+                  onClick={() => onDeepSearchChange(!deepSearch)}
+                  aria-pressed={deepSearch}
+                  title={
+                    deepSearch
+                      ? 'Deep search: ON. Matches names anywhere and descends into subfolders. Scans the bucket, results may be partial on very large buckets. Click for fast prefix search.'
+                      : 'Fast prefix search: matches the start of object names in this folder (like the AWS S3 / Cloudflare R2 console). Click to enable deep search (substring + subfolders).'
+                  }
+                  className="shrink-0"
+                >
+                  <ScanSearch />
+                  <span className="hidden sm:inline">Deep</span>
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {onUploadFiles && (
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => setShowUploadZone(!showUploadZone)}
+                    aria-label="Upload"
+                    title="Upload"
+                  >
+                    <Upload />
+                  </Button>
+                )}
+                {onCreateDirectory && (
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => setCreateDirDialogOpen(true)}
+                    aria-label="Add Directory"
+                    title="Add Directory"
+                  >
+                    <FolderPlus />
+                  </Button>
+                )}
+                <div className="ml-1 flex items-center gap-2 border-l border-[var(--border)] pl-3">
+                  {canSelect && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      aria-label="Select"
+                      aria-pressed="false"
+                      onClick={() => setSelectionMode(true)}
+                      title="Select multiple objects"
+                    >
+                      <ListChecks />
+                    </Button>
+                  )}
+                  <div
+                    role="group"
+                    aria-label="Object view"
+                    className="flex overflow-hidden rounded-md border border-[var(--border)]"
+                  >
+                    <Button
+                      variant={viewMode === 'list' ? 'primary' : 'ghost'}
+                      size="icon"
+                      className="rounded-none"
+                      aria-label="List view"
+                      title="List view"
+                      aria-pressed={viewMode === 'list'}
+                      onClick={() => changeViewMode('list')}
+                    >
+                      <List />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'grid' ? 'primary' : 'ghost'}
+                      size="icon"
+                      className="rounded-none"
+                      aria-label="Icon view"
+                      title="Icon view"
+                      aria-pressed={viewMode === 'grid'}
+                      onClick={() => changeViewMode('grid')}
+                    >
+                      <LayoutGrid />
+                    </Button>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={onRefresh}
+                    title="Refresh"
+                    aria-label="Refresh"
+                    disabled={isRefreshing}
+                  >
+                    <RotateCwIcon
+                      className={`transition-transform duration-500 ${isRefreshing ? 'animate-spin' : ''}`}
+                    />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Upload Zone */}
@@ -431,12 +569,12 @@ export function ObjectBrowserView({
                         e.target.value = '';
                       }
                     }}
-                    style={{ display: 'none' }}
+                    style={{display: 'none'}}
                   />
                   <input
                     id="folder-input"
                     type="file"
-                    {...({ webkitdirectory: '', directory: '', mozdirectory: '' } as any)}
+                    {...({webkitdirectory: '', directory: '', mozdirectory: ''} as any)}
                     onChange={(e) => {
                       if (e.target.files) {
                         const files = Array.from(e.target.files);
@@ -444,7 +582,7 @@ export function ObjectBrowserView({
                         e.target.value = '';
                       }
                     }}
-                    style={{ display: 'none' }}
+                    style={{display: 'none'}}
                   />
                 </div>
               </div>
@@ -459,9 +597,7 @@ export function ObjectBrowserView({
         <div
           {...getRootProps()}
           className={`relative border rounded-lg transition-all duration-200 overflow-visible ${
-            isDragActive
-              ? 'border-primary bg-primary/5 border-2 shadow-lg'
-              : 'border-border'
+            isDragActive ? 'border-primary bg-primary/5 border-2 shadow-lg' : 'border-border'
           }`}
         >
           <input {...getInputProps()} />
@@ -479,14 +615,17 @@ export function ObjectBrowserView({
                   </div>
                   <div className="text-center space-y-2">
                     <p className="text-lg font-semibold text-primary">Drop files here to upload</p>
-                    <p className="text-sm text-muted-foreground">Files will be uploaded to {currentPath || 'root'}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Files will be uploaded to {currentPath || 'root'}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          <ObjectsTable
+          <ObjectsContent
+            viewMode={viewMode}
             bucketName={bucketName}
             publicBaseURL={publicBaseURL}
             canShare={canShare}
@@ -494,33 +633,58 @@ export function ObjectBrowserView({
             canMove={canMove}
             canRename={canRename}
             objects={objects}
+            continuousObjects={continuousObjects}
             currentPath={currentPath}
             searchQuery={searchQuery}
             filterQuery={filterQuery}
             deepSearch={deepSearch}
             selectedFileKeys={selectedFileKeys}
             selectedFolderKeys={selectedFolderKeys}
+            selectionMode={selectionMode}
             isDragActive={isDragActive}
             isLoading={isLoading && !isRefreshing && !isNavigating}
             isTruncated={isTruncated}
             nextContinuationToken={nextContinuationToken}
+            continuousIsTruncated={continuousIsTruncated}
+            isLoadingMore={isLoadingMore}
+            loadMoreError={loadMoreError}
             itemsPerPage={itemsPerPage}
             onNavigateToFolder={onNavigateToFolder}
-            onDeleteObject={onDeleteObject ? (obj) => {
-              setSelectedObject(obj);
-              setDeleteObjectDialogOpen(true);
-            } : undefined}
+            onDeleteObject={
+              onDeleteObject
+                ? (obj) => {
+                    setSelectedObject(obj);
+                    setDeleteObjectDialogOpen(true);
+                  }
+                : undefined
+            }
             onDeleteFolder={onDeleteObject ? (obj) => handleDeleteFolder(obj.key) : undefined}
-            onCopyFolder={transferDestinationBuckets.length > 0 ? (obj) => setJobSelection({
-              operation: 'copy', objects: [], prefixes: [obj.key],
-            }) : undefined}
-            onMoveFolder={canMove ? (obj) => setJobSelection({
-              operation: 'move', objects: [], prefixes: [obj.key],
-            }) : undefined}
+            onCopyFolder={
+              transferDestinationBuckets.length > 0
+                ? (obj) =>
+                    setJobSelection({
+                      operation: 'copy',
+                      objects: [],
+                      prefixes: [obj.key],
+                    })
+                : undefined
+            }
+            onMoveFolder={
+              canMove
+                ? (obj) =>
+                    setJobSelection({
+                      operation: 'move',
+                      objects: [],
+                      prefixes: [obj.key],
+                    })
+                : undefined
+            }
             onToggleFileSelection={handleToggleFileSelection}
             onToggleFolderSelection={handleToggleFolderSelection}
-            onSelectAll={handleSelectAll}
+            onEnterSelectionMode={() => setSelectionMode(true)}
+            onReplaceSelection={handleReplaceSelection}
             onPageChange={onPageChange}
+            onLoadMore={onLoadMore}
             onItemsPerPageChange={onItemsPerPageChange}
             onTransferComplete={onTransferComplete}
             initialPageToken={initialPageToken}
@@ -562,7 +726,9 @@ export function ObjectBrowserView({
       {jobSelection && (
         <ObjectJobDialog
           open
-          onOpenChange={(open) => { if (!open) setJobSelection(null); }}
+          onOpenChange={(open) => {
+            if (!open) setJobSelection(null);
+          }}
           operation={jobSelection.operation}
           sourceBucket={bucketName}
           objects={jobSelection.objects}
@@ -584,9 +750,9 @@ export function ObjectBrowserView({
 }
 
 // Builds a concise title summarising what the bulk-delete dialog will remove.
-function getBulkDeleteTitle(pending: { keys: string[]; prefixes: string[] } | null): string {
+function getBulkDeleteTitle(pending: {keys: string[]; prefixes: string[]} | null): string {
   if (!pending) return 'Delete items?';
-  const { keys, prefixes } = pending;
+  const {keys, prefixes} = pending;
   const total = keys.length + prefixes.length;
   if (keys.length === 0 && prefixes.length === 1) {
     return 'Delete folder?';
@@ -595,11 +761,9 @@ function getBulkDeleteTitle(pending: { keys: string[]; prefixes: string[] } | nu
 }
 
 // Spells out the file/folder counts and warns that folders are removed recursively.
-function getBulkDeleteDescription(
-  pending: { keys: string[]; prefixes: string[] } | null,
-): string {
+function getBulkDeleteDescription(pending: {keys: string[]; prefixes: string[]} | null): string {
   if (!pending) return '';
-  const { keys, prefixes } = pending;
+  const {keys, prefixes} = pending;
   const parts: string[] = [];
   if (keys.length > 0) {
     parts.push(`${keys.length} file${keys.length !== 1 ? 's' : ''}`);
