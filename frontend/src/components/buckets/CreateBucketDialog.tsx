@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,10 @@ export function CreateBucketDialog({ open, onOpenChange, onCreateBucket }: Creat
   const { t } = useTranslation(['buckets', 'common']);
   const [bucketName, setBucketName] = useState('');
 
-  useEffect(() => { if (!open) setBucketName(''); }, [open]);
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setBucketName('');
+    onOpenChange(nextOpen);
+  };
 
   const handleCreate = async () => {
     if (!bucketName) {
@@ -36,12 +39,12 @@ export function CreateBucketDialog({ open, onOpenChange, onCreateBucket }: Creat
     const success = await onCreateBucket(bucketName);
     if (success) {
       setBucketName('');
-      onOpenChange(false);
+      handleOpenChange(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <IconTile icon={<Database />} tone="primary" size="md" />
@@ -72,7 +75,7 @@ export function CreateBucketDialog({ open, onOpenChange, onCreateBucket }: Creat
           </div>
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => handleOpenChange(false)}>
             {t('common:actions.cancel')}
           </Button>
           <Button

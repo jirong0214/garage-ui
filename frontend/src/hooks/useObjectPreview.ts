@@ -56,16 +56,10 @@ export function useObjectPreview(
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [text, setText] = useState<string | null>(null);
   const [isBinary, setIsBinary] = useState(false);
-  const [mediaFailed, setMediaFailed] = useState(false);
-  const remintedRef = useRef(false);
-
-  // Reset media error state when the target object changes, so a failure on
-  // one object does not leave a later object stuck in the error state. The
-  // hook instance is reused across navigation, it does not remount.
-  useEffect(() => {
-    setMediaFailed(false);
-    remintedRef.current = false;
-  }, [bucket, objectKey]);
+  const previewKey = `${bucket}\0${objectKey}`;
+  const [failedMediaKey, setFailedMediaKey] = useState<string | null>(null);
+  const remintedKeyRef = useRef<string | null>(null);
+  const mediaFailed = failedMediaKey === previewKey;
 
   useEffect(() => {
     const blob = blobQuery.data;
@@ -73,6 +67,8 @@ export function useObjectPreview(
     let cancelled = false;
     const typed = new Blob([blob], { type: getPreviewMime(kind, contentType, objectKey) });
     const url = URL.createObjectURL(typed);
+    // The object URL is an external browser resource derived from the completed query.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setObjectUrl(url);
     if (kind === 'text') {
       blob.text().then((decoded) => {
@@ -91,17 +87,17 @@ export function useObjectPreview(
   }, [blobQuery.data, kind, contentType, objectKey]);
 
   const onMediaError = () => {
-    if (remintedRef.current) {
-      setMediaFailed(true);
+    if (remintedKeyRef.current === previewKey) {
+      setFailedMediaKey(previewKey);
       return;
     }
-    remintedRef.current = true;
+    remintedKeyRef.current = previewKey;
     urlQuery.refetch();
   };
 
   const retry = () => {
-    remintedRef.current = false;
-    setMediaFailed(false);
+    remintedKeyRef.current = null;
+    setFailedMediaKey(null);
     if (isDocument) blobQuery.refetch();
     if (isMedia) urlQuery.refetch();
   };

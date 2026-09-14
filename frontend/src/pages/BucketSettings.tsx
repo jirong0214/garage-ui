@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, Gauge, Info } from 'lucide-react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useBuckets, useDeleteBucket, useUpdateBucketQuotas } from '@/hooks/useApi';
@@ -105,7 +105,6 @@ export function BucketSettings() {
     control,
     register,
     handleSubmit,
-    watch,
     reset,
     formState: { errors, isDirty, isSubmitting },
   } = useForm<QuotaFormValues>({
@@ -113,18 +112,23 @@ export function BucketSettings() {
     values: defaults,
   });
 
-  const watched = watch();
+  const watched = useWatch({ control });
+  const maxSizeEnabled = watched.maxSizeEnabled ?? false;
+  const maxSizeValue = watched.maxSizeValue ?? '';
+  const maxSizeUnit = watched.maxSizeUnit ?? 'GB';
+  const maxObjectsEnabled = watched.maxObjectsEnabled ?? false;
+  const maxObjectsValue = watched.maxObjectsValue ?? '';
 
   const currentSize = bucket?.size ?? 0;
   const currentObjects = bucket?.objectCount ?? 0;
 
   const newMaxSizeBytes =
-    watched.maxSizeEnabled && watched.maxSizeValue !== '' && !Number.isNaN(Number(watched.maxSizeValue))
-      ? quotaValueToBytes(Number(watched.maxSizeValue), watched.maxSizeUnit)
+    maxSizeEnabled && maxSizeValue !== '' && !Number.isNaN(Number(maxSizeValue))
+      ? quotaValueToBytes(Number(maxSizeValue), maxSizeUnit)
       : null;
   const newMaxObjects =
-    watched.maxObjectsEnabled && watched.maxObjectsValue !== '' && !Number.isNaN(Number(watched.maxObjectsValue))
-      ? Number(watched.maxObjectsValue)
+    maxObjectsEnabled && maxObjectsValue !== '' && !Number.isNaN(Number(maxObjectsValue))
+      ? Number(maxObjectsValue)
       : null;
 
   const sizeBelowCurrent =
@@ -217,7 +221,7 @@ export function BucketSettings() {
                 min={1}
                 step={1}
                 className="w-32"
-                disabled={!watched.maxSizeEnabled}
+                disabled={!maxSizeEnabled}
                 {...register('maxSizeValue')}
               />
               <Controller
@@ -227,7 +231,7 @@ export function BucketSettings() {
                   <Select
                     value={field.value}
                     onChange={(v) => field.onChange(v as QuotaUnit)}
-                    disabled={!watched.maxSizeEnabled}
+                    disabled={!maxSizeEnabled}
                     className="w-24"
                   >
                     {(Object.keys(QUOTA_UNIT_BYTES) as QuotaUnit[]).map((u) => (
@@ -270,7 +274,7 @@ export function BucketSettings() {
                 min={1}
                 step={1}
                 className="w-40"
-                disabled={!watched.maxObjectsEnabled}
+                disabled={!maxObjectsEnabled}
                 {...register('maxObjectsValue')}
               />
             </div>

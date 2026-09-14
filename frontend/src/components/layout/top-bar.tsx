@@ -2,7 +2,7 @@ import * as React from 'react';
 import { ChevronLeft, ChevronRight, User, LogOut, Monitor, Moon, Sun, Settings } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb';
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from '@/components/theme-context';
 import { useAuthStore } from '@/store/auth-store';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';

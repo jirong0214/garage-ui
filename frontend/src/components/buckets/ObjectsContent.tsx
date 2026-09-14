@@ -1,7 +1,7 @@
 import {ObjectsGrid} from './ObjectsGrid';
 import {ObjectsTable} from './ObjectsTable';
 import {ObjectsPagination} from './ObjectsPagination';
-import {useEffect, useMemo, useState, type MouseEvent} from 'react';
+import {useEffect, useMemo, useRef, useState, type MouseEvent} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {DropdownMenuItem, DropdownMenuSeparator} from '@/components/ui/dropdown-menu';
 import {ContextMenuItem, ContextMenuSeparator} from '@/components/ui/context-menu';
@@ -147,7 +147,7 @@ export function ObjectsContent({
   // Store tokens for each page: [undefined (page 1), token1 (page 2), token2 (page 3), ...]
   const [pageTokens, setPageTokens] = useState<(string | undefined)[]>([undefined]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [initialized, setInitialized] = useState(false);
+  const initializedRef = useRef(false);
   const [shareObject, setShareObject] = useState<S3Object | null>(null);
   const [transfer, setTransfer] = useState<{object: S3Object; mode: ObjectTransferMode} | null>(null);
   const [gridVisibleCount, setGridVisibleCount] = useState(itemsPerPage);
@@ -164,20 +164,16 @@ export function ObjectsContent({
 
   // Initialize from URL params on first load
   useEffect(() => {
-    if (!initialized && initialItemsPerPage && initialItemsPerPage !== itemsPerPage) {
+    if (initializedRef.current) return;
+    if (initialItemsPerPage && initialItemsPerPage !== itemsPerPage) {
       onItemsPerPageChange(initialItemsPerPage);
-      setInitialized(true);
     }
-    if (!initialized && initialPageToken && initialPageToken !== nextContinuationToken) {
+    if (initialPageToken && initialPageToken !== nextContinuationToken) {
       // If we have an initial page token, trigger page change
       onPageChange(initialPageToken);
-      setInitialized(true);
     }
-    if (!initialized && !initialPageToken && !initialItemsPerPage) {
-      setInitialized(true);
-    }
+    initializedRef.current = true;
   }, [
-    initialized,
     initialPageToken,
     initialItemsPerPage,
     itemsPerPage,
@@ -241,14 +237,18 @@ export function ObjectsContent({
   // Search results are a single flat list, so page-token state must not leak
   // across the search/browse boundary.
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- reset local pagination when its server-side scope changes */
     setPageTokens([undefined]);
     setCurrentPageIndex(0);
     setGridVisibleCount(itemsPerPage);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [currentPath, searchQuery, deepSearch, itemsPerPage]);
 
   // Update page tokens when we get a new next token
   useEffect(() => {
     if (nextContinuationToken && isTruncated) {
+      // The token arrives from the server after a page request and extends navigation history.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPageTokens((prev) => {
         const newTokens = [...prev];
         // Only add the token if we don't have it yet

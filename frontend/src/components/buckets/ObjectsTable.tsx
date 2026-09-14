@@ -1,5 +1,6 @@
 import type {MouseEvent, ReactNode} from 'react';
-import {Button, buttonVariants} from '@/components/ui/button';
+import {Button} from '@/components/ui/button';
+import {buttonVariants} from '@/components/ui/button-variants';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip';
 import {DropdownMenu, DropdownMenuContent, DropdownMenuTrigger} from '@/components/ui/dropdown-menu';

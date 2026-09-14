@@ -3,6 +3,7 @@ import { bucketsApi, objectsApi, accessApi, garageApi, analyticsApi } from '@/li
 import { queryKeys } from '@/lib/query-client';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
+import type { AccessKeyUpdate, BucketPermission } from '@/types';
 
 
 export function useBuckets(enabled = true) {
@@ -175,7 +176,7 @@ export function useCreateAccessKey() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ name, permissions }: { name: string; permissions?: any[] }) =>
+    mutationFn: ({ name, permissions }: { name: string; permissions?: BucketPermission[] }) =>
       accessApi.createKey(name, permissions),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.accessKeys.all });
@@ -201,7 +202,7 @@ export function useUpdateAccessKey() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ keyId, updates }: { keyId: string; updates: any }) =>
+    mutationFn: ({ keyId, updates }: { keyId: string; updates: AccessKeyUpdate }) =>
       accessApi.updateKey(keyId, updates),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.accessKeys.detail(variables.keyId) });

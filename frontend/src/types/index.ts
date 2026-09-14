@@ -153,6 +153,8 @@ export interface AccessKey {
   expiration?: string;
 }
 
+export type AccessKeyUpdate = Partial<Pick<AccessKey, 'status' | 'expiration'>>;
+
 export interface BucketPermission {
   bucketId: string;
   bucketName: string;
@@ -178,7 +180,7 @@ export interface PolicyStatement {
   principal: string | string[];
   action: string | string[];
   resource: string | string[];
-  condition?: Record<string, any>;
+  condition?: Record<string, unknown>;
 }
 
 // User types
@@ -257,7 +259,7 @@ export interface ClusterStatistics {
   timestamp: number;
   uptime: number;
   freeform: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ClusterStatus {
@@ -346,7 +348,7 @@ export interface NodeInfo {
   objectVersionTableSize: number;
   bucketTableSize: number;
   bucketAliasTableSize: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface RequestTypeMetrics {

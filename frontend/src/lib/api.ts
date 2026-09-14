@@ -2,9 +2,11 @@ import axios from 'axios';
 import {toast} from 'sonner';
 import type {
   AccessKey,
+  AccessKeyUpdate,
   ApiResponse,
   Bucket,
   BucketDetails,
+  BucketPermission,
   ClusterHealth,
   ClusterStatistics,
   ClusterStatus,
@@ -246,7 +248,7 @@ export const bucketsApi = {
     name: string,
     payload: { enabled: boolean; indexDocument?: string; errorDocument?: string }
   ) => {
-    const response = await api.put<ApiResponse<any>>(
+    const response = await api.put<ApiResponse<unknown>>(
       `/v1/buckets/${encodeURIComponent(name)}/website`,
       payload
     );
@@ -262,7 +264,7 @@ export const bucketsApi = {
     const body: { maxSize?: number; maxObjects?: number } = {};
     if (payload.maxSize !== null) body.maxSize = payload.maxSize;
     if (payload.maxObjects !== null) body.maxObjects = payload.maxObjects;
-    const response = await api.put<ApiResponse<any>>(
+    const response = await api.put<ApiResponse<unknown>>(
       `/v1/buckets/${encodeURIComponent(name)}/quotas`,
       body
     );
@@ -503,14 +505,12 @@ export const accessApi = {
     return response.data.data.secretKey;
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createKey: async (name: string, permissions?: any[]): Promise<AccessKey> => {
+  createKey: async (name: string, permissions?: BucketPermission[]): Promise<AccessKey> => {
     const response = await api.post('/v1/users', { name, permissions });
     return response.data.data;
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateKey: async (accessKey: string, updates: any): Promise<void> => {
+  updateKey: async (accessKey: string, updates: AccessKeyUpdate): Promise<void> => {
     await api.patch(`/v1/users/${accessKey}`, updates);
   },
 

@@ -1,7 +1,8 @@
 import {act, fireEvent, render, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {objectsApi} from '@/lib/api';
-import {clearObjectThumbnailMemoryCache, ObjectThumbnail} from './ObjectThumbnail';
+import {ObjectThumbnail} from './ObjectThumbnail';
+import {clearObjectThumbnailMemoryCache} from '@/lib/object-thumbnail-cache';
 
 vi.mock('@/lib/api', () => ({
   objectsApi: {getThumbnail: vi.fn()},

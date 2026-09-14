@@ -20,6 +20,13 @@ import {objectsApi} from '@/lib/api';
 import {getObjectFileKind, type ObjectFileKind} from '@/lib/object-file-type';
 import type {S3Object} from '@/types';
 import {useTranslation} from 'react-i18next';
+import {
+  cacheThumbnail,
+  discardCachedThumbnail,
+  peekCachedThumbnail,
+  releaseCachedThumbnail,
+  retainCachedThumbnail,
+} from '@/lib/object-thumbnail-cache';
 
 interface ObjectThumbnailProps {
   variant?: 'list' | 'grid';
@@ -37,81 +44,6 @@ const supportedContentTypes = new Set([
   'image/tiff',
 ]);
 const supportedExtension = /\.(?:jpe?g|png|gif|webp|bmp|tiff?)$/i;
-
-const THUMBNAIL_CACHE_MAX_ENTRIES = 256;
-const THUMBNAIL_CACHE_MAX_BYTES = 32 * 1024 * 1024;
-
-interface ThumbnailCacheEntry {
-  blob: Blob;
-  url: string;
-  references: number;
-}
-
-const thumbnailMemoryCache = new Map<string, ThumbnailCacheEntry>();
-let thumbnailMemoryCacheBytes = 0;
-
-function trimThumbnailMemoryCache(protectedKey?: string) {
-  while (
-    thumbnailMemoryCache.size > THUMBNAIL_CACHE_MAX_ENTRIES ||
-    thumbnailMemoryCacheBytes > THUMBNAIL_CACHE_MAX_BYTES
-  ) {
-    const disposable = [...thumbnailMemoryCache].find(
-      ([key, entry]) => key !== protectedKey && entry.references === 0,
-    );
-    if (!disposable) return;
-    const [key, entry] = disposable;
-    thumbnailMemoryCache.delete(key);
-    thumbnailMemoryCacheBytes -= entry.blob.size;
-    URL.revokeObjectURL(entry.url);
-  }
-}
-
-function peekCachedThumbnail(key: string) {
-  return thumbnailMemoryCache.get(key);
-}
-
-function retainCachedThumbnail(key: string, url: string) {
-  const entry = thumbnailMemoryCache.get(key);
-  if (!entry || entry.url !== url) return;
-  entry.references += 1;
-  thumbnailMemoryCache.delete(key);
-  thumbnailMemoryCache.set(key, entry);
-}
-
-function releaseCachedThumbnail(key: string, url: string) {
-  const entry = thumbnailMemoryCache.get(key);
-  if (!entry || entry.url !== url) return;
-  entry.references = Math.max(0, entry.references - 1);
-  trimThumbnailMemoryCache();
-}
-
-function cacheThumbnail(key: string, blob: Blob) {
-  const existing = thumbnailMemoryCache.get(key);
-  if (existing) {
-    thumbnailMemoryCache.delete(key);
-    thumbnailMemoryCache.set(key, existing);
-    return existing;
-  }
-  const entry: ThumbnailCacheEntry = {blob, url: URL.createObjectURL(blob), references: 0};
-  thumbnailMemoryCache.set(key, entry);
-  thumbnailMemoryCacheBytes += blob.size;
-  trimThumbnailMemoryCache(key);
-  return thumbnailMemoryCache.get(key) ?? entry;
-}
-
-function discardCachedThumbnail(key: string, url: string) {
-  const entry = thumbnailMemoryCache.get(key);
-  if (!entry || entry.url !== url) return;
-  thumbnailMemoryCache.delete(key);
-  thumbnailMemoryCacheBytes -= entry.blob.size;
-  URL.revokeObjectURL(entry.url);
-}
-
-export function clearObjectThumbnailMemoryCache() {
-  for (const entry of thumbnailMemoryCache.values()) URL.revokeObjectURL(entry.url);
-  thumbnailMemoryCache.clear();
-  thumbnailMemoryCacheBytes = 0;
-}
 
 function supportsThumbnail(object: S3Object) {
   const contentType = object.contentType?.split(';', 1)[0].trim().toLowerCase();
@@ -175,6 +107,8 @@ export function ObjectThumbnail({bucketName, object, variant = 'list'}: ObjectTh
     if (objectURL) return;
     const cached = peekCachedThumbnail(requestKey);
     if (cached) {
+      // Synchronize component state with the shared cache when the requested object changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setThumbnail({requestKey, url: cached.url});
       return;
     }

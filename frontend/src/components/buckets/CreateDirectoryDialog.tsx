@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FolderPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +26,10 @@ export function CreateDirectoryDialog({ open, onOpenChange, currentPath, onCreat
   const { t } = useTranslation(['objects', 'common']);
   const [dirName, setDirName] = useState('');
 
-  useEffect(() => { if (!open) setDirName(''); }, [open]);
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setDirName('');
+    onOpenChange(nextOpen);
+  };
 
   const handleCreate = async () => {
     if (!dirName) {
@@ -37,12 +40,12 @@ export function CreateDirectoryDialog({ open, onOpenChange, currentPath, onCreat
     const success = await onCreateDirectory(dirName);
     if (success) {
       setDirName('');
-      onOpenChange(false);
+      handleOpenChange(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <IconTile icon={<FolderPlus />} tone="primary" size="md" />
@@ -70,7 +73,7 @@ export function CreateDirectoryDialog({ open, onOpenChange, currentPath, onCreat
           </div>
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => handleOpenChange(false)}>
             {t('common:actions.cancel')}
           </Button>
           <Button onClick={handleCreate} disabled={!dirName}>

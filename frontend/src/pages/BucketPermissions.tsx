@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { KeyRound, ShieldCheck } from 'lucide-react';
 import { useAccessKeys, useGrantBucketPermission } from '@/hooks/useApi';
@@ -21,19 +21,16 @@ export function BucketPermissions() {
   const [write, setWrite] = useState(false);
   const [owner, setOwner] = useState(false);
 
-  useEffect(() => {
-    if (!selectedKey) {
-      setRead(false); setWrite(false); setOwner(false);
-      return;
-    }
-    const key = availableKeys.find((k) => k.accessKeyId === selectedKey);
+  const selectKey = (accessKeyId: string) => {
+    setSelectedKey(accessKeyId);
+    const key = availableKeys.find((candidate) => candidate.accessKeyId === accessKeyId);
     const existing = key?.permissions.find(
       (p) => p.bucketName === bucketName || p.bucketId === bucketName,
     );
     setRead(existing?.read ?? false);
     setWrite(existing?.write ?? false);
     setOwner(existing?.owner ?? false);
-  }, [selectedKey, availableKeys, bucketName]);
+  };
 
   const canSubmit = !!selectedKey && (read || write || owner) && !grant.isPending;
 
@@ -71,7 +68,7 @@ export function BucketPermissions() {
         <div className="space-y-5 px-5 py-5">
           <div className="space-y-1.5">
             <label className="text-[13.5px] font-medium">{t('permissions.accessKey')}</label>
-            <Select value={selectedKey} onChange={(v) => setSelectedKey(v)}>
+            <Select value={selectedKey} onChange={selectKey}>
               <SelectOption value="">— {t('permissions.selectKey')} —</SelectOption>
               {availableKeys.map((k) => (
                 <SelectOption key={k.accessKeyId} value={k.accessKeyId}>

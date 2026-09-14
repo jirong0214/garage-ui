@@ -3,7 +3,7 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { TopBar } from './top-bar';
 
-vi.mock('@/components/theme-provider', () => ({
+vi.mock('@/components/theme-context', () => ({
   useTheme: () => ({theme: 'light', setTheme: vi.fn()}),
 }));
 

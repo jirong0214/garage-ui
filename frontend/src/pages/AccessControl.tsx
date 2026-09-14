@@ -310,7 +310,7 @@ export function AccessControl() {
     if (!settingsKey) return;
 
     try {
-      const updates: { status?: string; expiration?: string } = {};
+      const updates: Partial<Pick<AccessKey, 'status' | 'expiration'>> = {};
 
       updates.status = keyStatus;
 

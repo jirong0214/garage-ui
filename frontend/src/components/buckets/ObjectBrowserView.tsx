@@ -28,6 +28,50 @@ import {ObjectJobDialog} from './ObjectJobDialog';
 import {ObjectJobProgressDialog} from './ObjectJobProgressDialog';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import type {InputHTMLAttributes} from 'react';
+
+type DirectoryInputAttributes = InputHTMLAttributes<HTMLInputElement> & {
+  webkitdirectory: string;
+  directory: string;
+  mozdirectory: string;
+};
+
+const directoryInputAttributes: DirectoryInputAttributes = {
+  webkitdirectory: '',
+  directory: '',
+  mozdirectory: '',
+};
+
+async function readDirectoryEntries(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
+  const entries: FileSystemEntry[] = [];
+  while (true) {
+    const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => {
+      reader.readEntries(resolve, reject);
+    });
+    if (batch.length === 0) return entries;
+    entries.push(...batch);
+  }
+}
+
+async function traverseFileTree(item: FileSystemEntry, path: string, files: File[]): Promise<void> {
+  if (item.isFile) {
+    const file = await new Promise<File>((resolve, reject) => {
+      (item as FileSystemFileEntry).file(resolve, reject);
+    });
+    Object.defineProperty(file, 'webkitRelativePath', {
+      value: path + file.name,
+      writable: false,
+    });
+    files.push(file);
+    return;
+  }
+  if (item.isDirectory) {
+    const entries = await readDirectoryEntries((item as FileSystemDirectoryEntry).createReader());
+    for (const entry of entries) {
+      await traverseFileTree(entry, `${path}${item.name}/`, files);
+    }
+  }
+}
 
 interface ObjectBrowserViewProps {
   bucketName: string;
@@ -177,33 +221,6 @@ export function ObjectBrowserView({
     noClick: true,
     disabled: !onUploadFiles,
   });
-
-  // Helper function to traverse file/directory tree
-  const traverseFileTree = async (item: any, path: string, files: File[]): Promise<void> => {
-    return new Promise((resolve) => {
-      if (item.isFile) {
-        item.file((file: File) => {
-          const fullPath = path + file.name;
-          Object.defineProperty(file, 'webkitRelativePath', {
-            value: fullPath,
-            writable: false,
-          });
-          files.push(file);
-          resolve();
-        });
-      } else if (item.isDirectory) {
-        const dirReader = item.createReader();
-        dirReader.readEntries(async (entries: any[]) => {
-          for (const entry of entries) {
-            await traverseFileTree(entry, path + item.name + '/', files);
-          }
-          resolve();
-        });
-      } else {
-        resolve();
-      }
-    });
-  };
 
   const selectedCount = selectedFileKeys.size + selectedFolderKeys.size;
   const canSelect = Boolean(onDeleteObject) || transferDestinationBuckets.length > 0 || canMove;
@@ -577,7 +594,7 @@ export function ObjectBrowserView({
                   <input
                     id="folder-input"
                     type="file"
-                    {...({webkitdirectory: '', directory: '', mozdirectory: ''} as any)}
+                    {...directoryInputAttributes}
                     onChange={(e) => {
                       if (e.target.files) {
                         const files = Array.from(e.target.files);
