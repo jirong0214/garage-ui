@@ -62,6 +62,29 @@ describe('ObjectDetailsView', () => {
     expect(screen.getByRole('button', {name: 'Show modified time details'})).toBeInTheDocument();
   });
 
+  it('opens an object whose key contains encoded URL delimiters and a literal percent sign', async () => {
+    const objectKey = 'mobile-验证 空格#?%-20260728-1123.png';
+    vi.mocked(objectsApi.getMetadata).mockResolvedValueOnce({
+      key: objectKey,
+      size: 2048,
+      lastModified: '2026-07-28T03:23:00Z',
+      contentType: 'image/png',
+      etag: 'special-name-etag',
+    });
+
+    render(
+      <MemoryRouter initialEntries={[`/buckets/photos/objects/${encodeURIComponent(objectKey)}`]}>
+        <Routes>
+          <Route path="/buckets/:bucketName/objects/*" element={<ObjectDetailsView />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('heading', {name: 'Preview'});
+    expect(objectsApi.getMetadata).toHaveBeenCalledWith('photos', objectKey);
+    expect(screen.getByRole('button', {name: 'Download'})).toBeInTheDocument();
+  });
+
   it('shows modified time details immediately on hover and click', async () => {
     render(
       <MemoryRouter initialEntries={['/buckets/photos/objects/summer%2Fphoto.jpg']}>

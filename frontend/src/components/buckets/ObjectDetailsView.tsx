@@ -100,8 +100,9 @@ export function ObjectDetailsView() {
   const { t } = useTranslation(['objects', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
-  const { bucketName, '*': encodedObjectKey } = useParams();
-  const objectKey = encodedObjectKey ? decodeURIComponent(encodedObjectKey) : undefined;
+  // React Router already decodes route params. Decoding again breaks valid
+  // object keys containing a literal "%" with "URI malformed".
+  const { bucketName, '*': objectKey } = useParams();
 
   const { data: buckets = [] } = useBuckets();
   const bucket = buckets.find((b) => b.name === bucketName);
