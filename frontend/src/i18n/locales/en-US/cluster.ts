@@ -1,0 +1,16 @@
+export const cluster = {
+  title: 'Cluster', management: 'Cluster management', subtitle: 'Node layout, partitions, and health', loading: 'Loading cluster information…',
+  status: 'Cluster status', connectedNodes: 'Connected nodes', storageNodes: 'Storage nodes', partitions: 'Partitions',
+  healthy: 'Healthy', degraded: 'Degraded', unhealthy: 'Unhealthy', unknown: 'Unknown',
+  nodes: 'Nodes', statistics: 'Statistics', details: 'Details', clusterNodes: 'Cluster nodes',
+  nodeStatus: 'Status', address: 'Address', version: 'Version', zone: 'Zone', capacity: 'Capacity', dataPartition: 'Data partition', metadataPartition: 'Metadata partition',
+  noNodes: 'No nodes found in the cluster', clusterStatistics: 'Cluster statistics', clusterStatisticsDescription: 'Global cluster metrics and statistics', noStatistics: 'No statistics available',
+  node: 'Node', selectNode: 'Select a node…', selectNodeTitle: 'Select a node', selectNodeDescription: 'Choose a node above to view its information and statistics.',
+  nodeDetails: 'Node details', nodeDetailsDescription: 'Per-node information and configuration', nodeInformation: 'Node information', loadingNode: 'Loading node info…', noNodeInfo: 'No node information available',
+  nodeId: 'Node ID', garageVersion: 'Garage version', rustVersion: 'Rust version', databaseEngine: 'Database engine', garageFeatures: 'Garage features',
+  nodeStatistics: 'Node statistics', nodeStatisticsDescription: 'Per-node performance metrics', unsupported: 'Requires Garage v2.0+',
+  layoutVersion: 'Layout v{{version}}', nodesOnline: 'Nodes online', healthyStorageNodes: 'Healthy storage nodes', healthyPartitions: 'Healthy partitions', nodesDescription: 'Overview of all nodes in the Garage cluster',
+  down: 'Down', draining: 'Draining', nodeUp: 'Up', notAvailable: 'N/A', dayShort: 'd', hourShort: 'h', minuteShort: 'm', lastSeen: 'Last seen: {{value}}', never: 'Never', ago: '{{value}} ago',
+  statisticsDetails: 'Detailed statistics and metrics from the Garage cluster', nodeInfoDescription: 'Detailed information for node: {{id}}…', nodeLabel: 'Node: {{id}}…', errorForNode: 'Error for node {{id}}…', performanceDescription: 'Performance metrics for the selected node', statisticsFor: 'Statistics for: {{id}}…',
+  up: '{{up}} of {{total}} up', connected: '{{connected}} of {{total}} connected', healthyCount: '{{healthy}} of {{total}} healthy',
+} as const;

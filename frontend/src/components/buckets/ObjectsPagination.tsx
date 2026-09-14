@@ -1,6 +1,7 @@
 import {Button} from '@/components/ui/button';
 import {Select, SelectOption} from '@/components/ui/select';
 import {ChevronLeft, ChevronRight} from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 interface Props {
   totalItems: number;
   visibleItems: number;
@@ -29,6 +30,7 @@ export function ObjectsPagination({
   handlePreviousPage,
   handleNextPage,
 }: Props) {
+  const { t } = useTranslation('objects');
   return (
     <>
       {/* Pagination Controls */}
@@ -36,7 +38,7 @@ export function ObjectsPagination({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-4 border-t bg-background">
           {/* Items per page selector */}
           <div className="flex items-center gap-2 text-sm relative z-10">
-            <span className="text-muted-foreground">Items per page:</span>
+            <span className="text-muted-foreground">{t('pagination.perPage')}</span>
             <Select value={itemsPerPage.toString()} onChange={handleItemsPerPageChange}>
               <SelectOption value="10">10</SelectOption>
               <SelectOption value="25">25</SelectOption>
@@ -50,8 +52,8 @@ export function ObjectsPagination({
           <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
             <span className="text-sm text-muted-foreground">
               {isDeepSearching
-                ? `Page ${pageIndex + 1} of ${totalPages} • ${totalItems} match${totalItems !== 1 ? 'es' : ''}${isTruncated ? ' (capped, refine to narrow)' : ''}`
-                : `Page ${pageIndex + 1} • Showing ${visibleItems} item${visibleItems !== 1 ? 's' : ''}`}
+                ? `${t('pagination.page', { page: pageIndex + 1, total: totalPages })} • ${t('pagination.matches', { count: totalItems })}${isTruncated ? ` (${t('pagination.capped')})` : ''}`
+                : `${t('pagination.current', { page: pageIndex + 1 })} • ${t('pagination.showing', { count: visibleItems })}`}
             </span>
 
             <div className="flex items-center gap-2">
@@ -63,7 +65,7 @@ export function ObjectsPagination({
                 className="h-8"
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
+                {t('pagination.previous')}
               </Button>
 
               <Button
@@ -73,7 +75,7 @@ export function ObjectsPagination({
                 disabled={!hasNext}
                 className="h-8"
               >
-                Next
+                {t('pagination.next')}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>

@@ -12,6 +12,7 @@ import {buildPublicObjectUrl, copyText} from '@/lib/utils';
 import {toast} from 'sonner';
 import {ShareObjectDialog} from './ShareObjectDialog';
 import {ObjectTransferDialog, type ObjectTransferMode} from './ObjectTransferDialog';
+import { useTranslation } from 'react-i18next';
 
 export interface ObjectsContentProps {
   viewMode?: 'list' | 'grid';
@@ -136,6 +137,7 @@ export function ObjectsContent({
   initialPageToken,
   initialItemsPerPage,
 }: ObjectsContentProps) {
+  const { t } = useTranslation(['objects', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
   const canDelete = Boolean(onDeleteObject);
@@ -154,9 +156,9 @@ export function ObjectsContent({
     if (!publicBaseURL) return;
     try {
       await copyText(buildPublicObjectUrl(publicBaseURL, key));
-      toast.success('Public URL copied');
+      toast.success(t('objects:publicUrlCopied'));
     } catch {
-      toast.error('Failed to copy');
+      toast.error(t('common:errors.copyFailed'));
     }
   };
 
@@ -362,23 +364,23 @@ export function ObjectsContent({
     return obj.isFolder ? (
       <>
         <ContextMenuItem onClick={() => run(() => onNavigateToFolder(obj.key))}>
-          <FolderIcon /> Open
+          <FolderIcon /> {t('objects:open')}
         </ContextMenuItem>
         {onCopyFolder && (
           <ContextMenuItem onClick={() => run(() => onCopyFolder(obj))}>
-            <Copy /> Copy…
+            <Copy /> {t('objects:copy')}…
           </ContextMenuItem>
         )}
         {onMoveFolder && (
           <ContextMenuItem onClick={() => run(() => onMoveFolder(obj))}>
-            <MoveRight /> Move…
+            <MoveRight /> {t('objects:move')}…
           </ContextMenuItem>
         )}
         {onDeleteFolder && (
           <>
             <ContextMenuSeparator />
             <ContextMenuItem className="text-destructive" onClick={() => run(() => onDeleteFolder(obj))}>
-              <Trash2 /> Delete folder
+              <Trash2 /> {t('objects:deleteFolder')}
             </ContextMenuItem>
           </>
         )}
@@ -386,16 +388,16 @@ export function ObjectsContent({
     ) : (
       <>
         <ContextMenuItem onClick={() => run(() => downloadObject(bucketName, obj.key))}>
-          <Download /> Download
+          <Download /> {t('objects:download')}
         </ContextMenuItem>
         {publicBaseURL && (
           <ContextMenuItem onClick={() => run(() => copyPublicURL(obj.key))}>
-            <Copy /> Public URL
+            <Copy /> {t('objects:publicUrl')}
           </ContextMenuItem>
         )}
         {canShare && (
           <ContextMenuItem onClick={() => run(() => setShareObject(obj))}>
-            <Link2 /> Share
+            <Link2 /> {t('objects:share')}
           </ContextMenuItem>
         )}
         {(canRename || transferDestinationBuckets.length > 0 || canMove) && (
@@ -403,24 +405,24 @@ export function ObjectsContent({
         )}
         {canRename && (
           <ContextMenuItem onClick={() => run(() => setTransfer({object: obj, mode: 'rename'}))}>
-            <Pencil /> Rename…
+            <Pencil /> {t('objects:rename')}…
           </ContextMenuItem>
         )}
         {transferDestinationBuckets.length > 0 && (
           <ContextMenuItem onClick={() => run(() => setTransfer({object: obj, mode: 'copy'}))}>
-            <Copy /> Copy…
+            <Copy /> {t('objects:copy')}…
           </ContextMenuItem>
         )}
         {canMove && (
           <ContextMenuItem onClick={() => run(() => setTransfer({object: obj, mode: 'move'}))}>
-            <MoveRight /> Move…
+            <MoveRight /> {t('objects:move')}…
           </ContextMenuItem>
         )}
         {onDeleteObject && (
           <>
             <ContextMenuSeparator />
             <ContextMenuItem className="text-destructive" onClick={() => run(() => onDeleteObject(obj))}>
-              <Trash2 /> Delete
+              <Trash2 /> {t('objects:delete')}
             </ContextMenuItem>
           </>
         )}
@@ -433,18 +435,18 @@ export function ObjectsContent({
       <>
         <DropdownMenuItem onClick={() => onNavigateToFolder(obj.key)}>
           <FolderIcon className="h-4 w-4" />
-          Open
+          {t('objects:open')}
         </DropdownMenuItem>
         {onCopyFolder && (
           <DropdownMenuItem onClick={() => onCopyFolder(obj)}>
             <Copy className="h-4 w-4" />
-            Copy…
+            {t('objects:copy')}…
           </DropdownMenuItem>
         )}
         {onMoveFolder && (
           <DropdownMenuItem onClick={() => onMoveFolder(obj)}>
             <MoveRight className="h-4 w-4" />
-            Move…
+            {t('objects:move')}…
           </DropdownMenuItem>
         )}
         {onDeleteFolder && (
@@ -452,7 +454,7 @@ export function ObjectsContent({
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={() => onDeleteFolder(obj)}>
               <Trash2 className="h-4 w-4" />
-              Delete folder
+              {t('objects:deleteFolder')}
             </DropdownMenuItem>
           </>
         )}
@@ -462,19 +464,19 @@ export function ObjectsContent({
         {canRename && (
           <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'rename'})}>
             <Pencil className="h-4 w-4" />
-            Rename…
+            {t('objects:rename')}…
           </DropdownMenuItem>
         )}
         {transferDestinationBuckets.length > 0 && (
           <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'copy'})}>
             <Copy className="h-4 w-4" />
-            Copy…
+            {t('objects:copy')}…
           </DropdownMenuItem>
         )}
         {canMove && (
           <DropdownMenuItem onClick={() => setTransfer({object: obj, mode: 'move'})}>
             <MoveRight className="h-4 w-4" />
-            Move…
+            {t('objects:move')}…
           </DropdownMenuItem>
         )}
         {onDeleteObject && (
@@ -482,7 +484,7 @@ export function ObjectsContent({
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={() => onDeleteObject(obj)}>
               <Trash2 className="h-4 w-4" />
-              Delete
+              {t('objects:delete')}
             </DropdownMenuItem>
           </>
         )}

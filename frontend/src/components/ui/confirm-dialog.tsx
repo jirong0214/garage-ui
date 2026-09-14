@@ -11,6 +11,7 @@ import {
 } from './dialog';
 import { IconTile } from './icon-tile';
 import { Button } from './button';
+import { useTranslation } from 'react-i18next';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -30,13 +31,14 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = 'Delete',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   icon,
   tone = 'destructive',
   loading = false,
   onConfirm,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation('common');
   const defaultIcon = tone === 'destructive' ? <Trash2 /> : <AlertTriangle />;
   return (
     <Dialog open={open} onOpenChange={onOpenChange} size="destructive">
@@ -49,18 +51,18 @@ export function ConfirmDialog({
           </div>
         </DialogHeader>
         <DialogBody>
-          <p className="text-[13.5px] text-[var(--muted-foreground)]">This action cannot be undone.</p>
+          <p className="text-[13.5px] text-[var(--muted-foreground)]">{t('dialog.irreversible')}</p>
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            {cancelLabel}
+            {cancelLabel ?? t('actions.cancel')}
           </Button>
           <Button
             variant={tone === 'destructive' ? 'destructive' : 'primary'}
             onClick={() => onConfirm()}
             disabled={loading}
           >
-            {loading ? 'Working…' : confirmLabel}
+            {loading ? t('actions.working') : (confirmLabel ?? t('actions.delete'))}
           </Button>
         </DialogFooter>
       </DialogContent>

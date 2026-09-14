@@ -17,8 +17,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {objectsApi} from '@/lib/api';
-import {getObjectFileKind, objectFileKindLabels, type ObjectFileKind} from '@/lib/object-file-type';
+import {getObjectFileKind, type ObjectFileKind} from '@/lib/object-file-type';
 import type {S3Object} from '@/types';
+import {useTranslation} from 'react-i18next';
 
 interface ObjectThumbnailProps {
   variant?: 'list' | 'grid';
@@ -136,6 +137,7 @@ const fileKindIcons: Record<ObjectFileKind, LucideIcon> = {
 };
 
 export function ObjectThumbnail({bucketName, object, variant = 'list'}: ObjectThumbnailProps) {
+  const {t} = useTranslation('objects');
   const containerRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [failedURL, setFailedURL] = useState<string | null>(null);
@@ -197,7 +199,7 @@ export function ObjectThumbnail({bucketName, object, variant = 'list'}: ObjectTh
   return (
     <div
       ref={containerRef}
-      title={objectFileKindLabels[fileKind]}
+      title={t(`fileKinds.${fileKind}`)}
       className={`flex shrink-0 items-center justify-center ${variant === 'grid' ? 'size-24' : 'size-10'}`}
     >
       {objectURL && objectURL !== failedURL ? (

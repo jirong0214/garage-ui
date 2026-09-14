@@ -5,12 +5,15 @@ import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb';
 import { useTheme } from '@/components/theme-provider';
 import { useAuthStore } from '@/store/auth-store';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from './language-switcher';
 
 interface TopBarProps {
   crumbs: BreadcrumbItem[];
 }
 
 export function TopBar({ crumbs }: TopBarProps) {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useTheme();
@@ -79,8 +82,8 @@ export function TopBar({ crumbs }: TopBarProps) {
             type="button"
             onClick={() => moveInBucketHistory(-1)}
             disabled={!canGoBack || navigationPending}
-            aria-label="Back"
-            title="Back"
+            aria-label={t('nav.back')}
+            title={t('nav.back')}
             className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--foreground)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:pointer-events-none disabled:text-[var(--muted-foreground)] disabled:opacity-35"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -89,8 +92,8 @@ export function TopBar({ crumbs }: TopBarProps) {
             type="button"
             onClick={() => moveInBucketHistory(1)}
             disabled={!canGoForward || navigationPending}
-            aria-label="Forward"
-            title="Forward"
+            aria-label={t('nav.forward')}
+            title={t('nav.forward')}
             className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--foreground)] hover:bg-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:pointer-events-none disabled:text-[var(--muted-foreground)] disabled:opacity-35"
           >
             <ChevronRight className="h-4 w-4" />
@@ -100,6 +103,7 @@ export function TopBar({ crumbs }: TopBarProps) {
         <Breadcrumb items={crumbs} className="flex-1" />
       </div>
       <div className="flex items-center gap-1">
+        <LanguageSwitcher />
         <ThemeMiniToggle theme={theme} setTheme={setTheme} />
         {hasUser && (
           <div ref={menuRef} className="relative">
@@ -127,7 +131,7 @@ export function TopBar({ crumbs }: TopBarProps) {
                     onClick={() => { setMenuOpen(false); navigate('/account'); }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] hover:bg-[var(--accent)]"
                   >
-                    <Settings className="h-3.5 w-3.5" /> Account
+                    <Settings className="h-3.5 w-3.5" /> {t('nav.account')}
                   </button>
                 )}
                 <button
@@ -135,7 +139,7 @@ export function TopBar({ crumbs }: TopBarProps) {
                   onClick={() => { setMenuOpen(false); logout(); }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-[14px] hover:bg-[var(--accent)]"
                 >
-                  <LogOut className="h-3.5 w-3.5" /> Logout
+                  <LogOut className="h-3.5 w-3.5" /> {t('nav.logout')}
                 </button>
               </div>
             )}
@@ -153,13 +157,14 @@ function ThemeMiniToggle({
   theme: 'light' | 'dark' | 'system';
   setTheme: (t: 'light' | 'dark' | 'system') => void;
 }) {
+  const { t } = useTranslation('common');
   const next = theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark';
   const Icon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
   return (
     <button
       type="button"
       onClick={() => setTheme(next)}
-      aria-label={`Switch theme (current: ${theme})`}
+      aria-label={t('theme.switchCurrent', { theme: t(`theme.${theme}`) })}
       className={cn(
         'inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted-foreground)]',
         'hover:bg-[var(--accent)] hover:text-[var(--foreground)]',

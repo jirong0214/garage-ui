@@ -14,6 +14,8 @@ import { formatBytes } from '@/lib/file-utils';
 import { formatDate } from '@/lib/utils';
 import { useBucketCan } from '@/hooks/usePermissions';
 import type { Bucket } from '@/types';
+import { useTranslation } from 'react-i18next';
+import { currentLocale } from '@/i18n';
 
 interface BucketListViewProps {
   buckets: Bucket[];
@@ -36,6 +38,7 @@ export function BucketListView({
   onDeleteBucket,
   onWebsiteSettings,
 }: BucketListViewProps) {
+  const { t } = useTranslation(['buckets', 'common']);
   const canBucket = useBucketCan();
   const filteredBuckets = buckets.filter((bucket) =>
     bucket.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -47,7 +50,7 @@ export function BucketListView({
       <div className="relative w-full max-w-xs">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search buckets..."
+          placeholder={t('buckets:search')}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-8"
@@ -59,11 +62,11 @@ export function BucketListView({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="hidden sm:table-cell">Region</TableHead>
-              <TableHead className="hidden md:table-cell">Objects</TableHead>
-              <TableHead>Size</TableHead>
-              <TableHead className="hidden lg:table-cell">Created</TableHead>
+              <TableHead>{t('common:fields.name')}</TableHead>
+              <TableHead className="hidden sm:table-cell">{t('common:fields.region')}</TableHead>
+              <TableHead className="hidden md:table-cell">{t('buckets:tabs.objects')}</TableHead>
+              <TableHead>{t('common:fields.size')}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t('common:fields.created')}</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -73,14 +76,14 @@ export function BucketListView({
                 <TableCell colSpan={6} className="text-center py-12">
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Loading buckets...</span>
+                    <span>{t('buckets:loading')}</span>
                   </div>
                 </TableCell>
               </TableRow>
             ) : filteredBuckets.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                  {searchQuery ? 'No buckets found matching your search' : 'No buckets yet'}
+                  {searchQuery ? t('buckets:noMatch') : t('buckets:empty')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -95,14 +98,14 @@ export function BucketListView({
                     {bucket.websiteAccess && (
                       <Badge variant="neutral" className="text-xs ml-2">
                         <Globe className="h-3 w-3 mr-1" />
-                        Website
+                        {t('buckets:website')}
                       </Badge>
                     )}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge variant="neutral">{bucket.region || 'default'}</Badge>
+                    <Badge variant="neutral">{bucket.region || t('buckets:defaultRegion')}</Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{bucket.objectCount?.toLocaleString() || 0}</TableCell>
+                  <TableCell className="hidden md:table-cell">{bucket.objectCount?.toLocaleString(currentLocale()) || 0}</TableCell>
                   <TableCell>{bucket.size ? formatBytes(bucket.size) : '0 B'}</TableCell>
                   <TableCell className="hidden lg:table-cell">{formatDate(bucket.creationDate)}</TableCell>
                   <TableCell>
@@ -118,7 +121,7 @@ export function BucketListView({
                           onViewBucket(bucket.name);
                         }}>
                           <FolderIcon className="h-4 w-4" />
-                          View Objects
+                          {t('buckets:viewObjects')}
                         </DropdownMenuItem>
                         {canBucket(bucket, 'bucket.update') && (
                           <>
@@ -127,14 +130,14 @@ export function BucketListView({
                               onOpenSettings(bucket);
                             }}>
                               <Settings className="h-4 w-4" />
-                              Settings
+                              {t('buckets:settings')}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation();
                               onWebsiteSettings(bucket);
                             }}>
                               <Globe className="h-4 w-4" />
-                              Website Settings
+                              {t('buckets:websiteSettings')}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -149,7 +152,7 @@ export function BucketListView({
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
-                              Delete
+                              {t('common:actions.delete')}
                             </DropdownMenuItem>
                           </>
                         )}

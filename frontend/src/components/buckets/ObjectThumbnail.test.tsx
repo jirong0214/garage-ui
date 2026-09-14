@@ -69,7 +69,8 @@ describe('ObjectThumbnail', () => {
     );
     expect(objectsApi.getThumbnail).not.toHaveBeenCalled();
     expect(container.querySelector('[data-file-kind="document"]')).toHaveClass('lucide-file-text');
-    expect(container.querySelector('[title="Document"]')).not.toHaveClass('border', 'bg-[var(--surface-sunken)]');
+    expect(container.querySelector('[data-file-kind="document"]')?.parentElement).toHaveAttribute('title', 'Document');
+    expect(container.querySelector('[data-file-kind="document"]')?.parentElement).not.toHaveClass('border', 'bg-[var(--surface-sunken)]');
   });
 
   it('shows a MIME icon while a thumbnail is loading and when generation fails', async () => {

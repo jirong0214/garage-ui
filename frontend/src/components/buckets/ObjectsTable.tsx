@@ -8,6 +8,7 @@ import {downloadObject, formatBytes, formatObjectModifiedTime} from '@/lib/file-
 import type {S3Object} from '@/types';
 import type {ObjectsContentProps} from './ObjectsContent';
 import {ObjectThumbnail} from './ObjectThumbnail';
+import { useTranslation } from 'react-i18next';
 
 interface Props extends Pick<
   ObjectsContentProps,
@@ -60,6 +61,7 @@ export function ObjectsTable({
   onActivate,
   onShare,
 }: Props) {
+  const { t } = useTranslation('objects');
   return (
     <div className="overflow-x-auto">
       <TooltipProvider>
@@ -70,23 +72,23 @@ export function ObjectsTable({
                 className="w-[300px] cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('name')}
               >
-                Objects {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                {t('title')} {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
-              <TableHead className="hidden w-[130px] sm:table-cell">Type</TableHead>
+              <TableHead className="hidden w-[130px] sm:table-cell">{t('type')}</TableHead>
               <TableHead
                 className="w-[90px] cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('size')}
               >
-                Size {sortColumn === 'size' && (sortDirection === 'asc' ? '↑' : '↓')}
+                {t('size')} {sortColumn === 'size' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead
                 className="w-[160px] cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('modified')}
               >
-                Modified {sortColumn === 'modified' && (sortDirection === 'asc' ? '↑' : '↓')}
+                {t('modified')} {sortColumn === 'modified' && (sortDirection === 'asc' ? '↑' : '↓')}
               </TableHead>
               <TableHead className="w-[360px]">
-                <span className="sr-only">Actions</span>
+                <span className="sr-only">{t('actions')}</span>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -96,7 +98,7 @@ export function ObjectsTable({
                 <TableCell colSpan={5} className="text-center py-12">
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Loading objects...</span>
+                    <span>{t('loading')}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -104,10 +106,10 @@ export function ObjectsTable({
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                   {searchQuery
-                    ? 'No objects found matching your search'
+                    ? t('noMatch')
                     : isDragActive
-                      ? 'Drop files or folders here'
-                      : 'No objects in this location'}
+                      ? t('dropHere')
+                      : t('empty')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -127,14 +129,14 @@ export function ObjectsTable({
                       <ObjectThumbnail bucketName={bucketName} object={obj} />
                       {obj.isFolder ? (
                         <button
-                          title={`${obj.key.replace(currentPath, '').replace(/\/$/, '')}${canSelect ? ' · Cmd/Ctrl-click to select' : ''}`}
+                          title={`${obj.key.replace(currentPath, '').replace(/\/$/, '')}${canSelect ? ` · ${t('keyboardSelectHint')}` : ''}`}
                           className="line-clamp-2 min-w-0 flex-1 cursor-pointer break-all text-left font-medium underline hover:text-primary"
                         >
                           {obj.key.replace(currentPath, '').replace(/\/$/, '')}
                         </button>
                       ) : (
                         <button
-                          title={`${obj.key.replace(currentPath, '')}${canSelect ? ' · Cmd/Ctrl-click to select' : ''}`}
+                          title={`${obj.key.replace(currentPath, '')}${canSelect ? ` · ${t('keyboardSelectHint')}` : ''}`}
                           className="line-clamp-2 min-w-0 flex-1 cursor-pointer break-all text-left font-medium hover:text-primary hover:underline"
                         >
                           {obj.key.replace(currentPath, '')}
@@ -145,9 +147,9 @@ export function ObjectsTable({
                   <TableCell className="hidden w-[130px] sm:table-cell">
                     <span
                       className="line-clamp-2 break-all text-muted-foreground"
-                      title={obj.isFolder ? 'Directory' : obj.contentType || 'application/octet-stream'}
+                      title={obj.isFolder ? t('directory') : obj.contentType || 'application/octet-stream'}
                     >
-                      {obj.isFolder ? 'Directory' : obj.contentType || 'application/octet-stream'}
+                      {obj.isFolder ? t('directory') : obj.contentType || 'application/octet-stream'}
                     </span>
                   </TableCell>
                   <TableCell className="w-[90px]">{obj.isFolder ? null : formatBytes(obj.size)}</TableCell>
@@ -170,13 +172,13 @@ export function ObjectsTable({
                               size="sm"
                               className="px-2 text-[13px]"
                               onClick={() => copyPublicURL(obj.key)}
-                              aria-label={`Copy public URL for ${obj.key}`}
+                              aria-label={t('copyPublicUrlFor', { key: obj.key })}
                             >
                               <Copy className="h-4 w-4" />
-                              Public URL
+                              {t('publicUrl')}
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Copy public URL</TooltipContent>
+                          <TooltipContent>{t('copyPublicUrl')}</TooltipContent>
                         </Tooltip>
                       )}
                       {!obj.isFolder && canShare && (
@@ -188,13 +190,13 @@ export function ObjectsTable({
                               size="sm"
                               className="px-2 text-[13px]"
                               onClick={() => onShare(obj)}
-                              aria-label={`Create signed URL for ${obj.key}`}
+                              aria-label={t('createSignedUrlFor', { key: obj.key })}
                             >
                               <Link2 className="h-4 w-4" />
-                              Share
+                              {t('share')}
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Create signed URL</TooltipContent>
+                          <TooltipContent>{t('createSignedUrl')}</TooltipContent>
                         </Tooltip>
                       )}
                       {!obj.isFolder && (
@@ -206,19 +208,19 @@ export function ObjectsTable({
                               size="sm"
                               className="px-2 text-[13px]"
                               onClick={() => downloadObject(bucketName, obj.key)}
-                              aria-label={`Download ${obj.key}`}
+                              aria-label={t('downloadObject', { key: obj.key })}
                             >
                               <Download className="h-4 w-4" />
-                              Download
+                              {t('download')}
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Download</TooltipContent>
+                          <TooltipContent>{t('download')}</TooltipContent>
                         </Tooltip>
                       )}
                       {obj.isFolder ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger
-                            aria-label={`Actions for ${obj.key}`}
+                            aria-label={t('actionsFor', { key: obj.key })}
                             className={buttonVariants({variant: 'ghost', size: 'icon-sm'})}
                           >
                             <MoreVertical className="h-4 w-4" />
@@ -228,7 +230,7 @@ export function ObjectsTable({
                       ) : canRename || transferDestinationBuckets.length > 0 || canMove || onDeleteObject ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger
-                            aria-label={`Actions for ${obj.key}`}
+                            aria-label={t('actionsFor', { key: obj.key })}
                             className={buttonVariants({variant: 'ghost', size: 'icon-sm'})}
                           >
                             <MoreVertical className="h-4 w-4" />

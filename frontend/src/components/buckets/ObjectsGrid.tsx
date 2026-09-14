@@ -5,6 +5,7 @@ import {ContextMenu} from '@/components/ui/context-menu';
 import {formatBytes} from '@/lib/file-utils';
 import type {S3Object} from '@/types';
 import {ObjectThumbnail} from './ObjectThumbnail';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   bucketName: string;
@@ -55,6 +56,7 @@ export function ObjectsGrid({
   isCapped,
   resetKey,
 }: Props) {
+  const { t } = useTranslation(['objects', 'common']);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [automaticLoadState, setAutomaticLoadState] = useState({key: resetKey, count: 0});
   const [contextTarget, setContextTarget] = useState<{object: S3Object; x: number; y: number} | null>(null);
@@ -97,18 +99,21 @@ export function ObjectsGrid({
   return (
     <>
       <div className="flex flex-wrap items-center justify-end gap-3 border-b p-3">
-        <div role="group" aria-label="Sort objects" className="flex flex-wrap items-center gap-1">
-          <span className="mr-1 text-sm text-[var(--muted-foreground)]">Sort:</span>
+        <div role="group" aria-label={t('objects:sortObjects')} className="flex flex-wrap items-center gap-1">
+          <span className="mr-1 text-sm text-[var(--muted-foreground)]">{t('objects:sort')}</span>
           {(['name', 'size', 'modified'] as const).map((column) => (
             <Button
               key={column}
               size="sm"
               variant={sortColumn === column ? 'secondary' : 'ghost'}
               aria-pressed={sortColumn === column}
-              aria-label={`Sort by ${column}${sortColumn === column ? `, ${sortDirection === 'asc' ? 'ascending' : 'descending'}` : ''}`}
+              aria-label={t('objects:sortBy', {
+                column: t(`objects:sortColumns.${column}`),
+                direction: sortColumn === column ? t(`objects:${sortDirection === 'asc' ? 'ascending' : 'descending'}`) : '',
+              })}
               onClick={() => handleSort(column)}
             >
-              {column === 'name' ? 'Name' : column === 'size' ? 'Size' : 'Modified'}{' '}
+              {t(`objects:${column}`)}{' '}
               {sortColumn === column && (sortDirection === 'asc' ? '↑' : '↓')}
             </Button>
           ))}
@@ -120,19 +125,19 @@ export function ObjectsGrid({
           className="flex justify-center items-center gap-2 py-12 text-[var(--muted-foreground)]"
         >
           <Loader2 className="h-5 w-5 animate-spin" />
-          Loading objects...
+          {t('objects:loading')}
         </div>
       ) : pageObjects.length === 0 ? (
         <div className="py-12 text-center text-[var(--muted-foreground)]">
           {searchQuery
-            ? 'No objects found matching your search'
+            ? t('objects:noMatch')
             : isDragActive
-              ? 'Drop files or folders here'
-              : 'No objects in this location'}
+              ? t('objects:dropHere')
+              : t('objects:empty')}
         </div>
       ) : (
         <ul
-          aria-label="Objects"
+          aria-label={t('objects:title')}
           className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3 p-3 sm:p-4"
         >
           {pageObjects.map((obj) => {
@@ -151,7 +156,7 @@ export function ObjectsGrid({
                 <button
                   type="button"
                   aria-pressed={isSelected(obj)}
-                  title={`${name} · ${canSelect ? 'Cmd/Ctrl-click to select · ' : ''}Right-click for actions`}
+                  title={`${name} · ${canSelect ? `${t('objects:keyboardSelectHint')} · ` : ''}${t('objects:rightClickHint')}`}
                   onClick={(event) => onActivate(obj, event)}
                   onKeyDown={(event) => handleContextKey(event, obj)}
                   className="flex w-full min-w-0 flex-col items-center gap-2 rounded-md p-1 text-center focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
@@ -161,7 +166,7 @@ export function ObjectsGrid({
                     {name}
                   </span>
                   <span className="text-xs text-[var(--muted-foreground)]">
-                    {obj.isFolder ? 'Directory' : formatBytes(obj.size)}
+                    {obj.isFolder ? t('objects:directory') : formatBytes(obj.size)}
                   </span>
                 </button>
               </li>
@@ -177,31 +182,31 @@ export function ObjectsGrid({
           {isLoadingMore ? (
             <div role="status" className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading more objects…
+              {t('objects:loadingMore')}
             </div>
           ) : loadMoreError ? (
             <>
-              <p className="text-sm text-destructive">Could not load more objects.</p>
+              <p className="text-sm text-destructive">{t('objects:loadMoreFailed')}</p>
               <Button size="sm" variant="secondary" onClick={manuallyLoadMore}>
-                <RotateCw className="h-4 w-4" /> Retry
+                <RotateCw className="h-4 w-4" /> {t('common:actions.retry')}
               </Button>
             </>
           ) : hasMore ? (
             <>
               <Button size="sm" variant="secondary" onClick={manuallyLoadMore}>
-                Load more
+                {t('objects:loadMore')}
               </Button>
               {automaticLoads < 3 && (
                 <span className="text-xs text-[var(--muted-foreground)]">
-                  More objects load as you scroll
+                  {t('objects:scrollHint')}
                 </span>
               )}
             </>
           ) : (
             <span className="text-sm text-[var(--muted-foreground)]">
               {isCapped
-                ? `${totalLoaded} results loaded · Search limit reached, refine your query for more`
-                : `All ${totalLoaded} objects loaded`}
+                ? t('objects:capped', { count: totalLoaded })
+                : t('objects:allLoaded', { count: totalLoaded })}
             </span>
           )}
         </div>

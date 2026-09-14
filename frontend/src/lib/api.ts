@@ -23,6 +23,7 @@ import type {
   StorageMetrics,
 } from '@/types';
 import type { AuthUser } from '@/types/auth';
+import i18n from '@/i18n';
 
 // Helper function to encode object keys for URLs
 // Encodes the entire key including slashes to ensure proper handling of special characters
@@ -66,12 +67,12 @@ api.interceptors.response.use(
     // If response has success=false in data, treat it as an error
     if (response.data && response.data.success === false && response.data.error) {
       const error = response.data.error;
-      const errorMessage = error.message || 'An error occurred';
+      const errorMessage = error.message || i18n.t('errors.occurred');
       const errorCode = error.code || 'UNKNOWN_ERROR';
 
       // Display toast with error details
       toast.error(errorMessage, {
-        description: `Error Code: ${errorCode}`,
+        description: i18n.t('errors.code', { code: errorCode }),
       });
 
       // Reject the promise so it's treated as an error
@@ -104,27 +105,27 @@ api.interceptors.response.use(
       const data = error.response.data;
 
       if (data && data.error) {
-        const errorMessage = data.error.message || 'An error occurred';
+        const errorMessage = data.error.message || i18n.t('errors.occurred');
         const errorCode = data.error.code || 'UNKNOWN_ERROR';
 
         toast.error(errorMessage, {
-          description: `Error Code: ${errorCode}`,
+          description: i18n.t('errors.code', { code: errorCode }),
         });
       } else {
         // Generic HTTP error
-        toast.error(`Request failed: ${error.response.status}`, {
-          description: error.response.statusText || 'Unknown error',
+        toast.error(i18n.t('errors.requestFailed', { status: error.response.status }), {
+          description: error.response.statusText || i18n.t('errors.unknown'),
         });
       }
     } else if (error.request) {
       // Request made but no response received
-      toast.error('Network Error', {
-        description: 'Unable to reach the server. Please check your connection.',
+      toast.error(i18n.t('errors.network'), {
+        description: i18n.t('errors.networkDescription'),
       });
     } else {
       // Something else happened
-      toast.error('Error', {
-        description: error.message || 'An unexpected error occurred',
+      toast.error(i18n.t('errors.generic'), {
+        description: error.message || i18n.t('errors.unexpected'),
       });
     }
 

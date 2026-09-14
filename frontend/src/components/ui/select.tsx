@@ -2,6 +2,7 @@ import * as React from 'react';
 import {createPortal} from 'react-dom';
 import {cn} from '@/lib/utils';
 import {ChevronDown, Check} from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface SelectOption {
   value: string;
@@ -33,7 +34,9 @@ const useSelectContext = () => {
 };
 
 const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
-  ({ className, children, value, onChange, disabled, placeholder = 'Select an option...', ...props }, ref) => {
+  ({ className, children, value, onChange, disabled, placeholder, ...props }, ref) => {
+    const { t } = useTranslation('common');
+    const resolvedPlaceholder = placeholder ?? t('select.placeholder');
     const [open, setOpen] = React.useState(false);
     const [internalValue, setInternalValue] = React.useState(value);
     const containerRef = React.useRef<HTMLDivElement>(null);
@@ -45,7 +48,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
 
     const displayValue = React.useMemo(() => {
       const currentValue = value ?? internalValue;
-      if (!currentValue) return placeholder;
+      if (!currentValue) return resolvedPlaceholder;
 
       // Extract label from children
       const options = React.Children.toArray(children);
@@ -61,7 +64,7 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
       }
 
       return currentValue;
-    }, [value, internalValue, children, placeholder]);
+    }, [value, internalValue, children, resolvedPlaceholder]);
 
     React.useEffect(() => {
       setInternalValue(value);

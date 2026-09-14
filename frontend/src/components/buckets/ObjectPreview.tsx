@@ -6,6 +6,7 @@ import { useObjectPreview } from '@/hooks/useObjectPreview';
 import { getHighlightLanguage, TEXT_HIGHLIGHT_MAX_BYTES } from '@/lib/preview-utils';
 import { formatBytes } from '@/lib/file-utils';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 function Notice({
   message,
@@ -16,6 +17,7 @@ function Notice({
   onDownload?: () => void;
   onRetry?: () => void;
 }) {
+  const { t } = useTranslation(['objects', 'common']);
   return (
     <div className="flex flex-col items-center gap-3 px-5 py-10 text-center text-[13px] text-[var(--muted-foreground)]">
       <p>{message}</p>
@@ -23,12 +25,12 @@ function Notice({
         <div className="flex gap-2">
           {onRetry && (
             <Button variant="secondary" onClick={onRetry}>
-              <RefreshCw className="h-4 w-4" /> Retry
+              <RefreshCw className="h-4 w-4" /> {t('common:actions.retry')}
             </Button>
           )}
           {onDownload && (
             <Button variant="secondary" onClick={onDownload}>
-              <Download className="h-4 w-4" /> Download
+              <Download className="h-4 w-4" /> {t('common:actions.download')}
             </Button>
           )}
         </div>
@@ -116,6 +118,7 @@ export function ObjectPreview({
   onDownload: () => void;
   fullscreen?: boolean;
 }) {
+  const { t } = useTranslation('objects');
   const preview = useObjectPreview(bucket, objectKey, size, contentType);
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const resumeAtRef = useRef(0);
@@ -134,22 +137,22 @@ export function ObjectPreview({
 
   switch (preview.status) {
     case 'unsupported':
-      return <Notice message="No preview available for this object." onDownload={onDownload} />;
+      return <Notice message={t('preview.unavailable')} onDownload={onDownload} />;
     case 'too-large':
       return (
         <Notice
-          message={`File is too large to preview (${formatBytes(size)}), download it instead.`}
+          message={t('preview.tooLarge', { size: formatBytes(size) })}
           onDownload={onDownload}
         />
       );
     case 'binary':
-      return <Notice message="This file doesn't appear to be text." onDownload={onDownload} />;
+      return <Notice message={t('preview.binary')} onDownload={onDownload} />;
     case 'error':
-      return <Notice message="Could not load the preview." onRetry={preview.retry} onDownload={onDownload} />;
+      return <Notice message={t('preview.failed')} onRetry={preview.retry} onDownload={onDownload} />;
     case 'loading':
       return (
         <div className="flex items-center justify-center gap-2 px-5 py-10 text-[13px] text-[var(--muted-foreground)]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading preview…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('preview.loading')}
         </div>
       );
   }
@@ -193,6 +196,6 @@ export function ObjectPreview({
     case 'text':
       return <CodeBlock text={preview.text!} objectKey={objectKey} fullscreen={fullscreen} />;
     default:
-      return <Notice message="No preview available for this object." onDownload={onDownload} />;
+      return <Notice message={t('preview.unavailable')} onDownload={onDownload} />;
   }
 }

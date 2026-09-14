@@ -1,0 +1,16 @@
+export const cluster = {
+  title: '集群', management: '集群管理', subtitle: '节点布局、分区和健康状态', loading: '正在加载集群信息…',
+  status: '集群状态', connectedNodes: '已连接节点', storageNodes: '存储节点', partitions: '分区',
+  healthy: '健康', degraded: '部分异常', unhealthy: '异常', unknown: '未知',
+  nodes: '节点', statistics: '统计', details: '详情', clusterNodes: '集群节点',
+  nodeStatus: '状态', address: '地址', version: '版本', zone: '区域', capacity: '容量', dataPartition: '数据分区', metadataPartition: '元数据分区',
+  noNodes: '集群中没有节点', clusterStatistics: '集群统计', clusterStatisticsDescription: '全局集群指标和统计信息', noStatistics: '暂无统计数据',
+  node: '节点', selectNode: '选择节点…', selectNodeTitle: '选择节点', selectNodeDescription: '在上方选择一个节点以查看其信息和统计数据。',
+  nodeDetails: '节点详情', nodeDetailsDescription: '单个节点的信息和配置', nodeInformation: '节点信息', loadingNode: '正在加载节点信息…', noNodeInfo: '暂无节点信息',
+  nodeId: '节点 ID', garageVersion: 'Garage 版本', rustVersion: 'Rust 版本', databaseEngine: '数据库引擎', garageFeatures: 'Garage 功能',
+  nodeStatistics: '节点统计', nodeStatisticsDescription: '单个节点的性能指标', unsupported: '需要 Garage v2.0 或更高版本',
+  layoutVersion: '布局版本 v{{version}}', nodesOnline: '个节点在线', healthyStorageNodes: '个健康存储节点', healthyPartitions: '个健康分区', nodesDescription: 'Garage 集群中所有节点的概览',
+  down: '离线', draining: '正在排空', nodeUp: '在线', notAvailable: '不可用', dayShort: '天', hourShort: '小时', minuteShort: '分钟', lastSeen: '最后在线：{{value}}', never: '从未', ago: '{{value}}前',
+  statisticsDetails: 'Garage 集群的详细统计和指标', nodeInfoDescription: '节点详细信息：{{id}}…', nodeLabel: '节点：{{id}}…', errorForNode: '节点 {{id}}… 出错', performanceDescription: '所选节点的性能指标', statisticsFor: '统计：{{id}}…',
+  up: '{{total}} 个节点中 {{up}} 个正常', connected: '{{total}} 个节点中 {{connected}} 个已连接', healthyCount: '{{total}} 个分区中 {{healthy}} 个健康',
+} as const;

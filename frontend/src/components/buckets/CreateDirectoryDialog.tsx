@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { IconTile } from '@/components/ui/icon-tile';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 interface CreateDirectoryDialogProps {
   open: boolean;
@@ -22,13 +23,14 @@ interface CreateDirectoryDialogProps {
 }
 
 export function CreateDirectoryDialog({ open, onOpenChange, currentPath, onCreateDirectory }: CreateDirectoryDialogProps) {
+  const { t } = useTranslation(['objects', 'common']);
   const [dirName, setDirName] = useState('');
 
   useEffect(() => { if (!open) setDirName(''); }, [open]);
 
   const handleCreate = async () => {
     if (!dirName) {
-      toast.error('Please enter a directory name');
+      toast.error(t('objects:directoryRequired'));
       return;
     }
 
@@ -45,18 +47,18 @@ export function CreateDirectoryDialog({ open, onOpenChange, currentPath, onCreat
         <DialogHeader>
           <IconTile icon={<FolderPlus />} tone="primary" size="md" />
           <div className="flex-1">
-            <DialogTitle>Create Directory</DialogTitle>
+            <DialogTitle>{t('objects:createDirectory')}</DialogTitle>
             <DialogDescription>
-              Create a new directory in {currentPath || 'the root'}
+              {t('objects:createDirectoryIn', { path: currentPath || t('objects:root') })}
             </DialogDescription>
           </div>
         </DialogHeader>
         <DialogBody className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Directory Name</label>
+            <label className="text-sm font-medium">{t('objects:directoryName')}</label>
             <Input
               autoFocus
-              placeholder="my-directory"
+              placeholder={t('objects:directoryPlaceholder')}
               value={dirName}
               onChange={(e) => setDirName(e.target.value)}
               onKeyDown={(e) => {
@@ -69,10 +71,10 @@ export function CreateDirectoryDialog({ open, onOpenChange, currentPath, onCreat
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button onClick={handleCreate} disabled={!dirName}>
-            Create
+            {t('common:actions.create')}
           </Button>
         </DialogFooter>
       </DialogContent>

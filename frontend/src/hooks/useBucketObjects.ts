@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { objectsApi } from '@/lib/api';
 import type { S3Object, UploadTask } from '@/types';
 import { toast } from 'sonner';
+import i18n, { currentLocale } from '@/i18n';
 
 // How long to wait after the last keystroke before actually searching. Keeps
 // typing from firing a request (and a client-side re-filter) on every key.
@@ -278,7 +279,7 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
         ));
         return true;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+        const errorMessage = error instanceof Error ? error.message : i18n.t('objects:upload.failed');
         setUploadTasks(prev => prev.map(t =>
           t.id === task.id ? { ...t, status: 'error' as const, error: errorMessage } : t
         ));
@@ -293,14 +294,21 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
     if (errorCount === 0) {
       if (hasRelativePaths && folders.size > 0) {
         const folderNames = Array.from(folders).join(', ');
-        toast.success(`Successfully uploaded ${successCount} file${successCount > 1 ? 's' : ''} from ${folders.size} folder${folders.size > 1 ? 's' : ''} (${folderNames})`);
+        toast.success(i18n.t('objects:upload.successFromFolders', {
+          files: i18n.t('count.file', { count: successCount }),
+          folders: i18n.t('count.directory', { count: folders.size }),
+          names: folderNames,
+        }));
       } else {
-        toast.success(`Successfully uploaded ${successCount} file${successCount > 1 ? 's' : ''}`);
+        toast.success(i18n.t('objects:upload.success', { count: successCount }));
       }
     } else if (successCount > 0) {
-      toast.warning(`Uploaded ${successCount} file${successCount > 1 ? 's' : ''}, ${errorCount} failed`);
+      toast.warning(i18n.t('objects:upload.partial', {
+        success: i18n.t('count.file', { count: successCount }),
+        failed: i18n.t('count.file', { count: errorCount }),
+      }));
     } else {
-      toast.error(`Failed to upload ${errorCount} file${errorCount > 1 ? 's' : ''}`);
+      toast.error(i18n.t('objects:upload.failedSummary', { failed: i18n.t('count.file', { count: errorCount }) }));
     }
 
     if (clearTasksTimerRef.current) clearTimeout(clearTasksTimerRef.current);
@@ -321,7 +329,7 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
       setContinuousObjects(prev => prev.filter(obj => obj.key !== key));
 
       await objectsApi.delete(bucketName, key);
-      toast.success(`Object "${key}" deleted successfully`);
+      toast.success(i18n.t('objects:deletedNamed', { key }));
       await fetchObjects(currentContinuationToken, true);
       return true;
     } catch (error) {
@@ -347,10 +355,11 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
 
       await objectsApi.deleteMultiple(bucketName, keys, prefixes);
 
-      const fileLabel = keys.length > 0 ? `${keys.length} file${keys.length > 1 ? 's' : ''}` : '';
-      const folderLabel = prefixes.length > 0 ? `${prefixes.length} folder${prefixes.length > 1 ? 's' : ''}` : '';
-      const summary = [fileLabel, folderLabel].filter(Boolean).join(' and ');
-      toast.success(`Successfully deleted ${summary}`);
+      const fileLabel = keys.length > 0 ? i18n.t('count.file', { count: keys.length }) : '';
+      const folderLabel = prefixes.length > 0 ? i18n.t('count.directory', { count: prefixes.length }) : '';
+      const summary = new Intl.ListFormat(currentLocale(), { type: 'conjunction' })
+        .format([fileLabel, folderLabel].filter(Boolean));
+      toast.success(i18n.t('objects:deletedSummary', { summary }));
 
       await fetchObjects(currentContinuationToken, true);
       return true;
@@ -367,7 +376,7 @@ export function useBucketObjects(bucketName: string | null, currentPath: string 
     try {
       const dirKey = currentPath ? `${currentPath}${dirName}/` : `${dirName}/`;
       await objectsApi.createDirectory(bucketName, dirKey);
-      toast.success(`Directory "${dirName}" created successfully`);
+      toast.success(i18n.t('objects:directoryCreated', { name: dirName }));
       await fetchObjects(currentContinuationToken, true);
       return true;
     } catch (error) {

@@ -8,13 +8,16 @@ import type { BreadcrumbItem } from '@/components/ui/breadcrumb';
 import { usePermissions } from '@/hooks/usePermissions';
 import { NoAccess } from '@/pages/NoAccess';
 import { buildAppBreadcrumbs } from '@/lib/breadcrumbs';
+import { useTranslation } from 'react-i18next';
 
 function useCrumbs(): BreadcrumbItem[] {
   const location = useLocation();
-  return buildAppBreadcrumbs(location.pathname, location.search);
+  const { t } = useTranslation(['common', 'buckets']);
+  return buildAppBreadcrumbs(location.pathname, location.search, t);
 }
 
 export function Layout() {
+  const { t } = useTranslation('common');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const crumbs = useCrumbs();
@@ -27,7 +30,7 @@ export function Layout() {
         size="icon"
         className="fixed left-3 top-3 z-50 md:hidden"
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-label="Toggle navigation"
+        aria-label={t('nav.toggle')}
       >
         <Menu className="h-5 w-5" />
       </Button>

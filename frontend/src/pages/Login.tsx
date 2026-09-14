@@ -1,10 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/auth-store';
 import { BasicLoginForm } from '@/components/auth/BasicLoginForm';
 import { OIDCLoginView } from '@/components/auth/OIDCLoginView';
 import { TokenLoginForm } from '@/components/auth/TokenLoginForm';
 import { LoadingSpinner } from '@/components/auth/LoadingSpinner';
+import { LanguageSwitcher } from '@/components/layout/language-switcher';
+
+function LoginLanguageControl() {
+  return <div className="fixed right-3 top-3 z-20"><LanguageSwitcher /></div>;
+}
+
+function LoginScreen({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <LoginLanguageControl />
+      {children}
+    </>
+  );
+}
 
 export function Login() {
   const { config, isLoading, initialize, isAuthenticated, user } = useAuthStore();
@@ -30,7 +44,7 @@ export function Login() {
   }, [isAuthenticated, navigate, returnUrl, loginSuccess, bootstrapRequired, user?.auth_method]);
 
   if (isLoading || loginSuccess === 'success') {
-    return <LoadingSpinner />;
+    return <LoginScreen><LoadingSpinner /></LoginScreen>;
   }
 
   // No auth enabled, redirect to dashboard immediately
@@ -43,52 +57,52 @@ export function Login() {
   const showOIDC = config?.oidc.enabled || false;
   const showToken = config?.token.enabled || false;
   if (bootstrapRequired) {
-    return (
+    return <LoginScreen>
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-md">
           <TokenLoginForm bootstrap />
         </div>
       </div>
-    );
+    </LoginScreen>;
   }
 
   // Token-only auth (zero-config fallback)
   if (showToken && !showAdmin && !showOIDC) {
-    return (
+    return <LoginScreen>
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-md">
           <TokenLoginForm />
         </div>
       </div>
-    );
+    </LoginScreen>;
   }
 
   // Both admin and OIDC enabled
   if (showAdmin && showOIDC) {
-    return (
+    return <LoginScreen>
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-md">
           <BasicLoginForm showOIDC={true} config={config} />
         </div>
       </div>
-    );
+    </LoginScreen>;
   }
 
   // Only OIDC
   if (showOIDC) {
-    return <OIDCLoginView />;
+    return <LoginScreen><OIDCLoginView /></LoginScreen>;
   }
 
   // Only admin
   if (showAdmin) {
-    return (
+    return <LoginScreen>
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-md">
           <BasicLoginForm />
         </div>
       </div>
-    );
+    </LoginScreen>;
   }
 
-  return <LoadingSpinner />;
+  return <LoginScreen><LoadingSpinner /></LoginScreen>;
 }

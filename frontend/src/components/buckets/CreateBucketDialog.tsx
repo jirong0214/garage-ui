@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { IconTile } from '@/components/ui/icon-tile';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 interface CreateBucketDialogProps {
   open: boolean;
@@ -21,13 +22,14 @@ interface CreateBucketDialogProps {
 }
 
 export function CreateBucketDialog({ open, onOpenChange, onCreateBucket }: CreateBucketDialogProps) {
+  const { t } = useTranslation(['buckets', 'common']);
   const [bucketName, setBucketName] = useState('');
 
   useEffect(() => { if (!open) setBucketName(''); }, [open]);
 
   const handleCreate = async () => {
     if (!bucketName) {
-      toast.error('Please enter a bucket name');
+      toast.error(t('buckets:bucketNameRequired'));
       return;
     }
 
@@ -44,18 +46,18 @@ export function CreateBucketDialog({ open, onOpenChange, onCreateBucket }: Creat
         <DialogHeader>
           <IconTile icon={<Database />} tone="primary" size="md" />
           <div className="flex-1">
-            <DialogTitle>Create New Bucket</DialogTitle>
+            <DialogTitle>{t('buckets:createTitle')}</DialogTitle>
             <DialogDescription>
-              Create a new storage bucket for your objects
+              {t('buckets:createDialogDescription')}
             </DialogDescription>
           </div>
         </DialogHeader>
         <DialogBody className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Bucket Name</label>
+            <label className="text-sm font-medium">{t('buckets:bucketName')}</label>
             <Input
               autoFocus
-              placeholder="my-bucket-name"
+              placeholder={t('buckets:bucketNamePlaceholder')}
               value={bucketName}
               onChange={(e) => setBucketName(e.target.value)}
               onKeyDown={(e) => {
@@ -65,20 +67,20 @@ export function CreateBucketDialog({ open, onOpenChange, onCreateBucket }: Creat
               }}
             />
             <p className="text-xs text-muted-foreground">
-              Must be unique and follow DNS naming conventions
+              {t('buckets:bucketNameHelp')}
             </p>
           </div>
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button
             variant="primary"
             onClick={handleCreate}
             disabled={!bucketName}
           >
-            Create
+            {t('common:actions.create')}
           </Button>
         </DialogFooter>
       </DialogContent>

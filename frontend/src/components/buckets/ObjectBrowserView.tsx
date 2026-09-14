@@ -26,6 +26,8 @@ import {objectJobsApi} from '@/lib/api';
 import {toast} from 'sonner';
 import {ObjectJobDialog} from './ObjectJobDialog';
 import {ObjectJobProgressDialog} from './ObjectJobProgressDialog';
+import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 
 interface ObjectBrowserViewProps {
   bucketName: string;
@@ -102,6 +104,7 @@ export function ObjectBrowserView({
   initialPageToken,
   initialItemsPerPage,
 }: ObjectBrowserViewProps) {
+  const { t } = useTranslation(['objects', 'common']);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
     try {
       return localStorage.getItem('garage-ui:objects-view') === 'grid' ? 'grid' : 'list';
@@ -276,7 +279,7 @@ export function ObjectBrowserView({
       handleJobStarted(job);
       setPendingDelete(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to start delete');
+      toast.error(error instanceof Error ? error.message : t('objects:transfer.startFailed', { operation: t('objects:delete') }));
     } finally {
       setBulkDeleting(false);
     }
@@ -299,18 +302,18 @@ export function ObjectBrowserView({
         // Ignore unavailable storage.
       }
       if (job.status === 'completed') {
-        toast.success(`${job.operation[0].toUpperCase()}${job.operation.slice(1)} completed`);
+        toast.success(t('objects:job.completed', { operation: t(`objects:${job.operation}`) }));
       } else if (job.status === 'completed_with_errors') {
-        toast.error(`${job.operation} completed with ${job.failed} failure${job.failed === 1 ? '' : 's'}`);
+        toast.error(t('objects:job.completedWithErrors', { operation: t(`objects:${job.operation}`), count: job.failed }));
       } else if (job.status === 'failed') {
-        toast.error(job.error || `${job.operation} failed`);
+        toast.error(job.error || t('objects:job.failedOperation', { operation: t(`objects:${job.operation}`) }));
       }
       setSelectedFileKeys(new Set());
       setSelectedFolderKeys(new Set());
       setSelectionMode(false);
       void onTransferComplete();
     },
-    [onTransferComplete],
+    [onTransferComplete, t],
   );
 
   const handleJobClosed = useCallback(() => {
@@ -352,15 +355,15 @@ export function ObjectBrowserView({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-label="Exit selection"
+                  aria-label={t('objects:exitSelection')}
                   aria-pressed="true"
-                  title="Exit selection (Esc)"
+                  title={`${t('objects:exitSelection')} (Esc)`}
                   onClick={exitSelectionMode}
                 >
                   <X />
                 </Button>
                 <span className="whitespace-nowrap font-medium">
-                  {selectedCount} selected
+                  {t('objects:selected', { count: selectedCount })}
                 </span>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -375,7 +378,7 @@ export function ObjectBrowserView({
                       })
                     }
                   >
-                    <Copy /> Copy
+                    <Copy /> {t('objects:copy')}
                   </Button>
                 )}
                 {selectedCount > 0 && canMove && (
@@ -389,12 +392,12 @@ export function ObjectBrowserView({
                       })
                     }
                   >
-                    <MoveRight /> Move
+                    <MoveRight /> {t('objects:move')}
                   </Button>
                 )}
                 {onDeleteObject && selectedCount > 0 && (
                   <Button onClick={handleRequestBulkDelete} variant="destructive">
-                    <Trash /> Delete
+                    <Trash /> {t('objects:delete')}
                   </Button>
                 )}
               </div>
@@ -405,7 +408,7 @@ export function ObjectBrowserView({
                 <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder={deepSearch ? 'Deep search names…' : 'Search by name prefix…'}
+                    placeholder={deepSearch ? t('objects:deepSearch') : t('objects:searchPrefix')}
                     value={searchQuery}
                     onChange={(e) => onSearchChange(e.target.value)}
                     className="pl-8"
@@ -418,13 +421,13 @@ export function ObjectBrowserView({
                   aria-pressed={deepSearch}
                   title={
                     deepSearch
-                      ? 'Deep search: ON. Matches names anywhere and descends into subfolders. Scans the bucket, results may be partial on very large buckets. Click for fast prefix search.'
-                      : 'Fast prefix search: matches the start of object names in this folder (like the AWS S3 / Cloudflare R2 console). Click to enable deep search (substring + subfolders).'
+                      ? t('objects:deepOnHelp')
+                      : t('objects:deepOffHelp')
                   }
                   className="shrink-0"
                 >
                   <ScanSearch />
-                  <span className="hidden sm:inline">Deep</span>
+                  <span className="hidden sm:inline">{t('objects:deep')}</span>
                 </Button>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -433,8 +436,8 @@ export function ObjectBrowserView({
                     variant="secondary"
                     size="icon"
                     onClick={() => setShowUploadZone(!showUploadZone)}
-                    aria-label="Upload"
-                    title="Upload"
+                    aria-label={t('common:actions.upload')}
+                    title={t('common:actions.upload')}
                   >
                     <Upload />
                   </Button>
@@ -444,8 +447,8 @@ export function ObjectBrowserView({
                     variant="secondary"
                     size="icon"
                     onClick={() => setCreateDirDialogOpen(true)}
-                    aria-label="Add Directory"
-                    title="Add Directory"
+                    aria-label={t('objects:addDirectory')}
+                    title={t('objects:addDirectory')}
                   >
                     <FolderPlus />
                   </Button>
@@ -456,25 +459,25 @@ export function ObjectBrowserView({
                       type="button"
                       variant="secondary"
                       size="icon"
-                      aria-label="Select"
+                      aria-label={t('common:actions.select')}
                       aria-pressed="false"
                       onClick={() => setSelectionMode(true)}
-                      title="Select multiple objects"
+                      title={t('objects:selectMultiple')}
                     >
                       <ListChecks />
                     </Button>
                   )}
                   <div
                     role="group"
-                    aria-label="Object view"
+                    aria-label={t('objects:objectView')}
                     className="flex overflow-hidden rounded-md border border-[var(--border)]"
                   >
                     <Button
                       variant={viewMode === 'list' ? 'primary' : 'ghost'}
                       size="icon"
                       className="rounded-none"
-                      aria-label="List view"
-                      title="List view"
+                      aria-label={t('objects:listView')}
+                      title={t('objects:listView')}
                       aria-pressed={viewMode === 'list'}
                       onClick={() => changeViewMode('list')}
                     >
@@ -484,8 +487,8 @@ export function ObjectBrowserView({
                       variant={viewMode === 'grid' ? 'primary' : 'ghost'}
                       size="icon"
                       className="rounded-none"
-                      aria-label="Icon view"
-                      title="Icon view"
+                      aria-label={t('objects:iconView')}
+                      title={t('objects:iconView')}
                       aria-pressed={viewMode === 'grid'}
                       onClick={() => changeViewMode('grid')}
                     >
@@ -496,8 +499,8 @@ export function ObjectBrowserView({
                     variant="secondary"
                     size="icon"
                     onClick={onRefresh}
-                    title="Refresh"
-                    aria-label="Refresh"
+                    title={t('common:actions.refresh')}
+                    aria-label={t('common:actions.refresh')}
                     disabled={isRefreshing}
                   >
                     <RotateCwIcon
@@ -543,19 +546,19 @@ export function ObjectBrowserView({
                 >
                   <input {...getInputProps()} />
                   <p className="text-sm">
-                    Drag and drop files/folders or{' '}
+                    {t('objects:uploadPrompt')}{' '}
                     <label
                       htmlFor="file-input"
                       className="font-medium text-primary hover:underline cursor-pointer"
                     >
-                      select files
+                      {t('objects:browseFiles')}
                     </label>
                     {' / '}
                     <label
                       htmlFor="folder-input"
                       className="font-medium text-primary hover:underline cursor-pointer"
                     >
-                      select folder
+                      {t('objects:browseFolders')}
                     </label>
                   </p>
                   <input
@@ -614,9 +617,9 @@ export function ObjectBrowserView({
                     </div>
                   </div>
                   <div className="text-center space-y-2">
-                    <p className="text-lg font-semibold text-primary">Drop files here to upload</p>
+                    <p className="text-lg font-semibold text-primary">{t('objects:dropUpload')}</p>
                     <p className="text-sm text-muted-foreground">
-                      Files will be uploaded to {currentPath || 'root'}
+                      {t('objects:uploadDestination', { path: currentPath || t('objects:root') })}
                     </p>
                   </div>
                 </div>
@@ -719,7 +722,7 @@ export function ObjectBrowserView({
         }}
         title={getBulkDeleteTitle(pendingDelete)}
         description={getBulkDeleteDescription(pendingDelete)}
-        confirmLabel="Delete"
+        confirmLabel={t('objects:delete')}
         loading={bulkDeleting}
         onConfirm={handleConfirmBulkDelete}
       />
@@ -751,13 +754,13 @@ export function ObjectBrowserView({
 
 // Builds a concise title summarising what the bulk-delete dialog will remove.
 function getBulkDeleteTitle(pending: {keys: string[]; prefixes: string[]} | null): string {
-  if (!pending) return 'Delete items?';
+  if (!pending) return i18n.t('objects:deleteItemsTitle');
   const {keys, prefixes} = pending;
   const total = keys.length + prefixes.length;
   if (keys.length === 0 && prefixes.length === 1) {
-    return 'Delete folder?';
+    return i18n.t('objects:deleteFolderTitle');
   }
-  return `Delete ${total} item${total !== 1 ? 's' : ''}?`;
+  return i18n.t('objects:deleteCountTitle', { count: total });
 }
 
 // Spells out the file/folder counts and warns that folders are removed recursively.
@@ -766,17 +769,15 @@ function getBulkDeleteDescription(pending: {keys: string[]; prefixes: string[]} 
   const {keys, prefixes} = pending;
   const parts: string[] = [];
   if (keys.length > 0) {
-    parts.push(`${keys.length} file${keys.length !== 1 ? 's' : ''}`);
+    parts.push(i18n.t('objects:deleteSummaryFiles', { count: keys.length }));
   }
   if (prefixes.length > 0) {
-    parts.push(`${prefixes.length} folder${prefixes.length !== 1 ? 's' : ''}`);
+    parts.push(i18n.t('objects:deleteSummaryFolders', { count: prefixes.length }));
   }
   const summary = parts.join(' and ');
 
   if (prefixes.length > 0) {
-    return `This will permanently delete ${summary}. Every object stored inside the selected folder${
-      prefixes.length !== 1 ? 's' : ''
-    } will be removed recursively.`;
+    return i18n.t('objects:deleteSummaryRecursive', { summary, count: prefixes.length });
   }
-  return `This will permanently delete ${summary}.`;
+  return i18n.t('objects:deleteSummary', { summary });
 }

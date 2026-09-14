@@ -4,8 +4,10 @@ import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslation } from 'react-i18next';
 
 export function TokenLoginForm({ bootstrap = false }: { bootstrap?: boolean }) {
+  const { t } = useTranslation('auth');
   const [token, setToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchParams] = useSearchParams();
@@ -34,22 +36,22 @@ export function TokenLoginForm({ bootstrap = false }: { bootstrap?: boolean }) {
         <div className="flex items-center justify-center mb-4">
           <img
             src="/garage.png"
-            alt="Garage Logo"
+            alt={t('login.logoAlt')}
             className="h-16 w-16 object-contain"
           />
         </div>
         <CardTitle className="text-2xl text-center">
-          {bootstrap ? 'Set up Garage UI' : 'Welcome to Garage UI'}
+          {bootstrap ? t('setup.tokenTitle') : t('login.welcome')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="admin-token" className="text-sm font-medium">Admin Token</label>
+            <label htmlFor="admin-token" className="text-sm font-medium">{t('login.token')}</label>
             <Input
               id="admin-token"
               type="password"
-              placeholder="Enter your Garage admin token"
+              placeholder={t('login.tokenPlaceholder')}
               value={token}
               onChange={(e) => setToken(e.target.value)}
               required
@@ -59,7 +61,7 @@ export function TokenLoginForm({ bootstrap = false }: { bootstrap?: boolean }) {
           </div>
           {bootstrap && (
             <p className="text-sm leading-6 text-muted-foreground">
-              Use the Garage admin token once to create the local Garage UI administrator.
+              {t('setup.tokenHelp')}
             </p>
           )}
           <Button
@@ -67,7 +69,7 @@ export function TokenLoginForm({ bootstrap = false }: { bootstrap?: boolean }) {
             className="w-full"
             disabled={isLoading || !token}
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? t('login.signingIn') : t('login.signIn')}
           </Button>
         </form>
       </CardContent>

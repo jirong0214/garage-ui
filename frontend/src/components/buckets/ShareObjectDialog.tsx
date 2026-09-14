@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectOption } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { useTranslation } from 'react-i18next';
 
 interface ShareObjectDialogProps {
   open: boolean;
@@ -23,14 +24,14 @@ interface ShareObjectDialogProps {
   objectKey: string;
 }
 
-const expiryOptions = [
-  { value: '900', label: '15 minutes' },
-  { value: '3600', label: '1 hour' },
-  { value: '86400', label: '24 hours' },
-  { value: '604800', label: '7 days' },
-];
-
 function ShareObjectDialogInstance({ open, onOpenChange, bucketName, objectKey }: ShareObjectDialogProps) {
+  const { t } = useTranslation(['objects', 'common']);
+  const expiryOptions = [
+    { value: '900', label: t('objects:expiration.minutes15') },
+    { value: '3600', label: t('objects:expiration.hour') },
+    { value: '86400', label: t('objects:expiration.hours24') },
+    { value: '604800', label: t('objects:expiration.days7') },
+  ];
   const [expiresIn, setExpiresIn] = useState('3600');
   const [loading, setLoading] = useState(false);
   const [signedURL, setSignedURL] = useState('');
@@ -40,9 +41,9 @@ function ShareObjectDialogInstance({ open, onOpenChange, bucketName, objectKey }
       setLoading(true);
       const url = await objectsApi.getPresignedUrl(bucketName, objectKey, Number(expiresIn));
       setSignedURL(url);
-      toast.success('Signed URL created');
+      toast.success(t('objects:signedUrlCreated'));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create signed URL');
+      toast.error(error instanceof Error ? error.message : t('objects:signedUrlFailed'));
     } finally {
       setLoading(false);
     }
@@ -51,9 +52,9 @@ function ShareObjectDialogInstance({ open, onOpenChange, bucketName, objectKey }
   const handleCopy = async () => {
     try {
       await copyText(signedURL);
-      toast.success('Signed URL copied');
+      toast.success(t('objects:signedUrlCopied'));
     } catch {
-      toast.error('Failed to copy');
+      toast.error(t('common:errors.copyFailed'));
     }
   };
 
@@ -67,13 +68,13 @@ function ShareObjectDialogInstance({ open, onOpenChange, bucketName, objectKey }
       <DialogContent>
         <DialogHeader>
           <div>
-            <DialogTitle>Signed URL</DialogTitle>
+            <DialogTitle>{t('objects:signedUrl')}</DialogTitle>
             <DialogDescription className="break-all">{objectKey}</DialogDescription>
           </div>
         </DialogHeader>
         <DialogBody className="space-y-3">
           <div className="text-[13px] font-medium text-[var(--foreground)]">
-            Expires in
+            {t('objects:expiresIn')}
           </div>
           <div>
             <Select value={expiresIn} onChange={handleExpiryChange} disabled={loading}>
@@ -87,7 +88,7 @@ function ShareObjectDialogInstance({ open, onOpenChange, bucketName, objectKey }
               <Input
                 readOnly
                 value={signedURL}
-                aria-label="Signed URL"
+                aria-label={t('objects:signedUrl')}
                 className="min-w-0 font-mono text-[12px]"
                 onFocus={(event) => event.currentTarget.select()}
               />
@@ -95,8 +96,8 @@ function ShareObjectDialogInstance({ open, onOpenChange, bucketName, objectKey }
                 type="button"
                 variant="secondary"
                 size="icon"
-                aria-label="Copy signed URL"
-                title="Copy signed URL"
+                aria-label={t('objects:copySignedUrl')}
+                title={t('objects:copySignedUrl')}
                 onClick={handleCopy}
               >
                 <Copy />
@@ -105,10 +106,10 @@ function ShareObjectDialogInstance({ open, onOpenChange, bucketName, objectKey }
           )}
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>Cancel</Button>
+          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>{t('common:actions.cancel')}</Button>
           <Button onClick={generateSignedURL} disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : <Link2 />}
-            {signedURL ? 'Regenerate URL' : 'Generate URL'}
+            {signedURL ? t('objects:regenerateUrl') : t('objects:generateUrl')}
           </Button>
         </DialogFooter>
       </DialogContent>

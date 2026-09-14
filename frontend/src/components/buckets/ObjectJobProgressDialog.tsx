@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {IconTile} from '@/components/ui/icon-tile';
+import { useTranslation } from 'react-i18next';
 
 const terminalStatuses = new Set(['completed', 'completed_with_errors', 'failed', 'cancelled']);
 
@@ -25,6 +26,7 @@ interface ObjectJobProgressDialogProps {
 }
 
 export function ObjectJobProgressDialog({jobId, onClose, onCompleted}: ObjectJobProgressDialogProps) {
+  const { t } = useTranslation(['objects', 'common']);
   const [job, setJob] = useState<ObjectJob | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const completedRef = useRef<string | undefined>(undefined);
@@ -102,16 +104,16 @@ export function ObjectJobProgressDialog({jobId, onClose, onCompleted}: ObjectJob
         <DialogHeader>
           <IconTile icon={<StatusIcon className={!terminal ? 'animate-spin' : ''} />} tone={tone} size="md" />
           <div className="min-w-0 flex-1">
-            <DialogTitle>{job ? `${job.operation[0].toUpperCase()}${job.operation.slice(1)} items` : 'Preparing operation'}</DialogTitle>
+            <DialogTitle>{job ? t(`objects:job.${job.operation}Items`) : t('objects:job.preparing')}</DialogTitle>
             <DialogDescription>
-              {scanning ? 'Scanning selected folders…' : job?.status.replaceAll('_', ' ')}
+              {scanning ? t('objects:job.scanning') : job ? t(`objects:job.status.${job.status}`) : ''}
             </DialogDescription>
           </div>
         </DialogHeader>
         <DialogBody className="space-y-4">
           <div>
             <div className="mb-2 flex items-center justify-between text-sm">
-              <span>{scanning ? 'Discovering objects' : `${job?.processed ?? 0} of ${job?.discovered ?? 0}`}</span>
+              <span>{scanning ? t('objects:job.discovering') : t('objects:job.progress', { processed: job?.processed ?? 0, total: job?.discovered ?? 0 })}</span>
               {!scanning && <span className="font-medium">{Math.round(progress)}%</span>}
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-sunken)]">
@@ -123,10 +125,10 @@ export function ObjectJobProgressDialog({jobId, onClose, onCompleted}: ObjectJob
           </div>
           {job && (
             <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-              <Stat label="Succeeded" value={job.succeeded} />
-              <Stat label="Skipped" value={job.skipped} />
-              <Stat label="Failed" value={job.failed} />
-              <Stat label="Processed" value={formatBytes(job.bytesProcessed)} />
+              <Stat label={t('objects:job.succeeded')} value={job.succeeded} />
+              <Stat label={t('objects:job.skipped')} value={job.skipped} />
+              <Stat label={t('objects:job.failed')} value={job.failed} />
+              <Stat label={t('objects:job.processed')} value={formatBytes(job.bytesProcessed)} />
             </div>
           )}
           {job?.currentKey && (
@@ -142,11 +144,11 @@ export function ObjectJobProgressDialog({jobId, onClose, onCompleted}: ObjectJob
         </DialogBody>
         <DialogFooter>
           {terminal ? (
-            <Button onClick={onClose}>Close</Button>
+            <Button onClick={onClose}>{t('common:actions.close')}</Button>
           ) : (
             <Button variant="secondary" onClick={() => void cancel()} disabled={!job || cancelling}>
               {cancelling ? <Loader2 className="animate-spin" /> : <StopCircle />}
-              Cancel
+              {t('objects:job.cancel')}
             </Button>
           )}
         </DialogFooter>

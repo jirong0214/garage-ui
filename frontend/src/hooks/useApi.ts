@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bucketsApi, objectsApi, accessApi, garageApi, analyticsApi } from '@/lib/api';
 import { queryKeys } from '@/lib/query-client';
 import { toast } from 'sonner';
+import i18n from '@/i18n';
 
 
 export function useBuckets(enabled = true) {
@@ -29,7 +30,7 @@ export function useCreateBucket() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
-      toast.success('Bucket created successfully');
+      toast.success(i18n.t('buckets:created'));
     },
   });
 }
@@ -42,7 +43,7 @@ export function useDeleteBucket() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
-      toast.success('Bucket deleted successfully');
+      toast.success(i18n.t('buckets:deleted'));
     },
   });
 }
@@ -59,7 +60,7 @@ export function useGrantBucketPermission() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.detail(variables.bucketName) });
       queryClient.invalidateQueries({ queryKey: queryKeys.accessKeys.all });
-      toast.success('Permissions granted successfully');
+      toast.success(i18n.t('success.permissionsGranted'));
     },
   });
 }
@@ -80,7 +81,7 @@ export function useUpdateBucketQuotas() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.detail(variables.bucketName) });
-      toast.success('Quotas updated successfully');
+      toast.success(i18n.t('buckets:quotaUpdated'));
     },
   });
 }
@@ -104,7 +105,7 @@ export function useUploadObject() {
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.list(variables.bucket) });
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.detail(variables.bucket) });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
-      toast.success('File uploaded successfully');
+      toast.success(i18n.t('success.fileUploaded'));
     },
   });
 }
@@ -119,7 +120,7 @@ export function useUploadMultipleObjects() {
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.list(variables.bucket) });
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.detail(variables.bucket) });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
-      toast.success('Files uploaded successfully');
+      toast.success(i18n.t('success.filesUploaded'));
     },
   });
 }
@@ -134,7 +135,7 @@ export function useDeleteObject() {
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.list(variables.bucket) });
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.detail(variables.bucket) });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
-      toast.success('File deleted successfully');
+      toast.success(i18n.t('success.fileDeleted'));
     },
   });
 }
@@ -149,7 +150,7 @@ export function useDeleteMultipleObjects() {
       queryClient.invalidateQueries({ queryKey: queryKeys.objects.list(variables.bucket) });
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.detail(variables.bucket) });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
-      toast.success(`${variables.keys.length} files deleted successfully`);
+      toast.success(i18n.t('success.filesDeleted', { count: variables.keys.length }));
     },
   });
 }
@@ -178,7 +179,7 @@ export function useCreateAccessKey() {
       accessApi.createKey(name, permissions),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.accessKeys.all });
-      toast.success('Access key created successfully');
+      toast.success(i18n.t('success.accessKeyCreated'));
     },
   });
 }
@@ -191,7 +192,7 @@ export function useDeleteAccessKey() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.accessKeys.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.buckets.all });
-      toast.success('Access key deleted successfully');
+      toast.success(i18n.t('success.accessKeyDeleted'));
     },
   });
 }
@@ -205,7 +206,7 @@ export function useUpdateAccessKey() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.accessKeys.detail(variables.keyId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.accessKeys.list() });
-      toast.success('Access key updated successfully');
+      toast.success(i18n.t('success.accessKeyUpdated'));
     },
   });
 }

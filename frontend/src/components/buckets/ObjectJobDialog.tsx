@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import {IconTile} from '@/components/ui/icon-tile';
 import {Select, SelectOption} from '@/components/ui/select';
+import { useTranslation } from 'react-i18next';
 
 interface ObjectJobDialogProps {
   open: boolean;
@@ -46,6 +47,7 @@ export function ObjectJobDialog({
   destinationBuckets,
   onStarted,
 }: ObjectJobDialogProps) {
+  const { t } = useTranslation(['objects', 'common']);
   const initialBucket = destinationBuckets.some((bucket) => bucket.name === sourceBucket)
     ? sourceBucket
     : (destinationBuckets[0]?.name ?? '');
@@ -81,14 +83,14 @@ export function ObjectJobDialog({
         if (!cancelled) {
           setFolders([]);
           setNextToken(undefined);
-          toast.error('Failed to load destination folders');
+          toast.error(t('objects:transfer.loadFoldersFailed'));
         }
       })
       .finally(() => {
         if (!cancelled) setLoadingFolders(false);
       });
     return () => { cancelled = true; };
-  }, [currentPrefix, destinationBucket, open]);
+  }, [currentPrefix, destinationBucket, open, t]);
 
   const loadMore = async () => {
     if (!nextToken || loadingFolders) return;
@@ -101,7 +103,7 @@ export function ObjectJobDialog({
       ]);
       setNextToken(result.nextContinuationToken);
     } catch {
-      toast.error('Failed to load more folders');
+      toast.error(t('objects:transfer.loadMoreFailed'));
     } finally {
       setLoadingFolders(false);
     }
@@ -123,7 +125,7 @@ export function ObjectJobDialog({
       onStarted(job);
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : `Failed to start ${operation}`);
+      toast.error(error instanceof Error ? error.message : t('objects:transfer.startFailed', { operation: t(`objects:${operation}`) }));
     } finally {
       setSubmitting(false);
     }
@@ -135,15 +137,15 @@ export function ObjectJobDialog({
         <DialogHeader>
           <IconTile icon={<Icon />} tone="primary" size="md" />
           <div className="min-w-0 flex-1">
-            <DialogTitle>{operation === 'copy' ? 'Copy items' : 'Move items'}</DialogTitle>
+            <DialogTitle>{operation === 'copy' ? t('objects:transfer.copyItems') : t('objects:transfer.moveItems')}</DialogTitle>
             <DialogDescription>
-              Choose a destination for {count} selected item{count === 1 ? '' : 's'}.
+              {t('objects:transfer.selectedDestination', { count })}
             </DialogDescription>
           </div>
         </DialogHeader>
         <DialogBody className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Destination bucket</label>
+            <label className="text-sm font-medium">{t('objects:transfer.destinationBucket')}</label>
             <Select
               value={destinationBucket}
               onChange={(value) => {
@@ -183,11 +185,11 @@ export function ObjectJobDialog({
             <div className="max-h-64 min-h-32 overflow-y-auto p-2">
               {loadingFolders && folders.length === 0 ? (
                 <div className="flex h-28 items-center justify-center text-[var(--muted-foreground)]">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading folders
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('objects:transfer.loadingFolders')}
                 </div>
               ) : folders.length === 0 ? (
                 <div className="flex h-28 items-center justify-center text-sm text-[var(--muted-foreground)]">
-                  No folders in this location
+                  {t('objects:transfer.noFolders')}
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -208,7 +210,7 @@ export function ObjectJobDialog({
                   })}
                   {nextToken && (
                     <Button variant="ghost" size="sm" className="w-full" onClick={() => void loadMore()} disabled={loadingFolders}>
-                      {loadingFolders && <Loader2 className="animate-spin" />} Load more
+                      {loadingFolders && <Loader2 className="animate-spin" />} {t('objects:loadMore')}
                     </Button>
                   )}
                 </div>
@@ -217,7 +219,7 @@ export function ObjectJobDialog({
           </div>
 
           <div className="rounded-md bg-[var(--surface-sunken)] px-3 py-2">
-            <div className="text-xs text-[var(--muted-foreground)]">Destination</div>
+            <div className="text-xs text-[var(--muted-foreground)]">{t('objects:transfer.destination')}</div>
             <div className="mt-0.5 break-all font-mono text-[13px]">
               {destinationBucket}/{currentPrefix}
             </div>
@@ -225,14 +227,14 @@ export function ObjectJobDialog({
 
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={overwrite} onCheckedChange={setOverwrite} disabled={submitting} />
-            Replace existing destination objects
+            {t('objects:transfer.overwriteMany')}
           </label>
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
+          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={submitting}>{t('common:actions.cancel')}</Button>
           <Button onClick={() => void submit()} disabled={!destinationBucket || submitting}>
             {submitting ? <Loader2 className="animate-spin" /> : <Icon />}
-            {operation === 'copy' ? 'Start copy' : 'Start move'}
+            {operation === 'copy' ? t('objects:transfer.startCopy') : t('objects:transfer.startMove')}
           </Button>
         </DialogFooter>
       </DialogContent>

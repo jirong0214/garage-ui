@@ -9,8 +9,10 @@ import { DangerousConfirmDialog } from '@/components/ui/dangerous-confirm-dialog
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import type { Bucket } from '@/types';
+import { useTranslation } from 'react-i18next';
 
 export function Buckets() {
+  const { t } = useTranslation(['buckets', 'common']);
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,12 +49,12 @@ export function Buckets() {
   return (
     <div>
       <PageHeader
-        title="Buckets"
-        subtitle={`${buckets.length} bucket${buckets.length === 1 ? '' : 's'}`}
+        title={t('buckets:title')}
+        subtitle={t('common:count.bucket', { count: buckets.length })}
         actions={
           hasAnyPerm('bucket.create') && (
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus /> Create bucket
+              <Plus /> {t('buckets:create')}
             </Button>
           )
         }
@@ -79,12 +81,12 @@ export function Buckets() {
       <DangerousConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
-        title={deleteTarget ? `Delete bucket "${deleteTarget.name}"?` : ''}
+        title={deleteTarget ? t('buckets:deleteTitle', { name: deleteTarget.name }) : ''}
         description={deleteTarget
-          ? `${deleteTarget.objectCount ?? 0} object${deleteTarget.objectCount === 1 ? '' : 's'} in this bucket will be permanently removed.`
+          ? t('buckets:deleteDescription', { count: deleteTarget.objectCount ?? 0 })
           : undefined}
         confirmationText={deleteTarget?.name ?? ''}
-        confirmLabel="Delete bucket"
+        confirmLabel={t('buckets:delete')}
         loading={deleting}
         onConfirm={confirmDelete}
       />

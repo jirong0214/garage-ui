@@ -1,5 +1,6 @@
 import { objectsApi } from './api';
 import { toast } from 'sonner';
+import i18n, { currentLocale } from '@/i18n';
 
 /**
  * Download an object from a bucket by fetching it as a blob and clicking a
@@ -16,7 +17,7 @@ export async function downloadObject(bucket: string, key: string): Promise<void>
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
-    toast.success('Download started');
+    toast.success(i18n.t('objects:downloadStarted', { defaultValue: 'Download started' }));
   } catch {
     // error toast handled by axios interceptor
   }
@@ -26,45 +27,45 @@ export async function downloadObject(bucket: string, key: string): Promise<void>
  * Get the file type based on file extension
  */
 export function getFileType(filename: string): string {
-  if (!filename) return 'Unknown';
+  if (!filename) return i18n.t('fileTypes.unknown');
 
   const extension = filename.split('.').pop()?.toLowerCase() || '';
-  if (!extension) return 'File';
+  if (!extension) return i18n.t('fileTypes.file');
 
   const typeMap: Record<string, string> = {
     // Images
-    'png': 'Image',
-    'jpg': 'Image',
-    'jpeg': 'Image',
-    'gif': 'Image',
-    'svg': 'Image',
-    'webp': 'Image',
+    'png': i18n.t('fileTypes.image'),
+    'jpg': i18n.t('fileTypes.image'),
+    'jpeg': i18n.t('fileTypes.image'),
+    'gif': i18n.t('fileTypes.image'),
+    'svg': i18n.t('fileTypes.image'),
+    'webp': i18n.t('fileTypes.image'),
 
     // Documents
     'pdf': 'PDF',
-    'doc': 'Document',
-    'docx': 'Document',
-    'xls': 'Spreadsheet',
-    'xlsx': 'Spreadsheet',
-    'ppt': 'Presentation',
-    'pptx': 'Presentation',
-    'txt': 'Text',
+    'doc': i18n.t('fileTypes.document'),
+    'docx': i18n.t('fileTypes.document'),
+    'xls': i18n.t('fileTypes.spreadsheet'),
+    'xlsx': i18n.t('fileTypes.spreadsheet'),
+    'ppt': i18n.t('fileTypes.presentation'),
+    'pptx': i18n.t('fileTypes.presentation'),
+    'txt': i18n.t('fileTypes.text'),
 
     // Archives
-    'zip': 'Archive',
-    'rar': 'Archive',
-    'gz': 'Archive',
-    'tar': 'Archive',
+    'zip': i18n.t('fileTypes.archive'),
+    'rar': i18n.t('fileTypes.archive'),
+    'gz': i18n.t('fileTypes.archive'),
+    'tar': i18n.t('fileTypes.archive'),
 
     // Video/Audio
-    'mp4': 'Video',
-    'avi': 'Video',
-    'mov': 'Video',
-    'mkv': 'Video',
-    'webm': 'Video',
-    'mp3': 'Audio',
-    'wav': 'Audio',
-    'flac': 'Audio',
+    'mp4': i18n.t('fileTypes.video'),
+    'avi': i18n.t('fileTypes.video'),
+    'mov': i18n.t('fileTypes.video'),
+    'mkv': i18n.t('fileTypes.video'),
+    'webm': i18n.t('fileTypes.video'),
+    'mp3': i18n.t('fileTypes.audio'),
+    'wav': i18n.t('fileTypes.audio'),
+    'flac': i18n.t('fileTypes.audio'),
 
     // Code
     'js': 'JavaScript',
@@ -97,22 +98,24 @@ export function formatRelativeTime(date: Date, now = new Date()): string {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) !== 1 ? 's' : ''} ago`;
-  return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) !== 1 ? 's' : ''} ago`;
+  if (diffMins < 1) return i18n.t('time.justNow');
+  if (diffMins < 60) return i18n.t('time.minuteAgo', { count: diffMins });
+  if (diffHours < 24) return i18n.t('time.hourAgo', { count: diffHours });
+  if (diffDays < 7) return i18n.t('time.dayAgo', { count: diffDays });
+  if (diffDays < 30) return i18n.t('time.weekAgo', { count: Math.floor(diffDays / 7) });
+  return i18n.t('time.monthAgo', { count: Math.floor(diffDays / 30) });
 }
 
-const padDatePart = (value: number) => String(value).padStart(2, '0');
-
 export function formatLocalDateTime(date: Date): string {
-  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
+  return new Intl.DateTimeFormat(currentLocale(), {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).format(date);
 }
 
 export function formatUTCDateTime(date: Date): string {
-  return `${date.getUTCFullYear()}-${padDatePart(date.getUTCMonth() + 1)}-${padDatePart(date.getUTCDate())} ${padDatePart(date.getUTCHours())}:${padDatePart(date.getUTCMinutes())}:${padDatePart(date.getUTCSeconds())} UTC`;
+  return new Intl.DateTimeFormat(currentLocale(), {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC', timeZoneName: 'short',
+  }).format(date);
 }
 
 export function formatObjectModifiedTime(date: Date, now = new Date()): string {
@@ -127,13 +130,13 @@ export function formatObjectModifiedTime(date: Date, now = new Date()): string {
  * Format bytes to human-readable size
  */
 export function formatBytes(bytes: number, decimals = 2): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return `0 ${i18n.t('units.bytes')}`;
 
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const sizes = [i18n.t('units.bytes'), 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  return `${new Intl.NumberFormat(currentLocale(), { maximumFractionDigits: dm }).format(bytes / Math.pow(k, i))} ${sizes[i]}`;
 }

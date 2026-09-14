@@ -21,11 +21,13 @@ import {
   QUOTA_UNIT_BYTES,
   type QuotaUnit,
 } from '@/lib/quota-utils';
+import { useTranslation } from 'react-i18next';
+import { currentLocale } from '@/i18n';
 
 const formatBytesOrDash = (n?: number) => (n == null ? '—' : formatBytes(n));
 const formatDateOrDash = (iso?: string) => (iso ? formatDateUtil(iso) : '—');
 
-const quotaFormSchema = z
+const createQuotaFormSchema = (translate: (key: 'positiveInteger') => string) => z
   .object({
     maxSizeEnabled: z.boolean(),
     maxSizeValue: z.string(),
@@ -40,7 +42,7 @@ const quotaFormSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['maxSizeValue'],
-          message: 'Enter a positive whole number',
+          message: translate('positiveInteger'),
         });
       }
     }
@@ -50,13 +52,13 @@ const quotaFormSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['maxObjectsValue'],
-          message: 'Enter a positive whole number',
+          message: translate('positiveInteger'),
         });
       }
     }
   });
 
-type QuotaFormValues = z.infer<typeof quotaFormSchema>;
+type QuotaFormValues = z.infer<ReturnType<typeof createQuotaFormSchema>>;
 
 function deriveDefaults(quotas: { maxSize?: number; maxObjects?: number } | null | undefined): QuotaFormValues {
   const size = quotas?.maxSize;
@@ -81,6 +83,7 @@ function deriveDefaults(quotas: { maxSize?: number; maxObjects?: number } | null
 }
 
 export function BucketSettings() {
+  const { t } = useTranslation(['buckets', 'common']);
   const { bucketName = '' } = useParams<{ bucketName: string }>();
   const navigate = useNavigate();
   const { data: buckets = [], isLoading } = useBuckets();
@@ -93,6 +96,10 @@ export function BucketSettings() {
   const [deleting, setDeleting] = useState(false);
 
   const defaults = useMemo(() => deriveDefaults(bucket?.quotas), [bucket?.quotas]);
+  const quotaFormSchema = useMemo(
+    () => createQuotaFormSchema((key) => t(`buckets:${key}`)),
+    [t],
+  );
 
   const {
     control,
@@ -126,7 +133,7 @@ export function BucketSettings() {
     newMaxObjects !== null && bucket?.objectCount != null && newMaxObjects < currentObjects;
 
   if (isLoading) {
-    return <div className="px-7 py-6 text-[13.5px] text-[var(--muted-foreground)]">Loading…</div>;
+    return <div className="px-7 py-6 text-[13.5px] text-[var(--muted-foreground)]">{t('common:status.loading')}</div>;
   }
   if (!bucket) {
     return (
@@ -134,8 +141,8 @@ export function BucketSettings() {
         <EmptyState
           icon={<AlertTriangle />}
           tone="neutral"
-          title="Bucket not found"
-          description="The bucket you're looking for doesn't exist or you don't have access."
+          title={t('buckets:notFound')}
+          description={t('buckets:notFoundDescription')}
         />
       </div>
     );
@@ -165,19 +172,19 @@ export function BucketSettings() {
       <section className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
         <header className="flex items-center gap-2 border-b border-[var(--border)] px-5 py-3">
           <Info className="h-4 w-4 text-[var(--primary)]" />
-          <h2 className="text-[15px] font-semibold">Bucket info</h2>
+          <h2 className="text-[15px] font-semibold">{t('buckets:info')}</h2>
         </header>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-5 sm:grid-cols-2">
-          <Field label="Name" value={<span className="font-mono text-[13.5px]">{bucket.name}</span>} />
-          <Field label="Region" value={bucket.region ?? '—'} />
-          <Field label="Created" value={formatDateOrDash(bucket.creationDate)} />
-          <Field label="Objects" value={bucket.objectCount != null ? bucket.objectCount.toLocaleString() : '—'} />
-          <Field label="Size" value={formatBytesOrDash(bucket.size)} />
+          <Field label={t('common:fields.name')} value={<span className="font-mono text-[13.5px]">{bucket.name}</span>} />
+          <Field label={t('common:fields.region')} value={bucket.region ?? '—'} />
+          <Field label={t('common:fields.created')} value={formatDateOrDash(bucket.creationDate)} />
+          <Field label={t('buckets:tabs.objects')} value={bucket.objectCount != null ? bucket.objectCount.toLocaleString(currentLocale()) : '—'} />
+          <Field label={t('common:fields.size')} value={formatBytesOrDash(bucket.size)} />
           <Field
-            label="Website"
+            label={t('buckets:website')}
             value={
               <Badge variant={bucket.websiteAccess ? 'success' : 'neutral'}>
-                {bucket.websiteAccess ? 'Enabled' : 'Disabled'}
+                {bucket.websiteAccess ? t('common:status.enabled') : t('common:status.disabled')}
               </Badge>
             }
           />
@@ -188,7 +195,7 @@ export function BucketSettings() {
       <section className="rounded-xl border border-[var(--border)] bg-[var(--card)]">
         <header className="flex items-center gap-2 border-b border-[var(--border)] px-5 py-3">
           <Gauge className="h-4 w-4 text-[var(--primary)]" />
-          <h2 className="text-[15px] font-semibold">Quotas</h2>
+          <h2 className="text-[15px] font-semibold">{t('buckets:quotas')}</h2>
         </header>
 
         <form onSubmit={onSubmit} className="space-y-6 px-5 py-5">
@@ -201,7 +208,7 @@ export function BucketSettings() {
                 render={({ field }) => (
                   <label className="flex items-center gap-2 text-[14px]">
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    <span>Limit total size</span>
+                    <span>{t('buckets:limitTotalSize')}</span>
                   </label>
                 )}
               />
@@ -233,14 +240,14 @@ export function BucketSettings() {
               />
             </div>
             <p className="text-[13px] text-[var(--muted-foreground)]">
-              Current: {formatBytesOrDash(bucket.size)}
+              {t('buckets:current', { value: formatBytesOrDash(bucket.size) })}
             </p>
             {errors.maxSizeValue && (
               <p className="text-[13px] text-[var(--destructive)]">{errors.maxSizeValue.message}</p>
             )}
             {sizeBelowCurrent && (
               <p className="text-[13px] text-amber-600 dark:text-amber-400">
-                Current size ({formatBytes(currentSize)}) exceeds this limit. New writes will be rejected.
+                {t('buckets:sizeQuotaWarning', { value: formatBytes(currentSize) })}
               </p>
             )}
           </div>
@@ -254,7 +261,7 @@ export function BucketSettings() {
                 render={({ field }) => (
                   <label className="flex items-center gap-2 text-[14px]">
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    <span>Limit object count</span>
+                    <span>{t('buckets:limitObjectCount')}</span>
                   </label>
                 )}
               />
@@ -268,21 +275,21 @@ export function BucketSettings() {
               />
             </div>
             <p className="text-[13px] text-[var(--muted-foreground)]">
-              Current: {bucket.objectCount != null ? bucket.objectCount.toLocaleString() : '—'}
+              {t('buckets:current', { value: bucket.objectCount != null ? bucket.objectCount.toLocaleString(currentLocale()) : '—' })}
             </p>
             {errors.maxObjectsValue && (
               <p className="text-[13px] text-[var(--destructive)]">{errors.maxObjectsValue.message}</p>
             )}
             {objectsBelowCurrent && (
               <p className="text-[13px] text-amber-600 dark:text-amber-400">
-                Current object count ({currentObjects.toLocaleString()}) exceeds this limit. New writes will be rejected.
+                {t('buckets:objectQuotaWarning', { value: currentObjects.toLocaleString(currentLocale()) })}
               </p>
             )}
           </div>
 
           <div className="flex items-center gap-3 border-t border-[var(--border)] pt-4">
             <Button type="submit" disabled={!isDirty || isSubmitting}>
-              Save changes
+              {t('buckets:saveChanges')}
             </Button>
             <Button
               type="button"
@@ -290,7 +297,7 @@ export function BucketSettings() {
               onClick={() => reset(defaults)}
               disabled={!isDirty || isSubmitting}
             >
-              Reset
+              {t('buckets:reset')}
             </Button>
           </div>
         </form>
@@ -300,20 +307,20 @@ export function BucketSettings() {
       {canBucket(bucket, 'bucket.delete') && (
         <section className="rounded-xl border border-[var(--danger-border)] bg-[var(--card)]">
           <header className="border-b border-[var(--danger-border)] px-5 py-3">
-            <h2 className="text-[15px] font-semibold text-[var(--destructive)]">Danger zone</h2>
+            <h2 className="text-[15px] font-semibold text-[var(--destructive)]">{t('buckets:dangerZone')}</h2>
             <p className="mt-0.5 text-[13.5px] text-[var(--muted-foreground)]">
-              Destructive actions for this bucket.
+              {t('buckets:dangerDescription')}
             </p>
           </header>
           <div className="flex items-center justify-between gap-4 px-5 py-4">
             <div className="min-w-0">
-              <div className="text-[14px] font-medium">Delete bucket</div>
+              <div className="text-[14px] font-medium">{t('buckets:delete')}</div>
               <div className="text-[13.5px] text-[var(--muted-foreground)]">
-                All objects in this bucket will be permanently removed.
+                {t('buckets:deleteAllDescription')}
               </div>
             </div>
             <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-              Delete bucket
+              {t('buckets:delete')}
             </Button>
           </div>
         </section>
@@ -324,10 +331,10 @@ export function BucketSettings() {
         onOpenChange={(o) => {
           if (!o && !deleting) setDeleteOpen(false);
         }}
-        title={`Delete bucket "${bucket.name}"?`}
-        description={`${bucket.objectCount ?? 0} object${bucket.objectCount === 1 ? '' : 's'} in this bucket will be permanently removed.`}
+        title={t('buckets:deleteTitle', { name: bucket.name })}
+        description={t('buckets:deleteDescription', { count: bucket.objectCount ?? 0 })}
         confirmationText={bucket.name}
-        confirmLabel="Delete bucket"
+        confirmLabel={t('buckets:delete')}
         loading={deleting}
         onConfirm={confirmDelete}
       />

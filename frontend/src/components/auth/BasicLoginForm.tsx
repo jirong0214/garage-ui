@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogIn } from 'lucide-react';
 import type { AuthConfig } from '@/types/auth';
+import { useTranslation } from 'react-i18next';
 
 interface BasicLoginFormProps {
   showOIDC?: boolean;
@@ -13,6 +14,7 @@ interface BasicLoginFormProps {
 }
 
 export function BasicLoginForm({ showOIDC = false, config }: BasicLoginFormProps) {
+  const { t } = useTranslation('auth');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -45,22 +47,22 @@ export function BasicLoginForm({ showOIDC = false, config }: BasicLoginFormProps
         <div className="flex items-center justify-center mb-4">
           <img
             src="/garage.png"
-            alt="Garage Logo"
+            alt={t('login.logoAlt')}
             className="h-16 w-16 object-contain"
           />
         </div>
         <CardTitle className="text-2xl text-center">
-          Welcome to Garage UI
+          {t('login.welcome')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="text-sm font-medium">Username</label>
+            <label htmlFor="username" className="text-sm font-medium">{t('login.username')}</label>
             <Input
               id="username"
               type="text"
-              placeholder="Enter your username"
+              placeholder={t('login.usernamePlaceholder')}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -69,11 +71,11 @@ export function BasicLoginForm({ showOIDC = false, config }: BasicLoginFormProps
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">Password</label>
+            <label htmlFor="password" className="text-sm font-medium">{t('login.password')}</label>
             <Input
               id="password"
               type="password"
-              placeholder="Enter your password"
+              placeholder={t('login.passwordPlaceholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -86,7 +88,7 @@ export function BasicLoginForm({ showOIDC = false, config }: BasicLoginFormProps
             className="w-full"
             disabled={isLoading || !username || !password}
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? t('login.signingIn') : t('login.signIn')}
           </Button>
         </form>
 
@@ -94,7 +96,7 @@ export function BasicLoginForm({ showOIDC = false, config }: BasicLoginFormProps
           <div className="mt-4">
             <div className="relative mb-4">
               <div className="relative flex justify-center text-xs">
-                <span className="bg-card px-2 text-muted-foreground">or</span>
+                <span className="bg-card px-2 text-muted-foreground">{t('login.or')}</span>
               </div>
             </div>
             <Button
@@ -104,7 +106,7 @@ export function BasicLoginForm({ showOIDC = false, config }: BasicLoginFormProps
               onClick={loginOIDC}
             >
               <LogIn className="mr-2 h-4 w-4" />
-              Sign in with {providerName}
+              {t('login.signInWithOidc', { provider: providerName })}
             </Button>
           </div>
         )}

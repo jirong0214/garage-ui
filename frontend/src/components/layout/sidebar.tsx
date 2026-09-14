@@ -6,34 +6,35 @@ import { useQuery } from '@tanstack/react-query';
 import { healthApi, garageApi } from '@/lib/api';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useBuckets } from '@/hooks/useApi';
+import { useTranslation } from 'react-i18next';
 
 interface NavItem {
-  title: string;
+  titleKey: 'nav.dashboard' | 'nav.buckets' | 'nav.cluster' | 'nav.accessControl';
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   visible?: (p: ReturnType<typeof usePermissions>) => boolean;
 }
 
 interface NavGroup {
-  label?: string;
+  labelKey?: 'nav.storage' | 'nav.clusterGroup';
   items: NavItem[];
 }
 
 const navGroups: NavGroup[] = [
   {
-    items: [{ title: 'Dashboard', href: '/', icon: LayoutDashboard }],
+    items: [{ titleKey: 'nav.dashboard', href: '/', icon: LayoutDashboard }],
   },
   {
-    label: 'Storage',
+    labelKey: 'nav.storage',
     items: [
-      { title: 'Buckets', href: '/buckets', icon: Database, visible: (p) => p.hasAnyPerm('bucket.list') },
+      { titleKey: 'nav.buckets', href: '/buckets', icon: Database, visible: (p) => p.hasAnyPerm('bucket.list') },
     ],
   },
   {
-    label: 'Cluster',
+    labelKey: 'nav.clusterGroup',
     items: [
-      { title: 'Cluster', href: '/cluster', icon: Server, visible: (p) => p.hasAnyClusterAccess },
-      { title: 'Access Control', href: '/access', icon: Key, visible: (p) => p.hasClusterPerm('key.list') },
+      { titleKey: 'nav.cluster', href: '/cluster', icon: Server, visible: (p) => p.hasAnyClusterAccess },
+      { titleKey: 'nav.accessControl', href: '/access', icon: Key, visible: (p) => p.hasClusterPerm('key.list') },
     ],
   },
 ];
@@ -46,6 +47,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: SidebarProps) {
+  const { t } = useTranslation('common');
   const location = useLocation();
   const { config } = useAuthStore();
   const perms = usePermissions();
@@ -89,8 +91,8 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
         <button
           type="button"
           onClick={onToggleCollapse}
-          aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
-          title={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+          aria-label={isCollapsed ? t('nav.expand') : t('nav.collapse')}
+          title={isCollapsed ? t('nav.expand') : t('nav.collapse')}
           className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] md:inline-flex"
         >
           {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
@@ -102,9 +104,9 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
           if (visibleItems.length === 0) return null;
           return (
             <div key={gi}>
-              {group.label && (
+              {group.labelKey && (
                 <div className={cn('px-2 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--muted-foreground)]', isCollapsed && 'md:hidden')}>
-                  {group.label}
+                  {t(group.labelKey)}
                 </div>
               )}
               <ul className="space-y-0.5">
@@ -118,7 +120,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
                       <Link
                         to={item.href}
                         onClick={onClose}
-                        title={isCollapsed ? item.title : undefined}
+                        title={isCollapsed ? t(item.titleKey) : undefined}
                         className={cn(
                           'flex h-9 items-center gap-2 rounded-md px-2.5 text-[14px] transition-colors',
                           isCollapsed && 'md:justify-center md:px-0',
@@ -128,7 +130,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
                         )}
                         >
                         <Icon className="h-4 w-4" />
-                        <span className={cn(isCollapsed && 'md:hidden')}>{item.title}</span>
+                        <span className={cn(isCollapsed && 'md:hidden')}>{t(item.titleKey)}</span>
                       </Link>
                       {item.href === '/buckets' && buckets.length > 0 && (
                         <ul className={cn('mt-1 space-y-0.5 border-l border-[var(--border)] pl-2 ml-4', isCollapsed && 'md:hidden')}>
@@ -175,7 +177,7 @@ export function Sidebar({ isOpen, isCollapsed, onClose, onToggleCollapse }: Side
           className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] text-[var(--muted-foreground)] transition-colors hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
         >
           <BookOpen className="h-3.5 w-3.5" />
-          Documentation
+          {t('nav.documentation')}
         </a>
         {(uiVersion || garageVersion) && (
           <div className="flex items-center gap-1.5 border-t border-[var(--border)] pt-2 w-full justify-center text-[12px] text-[var(--muted-foreground)]">

@@ -1,6 +1,7 @@
 import {useEffect, useRef, type HTMLAttributes, type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 import {cn} from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface ContextMenuProps {
   open: boolean;
@@ -11,6 +12,7 @@ interface ContextMenuProps {
 }
 
 export function ContextMenu({open, x, y, onOpenChange, children}: ContextMenuProps) {
+  const { t } = useTranslation('objects');
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function ContextMenu({open, x, y, onOpenChange, children}: ContextMenuPro
     <div
       ref={menuRef}
       role="menu"
-      aria-label="Object actions"
+      aria-label={t('objectActions')}
       onContextMenu={(event) => event.preventDefault()}
       style={{position: 'fixed', left, top, width: menuWidth, maxHeight: 312}}
       className="z-50 overflow-y-auto rounded-md border border-[var(--border)] bg-[var(--popover)] py-1 text-[var(--popover-foreground)] shadow-md"

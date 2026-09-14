@@ -5,8 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/auth-store';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '@/components/layout/language-switcher';
 
 export function SetupAdmin() {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const { config, user, setupAdmin } = useAuthStore();
   const [username, setUsername] = useState('');
@@ -33,18 +36,19 @@ export function SetupAdmin() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="fixed right-3 top-3"><LanguageSwitcher /></div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 text-primary"><ShieldCheck className="h-6 w-6" /></div>
-          <CardTitle className="text-2xl">Create UI administrator</CardTitle>
-          <p className="text-sm leading-6 text-muted-foreground">This account is stored locally in Garage UI. The Garage admin token will no longer be accepted for sign-in after setup.</p>
+          <CardTitle className="text-2xl">{t('setup.title')}</CardTitle>
+          <p className="text-sm leading-6 text-muted-foreground">{t('setup.details')}</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
-            <div className="space-y-2"><label htmlFor="setup-username" className="text-sm font-medium">Username</label><Input id="setup-username" value={username} onChange={(e) => setUsername(e.target.value)} minLength={3} required disabled={isLoading} autoComplete="username" /></div>
-            <div className="space-y-2"><label htmlFor="setup-password" className="text-sm font-medium">Password</label><Input id="setup-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={12} required disabled={isLoading} autoComplete="new-password" /></div>
-            <div className="space-y-2"><label htmlFor="setup-confirmation" className="text-sm font-medium">Confirm password</label><Input id="setup-confirmation" type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required disabled={isLoading} autoComplete="new-password" /></div>
-            <Button type="submit" className="w-full" disabled={isLoading || username.length < 3 || password.length < 12 || password !== confirmation}>{isLoading ? 'Creating account...' : 'Create administrator'}</Button>
+            <div className="space-y-2"><label htmlFor="setup-username" className="text-sm font-medium">{t('setup.username')}</label><Input id="setup-username" value={username} onChange={(e) => setUsername(e.target.value)} minLength={3} required disabled={isLoading} autoComplete="username" /></div>
+            <div className="space-y-2"><label htmlFor="setup-password" className="text-sm font-medium">{t('setup.password')}</label><Input id="setup-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={12} required disabled={isLoading} autoComplete="new-password" /></div>
+            <div className="space-y-2"><label htmlFor="setup-confirmation" className="text-sm font-medium">{t('setup.confirmPassword')}</label><Input id="setup-confirmation" type="password" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required disabled={isLoading} autoComplete="new-password" /></div>
+            <Button type="submit" className="w-full" disabled={isLoading || username.length < 3 || password.length < 12 || password !== confirmation}>{isLoading ? t('setup.submitting') : t('setup.submit')}</Button>
           </form>
         </CardContent>
       </Card>

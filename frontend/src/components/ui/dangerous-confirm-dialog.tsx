@@ -12,6 +12,7 @@ import {
 import { IconTile } from './icon-tile';
 import { Button } from './button';
 import { Input } from './input';
+import { Trans, useTranslation } from 'react-i18next';
 
 interface DangerousConfirmDialogProps {
   open: boolean;
@@ -33,12 +34,13 @@ export function DangerousConfirmDialog({
   title,
   description,
   confirmationText,
-  confirmLabel = 'Delete',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   icon,
   loading = false,
   onConfirm,
 }: DangerousConfirmDialogProps) {
+  const { t } = useTranslation('common');
   const [value, setValue] = React.useState('');
   React.useEffect(() => { if (!open) setValue(''); }, [open]);
 
@@ -58,11 +60,12 @@ export function DangerousConfirmDialog({
         </DialogHeader>
         <DialogBody className="space-y-3">
           <p className="text-[13.5px] text-[var(--muted-foreground)]">
-            This action cannot be undone. To confirm, type{' '}
-            <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-[13px] text-[var(--foreground)]">
-              {confirmationText}
-            </code>{' '}
-            below.
+            <Trans
+              ns="common"
+              i18nKey="dialog.typeToConfirm"
+              values={{ value: confirmationText }}
+              components={{ code: <code className="rounded bg-[var(--surface-sunken)] px-1 py-0.5 font-mono text-[13px] text-[var(--foreground)]" /> }}
+            />
           </p>
           <Input
             autoFocus
@@ -70,19 +73,19 @@ export function DangerousConfirmDialog({
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
             placeholder={confirmationText}
-            aria-label={`Type ${confirmationText} to confirm`}
+            aria-label={t('dialog.typeValue', { value: confirmationText })}
           />
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>
-            {cancelLabel}
+            {cancelLabel ?? t('actions.cancel')}
           </Button>
           <Button
             variant="destructive"
             onClick={submit}
             disabled={!matches || loading}
           >
-            {loading ? 'Working…' : confirmLabel}
+            {loading ? t('actions.working') : (confirmLabel ?? t('actions.delete'))}
           </Button>
         </DialogFooter>
       </DialogContent>

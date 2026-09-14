@@ -18,6 +18,7 @@ import { ShareObjectDialog } from '@/components/buckets/ShareObjectDialog';
 import { ObjectTransferDialog, type ObjectTransferMode } from '@/components/buckets/ObjectTransferDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useTranslation } from 'react-i18next';
 
 function CardSection({
   title,
@@ -53,6 +54,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 }
 
 function ModifiedTimeDetails({ value }: { value: string }) {
+  const { t } = useTranslation('objects');
   const date = new Date(value);
   const [detailsOpen, setDetailsOpen] = useState(false);
   return (
@@ -63,7 +65,7 @@ function ModifiedTimeDetails({ value }: { value: string }) {
           <TooltipTrigger asChild>
             <button
               type="button"
-              aria-label="Show modified time details"
+              aria-label={t('details.showTime')}
               aria-expanded={detailsOpen}
               onPointerEnter={(event) => {
                 if (event.pointerType === 'mouse') setDetailsOpen(true);
@@ -81,9 +83,9 @@ function ModifiedTimeDetails({ value }: { value: string }) {
             <dl className="grid min-w-max grid-cols-[72px_1fr] gap-x-3 gap-y-1 text-[12.5px]">
               <dt className="text-right text-neutral-400">UTC</dt>
               <dd>{formatUTCDateTime(date)}</dd>
-              <dt className="text-right text-neutral-400">Relative</dt>
+              <dt className="text-right text-neutral-400">{t('details.relative')}</dt>
               <dd>{formatRelativeTime(date)}</dd>
-              <dt className="text-right text-neutral-400">Timestamp</dt>
+              <dt className="text-right text-neutral-400">{t('details.timestamp')}</dt>
               <dd className="font-mono">{date.toISOString()}</dd>
             </dl>
           </TooltipContent>
@@ -94,6 +96,7 @@ function ModifiedTimeDetails({ value }: { value: string }) {
 }
 
 export function ObjectDetailsView() {
+  const { t } = useTranslation(['objects', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
   const { bucketName, '*': encodedObjectKey } = useParams();
@@ -123,7 +126,7 @@ export function ObjectDetailsView() {
 
   useEffect(() => {
     if (!bucketName || !objectKey) {
-      setError('Bucket name and object key are required');
+      setError(t('objects:details.required'));
       setIsLoading(false);
       return;
     }
@@ -134,13 +137,13 @@ export function ObjectDetailsView() {
         const data = await objectsApi.getMetadata(bucketName, objectKey);
         setMetadata(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load object metadata');
+        setError(err instanceof Error ? err.message : t('objects:details.loadFailed'));
       } finally {
         setIsLoading(false);
       }
     };
     fetchMetadata();
-  }, [bucketName, objectKey]);
+  }, [bucketName, objectKey, t]);
 
   useEffect(() => {
     if (!previewFullscreen) return;
@@ -159,12 +162,12 @@ export function ObjectDetailsView() {
   const backHref = originatingListHref ||
     `/buckets/${bucketName}/objects${parentPath ? `?prefix=${encodeURIComponent(parentPath + '/')}` : ''}`;
 
-  const copy = async (text: string, label = 'Copied') => {
+  const copy = async (text: string, label: string = t('objects:details.copied')) => {
     try {
       await copyText(text);
       toast.success(label);
     } catch {
-      toast.error('Failed to copy');
+      toast.error(t('common:errors.copyFailed'));
     }
   };
 
@@ -178,7 +181,7 @@ export function ObjectDetailsView() {
     try {
       setDeleting(true);
       await objectsApi.delete(bucketName, objectKey);
-      toast.success('Object deleted');
+      toast.success(t('objects:details.deleted'));
       navigate(backHref);
     } catch {
       // error toast handled by axios interceptor
@@ -197,7 +200,7 @@ export function ObjectDetailsView() {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center gap-2 text-[var(--muted-foreground)]">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading object details…
+        <Loader2 className="h-4 w-4 animate-spin" /> {t('objects:details.loading')}
       </div>
     );
   }
@@ -206,19 +209,19 @@ export function ObjectDetailsView() {
     return (
       <div className="px-7 py-6">
         <Button variant="secondary" onClick={() => navigate(backHref)} className="mb-4">
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> {t('common:actions.back')}
         </Button>
         <div className="rounded-xl border border-[var(--danger-border)] bg-[var(--danger-soft)] px-5 py-4 text-[13.5px] text-[var(--destructive)]">
-          {error || 'Object not found'}
+          {error || t('objects:details.notFound')}
         </div>
       </div>
     );
   }
 
-  const previewFullscreenLabel = previewFullscreen ? 'Exit fullscreen preview' : 'Open fullscreen preview';
+  const previewFullscreenLabel = previewFullscreen ? t('objects:details.exitFullscreen') : t('objects:details.openFullscreen');
   const previewCard = (
     <CardSection
-      title="Preview"
+      title={t('objects:details.preview')}
       className={cn(previewFullscreen && 'absolute inset-0 z-40 flex flex-col rounded-none border-0')}
       contentClassName={cn(previewFullscreen && 'min-h-0 flex-1')}
       action={
@@ -252,7 +255,7 @@ export function ObjectDetailsView() {
         />
       ) : (
         <div className="px-5 py-10 text-center text-[13px] text-[var(--muted-foreground)]">
-          No preview available for this object.
+          {t('objects:preview.unavailable')}
         </div>
       )}
     </CardSection>
@@ -268,8 +271,8 @@ export function ObjectDetailsView() {
           <div className="min-w-0">
             <button
               type="button"
-              onClick={() => copy(metadata.key, 'Object key copied')}
-              title="Copy key"
+              onClick={() => copy(metadata.key, t('objects:details.keyCopied'))}
+              title={t('objects:details.copyKey')}
               className="group inline-flex max-w-full items-center gap-1.5 truncate font-mono text-[13px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             >
               <span className="truncate">{metadata.key}</span>
@@ -283,39 +286,39 @@ export function ObjectDetailsView() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {bucket?.publicUrl && (
-            <Button variant="secondary" onClick={() => copy(buildPublicObjectUrl(bucket.publicUrl!, metadata.key), 'Public URL copied')}>
-              <Copy className="h-4 w-4" /> Copy public URL
+            <Button variant="secondary" onClick={() => copy(buildPublicObjectUrl(bucket.publicUrl!, metadata.key), t('objects:publicUrlCopied'))}>
+              <Copy className="h-4 w-4" /> {t('objects:copyPublicUrl')}
             </Button>
           )}
           {canRead && (
             <Button variant="secondary" onClick={() => setShareOpen(true)}>
-              <Link2 className="h-4 w-4" /> Signed URL
+              <Link2 className="h-4 w-4" /> {t('objects:signedUrl')}
             </Button>
           )}
           <Button variant="secondary" onClick={handleDownload}>
-            <Download className="h-4 w-4" /> Download
+            <Download className="h-4 w-4" /> {t('objects:download')}
           </Button>
           {transferDestinationBuckets.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={buttonVariants({variant: 'secondary', size: 'icon'})}
-                aria-label="Object actions"
-                title="Object actions"
+                aria-label={t('objects:objectActions')}
+                title={t('objects:objectActions')}
               >
                 <MoreVertical />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {canRename && (
                   <DropdownMenuItem onClick={() => setTransferMode('rename')}>
-                    <Pencil className="h-4 w-4" /> Rename…
+                    <Pencil className="h-4 w-4" /> {t('objects:rename')}…
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => setTransferMode('copy')}>
-                  <Copy className="h-4 w-4" /> Copy…
+                  <Copy className="h-4 w-4" /> {t('objects:copy')}…
                 </DropdownMenuItem>
                 {canMove && (
                   <DropdownMenuItem onClick={() => setTransferMode('move')}>
-                    <MoveRight className="h-4 w-4" /> Move…
+                    <MoveRight className="h-4 w-4" /> {t('objects:move')}…
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -323,7 +326,7 @@ export function ObjectDetailsView() {
           )}
           {canDelete && (
             <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="h-4 w-4" /> Delete
+              <Trash2 className="h-4 w-4" /> {t('objects:delete')}
             </Button>
           )}
         </div>
@@ -333,15 +336,15 @@ export function ObjectDetailsView() {
       {previewFullscreen && previewHost ? createPortal(previewCard, previewHost) : previewCard}
 
       {/* Details */}
-      <CardSection title="Details">
+      <CardSection title={t('objects:details.details')}>
         <dl className="divide-y divide-[var(--border)]">
-          <DetailRow label="Size">{formatBytes(metadata.size)}</DetailRow>
-          <DetailRow label="Content type">{metadata.contentType || 'application/octet-stream'}</DetailRow>
-          <DetailRow label="Last modified"><ModifiedTimeDetails value={metadata.lastModified} /></DetailRow>
-          <DetailRow label="ETag">
+          <DetailRow label={t('objects:size')}>{formatBytes(metadata.size)}</DetailRow>
+          <DetailRow label={t('objects:details.contentType')}>{metadata.contentType || 'application/octet-stream'}</DetailRow>
+          <DetailRow label={t('objects:details.lastModified')}><ModifiedTimeDetails value={metadata.lastModified} /></DetailRow>
+          <DetailRow label={t('objects:details.etag')}>
             <button
               type="button"
-              onClick={() => copy(metadata.etag, 'ETag copied')}
+              onClick={() => copy(metadata.etag, t('objects:details.etagCopied'))}
               className="inline-flex max-w-full items-center gap-1.5 truncate rounded-md bg-[var(--surface-sunken)] px-2 py-0.5 font-mono text-[12.5px] hover:bg-[var(--accent)]"
             >
               <span className="truncate">{metadata.etag}</span>
@@ -349,7 +352,7 @@ export function ObjectDetailsView() {
             </button>
           </DetailRow>
           {metadata.versionId && (
-            <DetailRow label="Version ID">
+            <DetailRow label={t('objects:details.versionId')}>
               <span className="font-mono text-[12.5px]">{metadata.versionId}</span>
             </DetailRow>
           )}
@@ -358,7 +361,7 @@ export function ObjectDetailsView() {
 
       {/* Custom metadata */}
       {metadata.metadata && Object.keys(metadata.metadata).length > 0 && (
-        <CardSection title="Custom metadata">
+        <CardSection title={t('objects:details.customMetadata')}>
           <dl className="divide-y divide-[var(--border)]">
             {Object.entries(metadata.metadata).map(([key, value]) => (
               <DetailRow key={key} label={key}>
@@ -372,9 +375,9 @@ export function ObjectDetailsView() {
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title={`Delete "${fileName}"?`}
-        description="Applications referencing this object will no longer be able to read it."
-        confirmLabel="Delete object"
+        title={t('objects:deleteNamedTitle', { name: fileName })}
+        description={t('objects:deleteObjectDescription')}
+        confirmLabel={t('objects:deleteObject')}
         loading={deleting}
         onConfirm={handleDelete}
       />

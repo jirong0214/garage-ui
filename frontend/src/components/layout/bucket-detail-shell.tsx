@@ -8,19 +8,20 @@ import { useBuckets } from '@/hooks/useApi';
 import { useBucketCan } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTranslation } from 'react-i18next';
 
 interface TabSpec {
   to: string;
-  label: string;
+  labelKey: 'tabs.objects' | 'tabs.permissions' | 'tabs.website' | 'tabs.settings';
   end?: boolean;
   perms?: string[];
 }
 
 const tabs: TabSpec[] = [
-  { to: 'objects', label: 'Objects', perms: ['object.list'] },
-  { to: 'permissions', label: 'Permissions', perms: ['permission.allow_bucket_key', 'permission.deny_bucket_key'] },
-  { to: 'website', label: 'Website', perms: ['bucket.update'] },
-  { to: 'settings', label: 'Settings', perms: ['bucket.update'] },
+  { to: 'objects', labelKey: 'tabs.objects', perms: ['object.list'] },
+  { to: 'permissions', labelKey: 'tabs.permissions', perms: ['permission.allow_bucket_key', 'permission.deny_bucket_key'] },
+  { to: 'website', labelKey: 'tabs.website', perms: ['bucket.update'] },
+  { to: 'settings', labelKey: 'tabs.settings', perms: ['bucket.update'] },
 ];
 
 function formatBytes(n?: number) {
@@ -36,6 +37,7 @@ function formatBytes(n?: number) {
 }
 
 export function BucketDetailShell() {
+  const { t } = useTranslation(['buckets', 'common']);
   const { bucketName = '' } = useParams<{ bucketName: string }>();
   const { data: buckets = [] } = useBuckets();
   const bucket = buckets.find((b) => b.name === bucketName);
@@ -47,9 +49,9 @@ export function BucketDetailShell() {
   const copyUrl = async () => {
     try {
       await copyText(s3Url);
-      toast.success('URL copied');
+      toast.success(t('buckets:urlCopied'));
     } catch {
-      toast.error('Failed to copy');
+      toast.error(t('common:errors.copyFailed'));
     }
   };
 
@@ -71,18 +73,18 @@ export function BucketDetailShell() {
                         variant="ghost"
                         size="icon-sm"
                         onClick={copyUrl}
-                        aria-label="Copy bucket URL"
+                        aria-label={t('buckets:copyUrl')}
                       >
                         <Copy />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Copy bucket URL</TooltipContent>
+                    <TooltipContent>{t('buckets:copyUrl')}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                <Badge variant="success">Active</Badge>
-                {bucket?.objectCount != null && <Badge>{bucket.objectCount.toLocaleString()} objects</Badge>}
+                <Badge variant="success">{t('buckets:active')}</Badge>
+                {bucket?.objectCount != null && <Badge>{t('common:count.object', { count: bucket.objectCount })}</Badge>}
                 {bucket?.size != null && <Badge>{formatBytes(bucket.size)}</Badge>}
               </div>
             </div>
@@ -93,7 +95,7 @@ export function BucketDetailShell() {
               className="shrink-0"
               onClick={() => document.dispatchEvent(new CustomEvent('bucket:upload'))}
             >
-              <Upload /> Upload
+              <Upload /> {t('common:actions.upload')}
             </Button>
           )}
         </div>
@@ -101,11 +103,11 @@ export function BucketDetailShell() {
 
       {/* Tabs */}
       <nav className="flex h-12 items-center gap-0 border-b border-[var(--border)] px-7">
-        {visibleTabs.map((t) => (
+        {visibleTabs.map((tab) => (
           <NavLink
-            key={t.to}
-            to={t.to}
-            end={t.end}
+            key={tab.to}
+            to={tab.to}
+            end={tab.end}
             className={({ isActive }) =>
               cn(
                 'relative -mb-px inline-flex h-12 items-center px-3.5 text-[14px] font-medium transition-colors',
@@ -116,7 +118,7 @@ export function BucketDetailShell() {
               )
             }
           >
-            {t.label}
+            {t(`buckets:${tab.labelKey}`)}
           </NavLink>
         ))}
       </nav>

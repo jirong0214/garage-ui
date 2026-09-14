@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 export interface BreadcrumbItem {
   label: string;
@@ -13,9 +14,10 @@ interface BreadcrumbProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 export function Breadcrumb({ items, className, ...props }: BreadcrumbProps) {
+  const { t } = useTranslation('common');
   return (
     <nav
-      aria-label="Breadcrumb"
+      aria-label={t('nav.breadcrumb')}
       className={cn(
         'flex min-w-0 items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[13.5px] text-[var(--muted-foreground)]',
         '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',

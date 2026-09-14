@@ -18,6 +18,7 @@ import {
 import {IconTile} from '@/components/ui/icon-tile';
 import {Input} from '@/components/ui/input';
 import {Select, SelectOption} from '@/components/ui/select';
+import { useTranslation } from 'react-i18next';
 
 export type ObjectTransferMode = 'copy' | 'move' | 'rename';
 
@@ -32,9 +33,9 @@ interface ObjectTransferDialogProps {
 }
 
 const modeContent = {
-  copy: {title: 'Copy object', action: 'Copy', icon: Copy},
-  move: {title: 'Move object', action: 'Move', icon: MoveRight},
-  rename: {title: 'Rename object', action: 'Rename', icon: Pencil},
+  copy: {titleKey: 'transfer.copyObject', actionKey: 'copy', icon: Copy},
+  move: {titleKey: 'transfer.moveObject', actionKey: 'move', icon: MoveRight},
+  rename: {titleKey: 'transfer.renameObject', actionKey: 'rename', icon: Pencil},
 } as const;
 
 function splitObjectKey(key: string) {
@@ -54,6 +55,7 @@ function ObjectTransferDialogInstance({
   destinationBuckets,
   onCompleted,
 }: ObjectTransferDialogProps) {
+  const { t } = useTranslation(['objects', 'common']);
   const source = useMemo(() => splitObjectKey(sourceKey), [sourceKey]);
   const initialBucket = destinationBuckets.some((bucket) => bucket.name === sourceBucket)
     ? sourceBucket
@@ -100,11 +102,11 @@ function ObjectTransferDialogInstance({
         queryClient.invalidateQueries({queryKey: queryKeys.buckets.all}),
         queryClient.invalidateQueries({queryKey: queryKeys.dashboard.all}),
       ]);
-      toast.success(mode === 'copy' ? 'Object copied' : mode === 'rename' ? 'Object renamed' : 'Object moved');
+      toast.success(t(`objects:transfer.${mode === 'copy' ? 'copied' : mode === 'rename' ? 'renamed' : 'moved'}`));
       onCompleted?.(result);
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : `Failed to ${mode} object`);
+      toast.error(error instanceof Error ? error.message : t('objects:transfer.actionFailed', { operation: t(`objects:${mode}`) }));
     } finally {
       setSubmitting(false);
     }
@@ -116,14 +118,14 @@ function ObjectTransferDialogInstance({
         <DialogHeader>
           <IconTile icon={<Icon />} tone="primary" size="md" />
           <div className="min-w-0 flex-1">
-            <DialogTitle>{content.title}</DialogTitle>
+            <DialogTitle>{t(`objects:${content.titleKey}`)}</DialogTitle>
             <DialogDescription className="break-all">{sourceBucket}/{sourceKey}</DialogDescription>
           </div>
         </DialogHeader>
         <DialogBody className="space-y-4">
           {mode === 'rename' ? (
             <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="object-new-name">New name</label>
+              <label className="text-sm font-medium" htmlFor="object-new-name">{t('objects:transfer.newName')}</label>
               <Input
                 id="object-new-name"
                 autoFocus
@@ -135,7 +137,7 @@ function ObjectTransferDialogInstance({
           ) : (
             <>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Destination bucket</label>
+                <label className="text-sm font-medium">{t('objects:transfer.destinationBucket')}</label>
                 <Select value={destinationBucket} onChange={setDestinationBucket} disabled={submitting}>
                   {destinationBuckets.map((bucket) => (
                     <SelectOption key={bucket.name} value={bucket.name}>{bucket.name}</SelectOption>
@@ -143,7 +145,7 @@ function ObjectTransferDialogInstance({
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="object-destination-key">Destination path</label>
+                <label className="text-sm font-medium" htmlFor="object-destination-key">{t('objects:transfer.destinationPath')}</label>
                 <Input
                   id="object-destination-key"
                   autoFocus
@@ -161,14 +163,14 @@ function ObjectTransferDialogInstance({
               onCheckedChange={setOverwrite}
               disabled={submitting}
             />
-            Replace an existing destination object
+            {t('objects:transfer.overwrite')}
           </label>
         </DialogBody>
         <DialogFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
+          <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={submitting}>{t('common:actions.cancel')}</Button>
           <Button onClick={() => void submit()} disabled={invalid || submitting}>
             {submitting ? <Loader2 className="animate-spin" /> : <Icon />}
-            {content.action}
+            {t(`objects:${content.actionKey}`)}
           </Button>
         </DialogFooter>
       </DialogContent>

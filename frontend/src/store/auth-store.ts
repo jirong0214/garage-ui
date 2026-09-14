@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthConfig, AuthUser, AuthState } from '@/types/auth';
 import { authApi } from '@/lib/api';
+import i18n from '@/i18n';
 
 interface AuthStore extends AuthState {
   config: AuthConfig | null;
@@ -87,7 +88,7 @@ export const useAuthStore = create<AuthStore>()(
               isAuthenticated: true,
               isLoading: false
             });
-          } catch (error) {
+          } catch {
             // Not authenticated - this is okay
             set({
               user: null,
@@ -98,7 +99,7 @@ export const useAuthStore = create<AuthStore>()(
         } catch (error) {
           console.error('Failed to initialize auth:', error);
           set({
-            error: 'Failed to initialize authentication',
+            error: i18n.t('auth:login.failed'),
             isLoading: false,
             isAuthenticated: false
           });
@@ -126,7 +127,7 @@ export const useAuthStore = create<AuthStore>()(
           const errorMessage =
             (error as { response?: { data?: { error?: { message?: string } } } })
               .response?.data?.error?.message ||
-            (error instanceof Error ? error.message : 'Login failed');
+            (error instanceof Error ? error.message : i18n.t('auth:login.failed'));
           set({
             error: errorMessage,
             isLoading: false,
@@ -156,7 +157,7 @@ export const useAuthStore = create<AuthStore>()(
           const errorMessage =
             (error as { response?: { data?: { error?: { message?: string } } } })
               .response?.data?.error?.message ||
-            (error instanceof Error ? error.message : 'Login failed');
+            (error instanceof Error ? error.message : i18n.t('auth:login.failed'));
           set({
             error: errorMessage,
             isLoading: false,
