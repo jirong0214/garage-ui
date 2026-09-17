@@ -258,17 +258,6 @@ export function ObjectBrowserView({
     setSelectedFolderKeys((prev) => toggleInSet(prev, key));
   };
 
-  const handleReplaceSelection = (object: S3Object) => {
-    setSelectionMode(true);
-    if (object.isFolder) {
-      setSelectedFileKeys(new Set());
-      setSelectedFolderKeys(new Set([object.key]));
-    } else {
-      setSelectedFolderKeys(new Set());
-      setSelectedFileKeys(new Set([object.key]));
-    }
-  };
-
   // Open the confirmation dialog for the current multi-selection.
   const handleRequestBulkDelete = () => {
     if (selectedCount === 0) return;
@@ -702,7 +691,6 @@ export function ObjectBrowserView({
             onToggleFileSelection={handleToggleFileSelection}
             onToggleFolderSelection={handleToggleFolderSelection}
             onEnterSelectionMode={() => setSelectionMode(true)}
-            onReplaceSelection={handleReplaceSelection}
             onPageChange={onPageChange}
             onLoadMore={onLoadMore}
             onItemsPerPageChange={onItemsPerPageChange}

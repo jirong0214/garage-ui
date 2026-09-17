@@ -20,7 +20,6 @@ function props(overrides: Partial<ObjectsContentProps> = {}): ObjectsContentProp
     onToggleFileSelection: vi.fn(),
     onToggleFolderSelection: vi.fn(),
     onEnterSelectionMode: vi.fn(),
-    onReplaceSelection: vi.fn(),
     onSelectAll: vi.fn(),
     onPageChange: vi.fn(),
     onItemsPerPageChange: vi.fn(),

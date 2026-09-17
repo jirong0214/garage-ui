@@ -10,7 +10,6 @@ const baseProps = {
   selectedFileKeys: new Set<string>(),
   selectedFolderKeys: new Set<string>(),
   onActivate: vi.fn(),
-  onSelectForContextMenu: vi.fn(),
   renderContextMenu: () => null,
   sortColumn: 'name' as const,
   sortDirection: 'asc' as const,
@@ -59,38 +58,33 @@ describe('ObjectsGrid continuous loading', () => {
     expect(onLoadMore).toHaveBeenCalledTimes(1);
   });
 
-  it('opens actions on right click and selects an unselected object for context', () => {
-    const onSelectForContextMenu = vi.fn();
+  it('opens actions on right click without entering selection', () => {
     render(
       <ObjectsGrid
         {...baseProps}
         canSelect
-        onSelectForContextMenu={onSelectForContextMenu}
         renderContextMenu={() => <button type="button">Inspect</button>}
       />,
     );
 
     expect(screen.queryByRole('button', {name: /Actions for/})).not.toBeInTheDocument();
     fireEvent.contextMenu(screen.getByText('photo.jpg').closest('li')!);
-    expect(onSelectForContextMenu).toHaveBeenCalledWith(baseProps.pageObjects[0]);
     expect(screen.getByRole('menu', {name: 'Object actions'})).toBeInTheDocument();
     expect(screen.getByRole('button', {name: 'Inspect'})).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: /^photo.jpg/})).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('preserves an existing multi-selection when opening its context menu', () => {
-    const onSelectForContextMenu = vi.fn();
     render(
       <ObjectsGrid
         {...baseProps}
         canSelect
         selectedFileKeys={new Set(['photo.jpg', 'another.jpg'])}
-        onSelectForContextMenu={onSelectForContextMenu}
         renderContextMenu={() => null}
       />,
     );
 
     fireEvent.contextMenu(screen.getByText('photo.jpg').closest('li')!);
-    expect(onSelectForContextMenu).not.toHaveBeenCalled();
     expect(screen.getByRole('button', {name: /^photo.jpg/})).toHaveAttribute('aria-pressed', 'true');
   });
 });

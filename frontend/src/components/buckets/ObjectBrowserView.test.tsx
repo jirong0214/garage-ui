@@ -96,6 +96,17 @@ describe('ObjectBrowserView preferences', () => {
     expect(screen.getByText('notes.txt').closest('tr')).toHaveAttribute('aria-selected', 'false');
   });
 
+  it('opens the icon context menu without entering selection mode', () => {
+    render(browser());
+    fireEvent.click(screen.getByRole('button', {name: 'Icon view'}));
+
+    fireEvent.contextMenu(screen.getByText('notes.txt').closest('li')!);
+
+    expect(screen.getByRole('button', {name: 'Select'})).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('button', {name: 'Exit selection'})).not.toBeInTheDocument();
+    expect(screen.getByRole('menu', {name: 'Object actions'})).toBeInTheDocument();
+  });
+
   it('places the view switch beside refresh after the creation actions', () => {
     render(
       <MemoryRouter>

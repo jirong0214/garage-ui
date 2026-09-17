@@ -21,7 +21,6 @@ interface Props {
   searchQuery: string;
   isDragActive: boolean;
   onActivate?: (object: S3Object, event: MouseEvent<HTMLElement>) => void;
-  onSelectForContextMenu?: (object: S3Object) => void;
   renderContextMenu?: (object: S3Object, close: () => void) => ReactNode;
   hasMore: boolean;
   isLoadingMore: boolean;
@@ -46,7 +45,6 @@ export function ObjectsGrid({
   searchQuery,
   isDragActive,
   onActivate = () => undefined,
-  onSelectForContextMenu = () => undefined,
   renderContextMenu = () => null,
   hasMore,
   isLoadingMore,
@@ -86,7 +84,6 @@ export function ObjectsGrid({
   };
 
   const openContextMenu = (object: S3Object, x: number, y: number) => {
-    if (canSelect && !isSelected(object)) onSelectForContextMenu(object);
     setContextTarget({object, x, y});
   };
 

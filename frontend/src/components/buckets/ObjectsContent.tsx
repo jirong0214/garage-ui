@@ -49,7 +49,6 @@ export interface ObjectsContentProps {
   onToggleFileSelection: (key: string) => void;
   onToggleFolderSelection: (key: string) => void;
   onEnterSelectionMode?: () => void;
-  onReplaceSelection?: (object: S3Object) => void;
   onSelectAll?: (fileKeys: string[], folderKeys: string[]) => void;
   onPageChange: (token?: string) => void;
   onLoadMore?: () => Promise<void>;
@@ -129,7 +128,6 @@ export function ObjectsContent({
   onToggleFileSelection,
   onToggleFolderSelection,
   onEnterSelectionMode = () => undefined,
-  onReplaceSelection = () => undefined,
   onPageChange,
   onLoadMore,
   onItemsPerPageChange,
@@ -517,7 +515,6 @@ export function ObjectsContent({
           isCapped={clientPaginated && isTruncated}
           resetKey={JSON.stringify([currentPath, filterQuery, deepSearch, itemsPerPage])}
           onActivate={activateObject}
-          onSelectForContextMenu={onReplaceSelection}
           renderContextMenu={renderGridContextMenu}
         />
       ) : (
