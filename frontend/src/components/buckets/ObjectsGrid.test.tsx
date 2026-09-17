@@ -87,4 +87,36 @@ describe('ObjectsGrid continuous loading', () => {
     fireEvent.contextMenu(screen.getByText('photo.jpg').closest('li')!);
     expect(screen.getByRole('button', {name: /^photo.jpg/})).toHaveAttribute('aria-pressed', 'true');
   });
+
+  it('blurs a pointer-triggered object when its context menu closes', () => {
+    render(
+      <ObjectsGrid
+        {...baseProps}
+        renderContextMenu={() => <button type="button">Inspect</button>}
+      />,
+    );
+
+    const objectButton = screen.getByRole('button', {name: /^photo.jpg/});
+    objectButton.focus();
+    fireEvent.contextMenu(objectButton);
+    fireEvent.keyDown(document, {key: 'Escape'});
+
+    expect(document.activeElement).not.toBe(objectButton);
+  });
+
+  it('preserves keyboard focus when a keyboard context menu closes', () => {
+    render(
+      <ObjectsGrid
+        {...baseProps}
+        renderContextMenu={() => <button type="button">Inspect</button>}
+      />,
+    );
+
+    const objectButton = screen.getByRole('button', {name: /^photo.jpg/});
+    objectButton.focus();
+    fireEvent.keyDown(objectButton, {key: 'ContextMenu'});
+    fireEvent.keyDown(document, {key: 'Escape'});
+
+    expect(document.activeElement).toBe(objectButton);
+  });
 });

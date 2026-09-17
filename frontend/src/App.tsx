@@ -22,6 +22,7 @@ import {queryClient} from '@/lib/query-client';
 import {useAuthStore} from '@/store/auth-store';
 import {ProtectedRoute} from '@/components/auth/ProtectedRoute';
 import {LoadingSpinner} from '@/components/auth/LoadingSpinner';
+import {FocusOriginManager} from '@/components/ui/focus-origin-manager';
 
 function ThemedToaster() {
   const { theme } = useTheme();
@@ -55,6 +56,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <FocusOriginManager />
       <ThemeProvider defaultTheme="system" storageKey="Noooste/garage-ui-theme">
         <BrowserRouter>
           <Routes>

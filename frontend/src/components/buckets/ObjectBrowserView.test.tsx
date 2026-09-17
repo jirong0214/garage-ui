@@ -65,6 +65,12 @@ describe('ObjectBrowserView preferences', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
+  it('does not make the object dropzone a keyboard focus target', () => {
+    const {container} = render(browser());
+
+    expect(container.querySelector('[role="presentation"]')).toHaveAttribute('tabindex', '-1');
+  });
+
   it('supports touch-friendly selection mode and exits with Escape or the toolbar button', () => {
     render(browser());
 

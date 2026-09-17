@@ -604,7 +604,7 @@ export function ObjectBrowserView({
 
         {/* Objects Table with Drag & Drop */}
         <div
-          {...getRootProps()}
+          {...getRootProps({tabIndex: -1})}
           className={`relative border rounded-lg transition-all duration-200 overflow-visible ${
             isDragActive ? 'border-primary bg-primary/5 border-2 shadow-lg' : 'border-border'
           }`}

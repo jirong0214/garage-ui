@@ -31,6 +31,14 @@ interface Props {
   resetKey: string;
 }
 
+type ContextTarget = {
+  object: S3Object;
+  x: number;
+  y: number;
+  openedWith: 'pointer' | 'keyboard';
+  trigger: HTMLElement | null;
+};
+
 export function ObjectsGrid({
   bucketName,
   currentPath,
@@ -57,7 +65,7 @@ export function ObjectsGrid({
   const { t } = useTranslation(['objects', 'common']);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [automaticLoadState, setAutomaticLoadState] = useState({key: resetKey, count: 0});
-  const [contextTarget, setContextTarget] = useState<{object: S3Object; x: number; y: number} | null>(null);
+  const [contextTarget, setContextTarget] = useState<ContextTarget | null>(null);
   const automaticLoads = automaticLoadState.key === resetKey ? automaticLoadState.count : 0;
   const isSelected = (obj: S3Object) => (obj.isFolder ? selectedFolderKeys : selectedFileKeys).has(obj.key);
 
@@ -83,15 +91,33 @@ export function ObjectsGrid({
     void onLoadMore();
   };
 
-  const openContextMenu = (object: S3Object, x: number, y: number) => {
-    setContextTarget({object, x, y});
+  const openContextMenu = (
+    object: S3Object,
+    x: number,
+    y: number,
+    openedWith: ContextTarget['openedWith'],
+    trigger: HTMLElement | null,
+  ) => {
+    const target = {object, x, y, openedWith, trigger};
+    setContextTarget(target);
+  };
+
+  const closeContextMenu = () => {
+    if (
+      contextTarget?.openedWith === 'pointer' &&
+      contextTarget.trigger &&
+      document.activeElement === contextTarget.trigger
+    ) {
+      contextTarget.trigger.blur();
+    }
+    setContextTarget(null);
   };
 
   const handleContextKey = (event: KeyboardEvent<HTMLButtonElement>, object: S3Object) => {
     if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return;
     event.preventDefault();
     const bounds = event.currentTarget.getBoundingClientRect();
-    openContextMenu(object, bounds.left + bounds.width / 2, bounds.top + 32);
+    openContextMenu(object, bounds.left + bounds.width / 2, bounds.top + 32, 'keyboard', event.currentTarget);
   };
   return (
     <>
@@ -146,7 +172,10 @@ export function ObjectsGrid({
                 key={obj.key}
                 onContextMenu={(event) => {
                   event.preventDefault();
-                  openContextMenu(obj, event.clientX, event.clientY);
+                  const trigger = event.target instanceof Element
+                    ? event.target.closest<HTMLElement>('button')
+                    : null;
+                  openContextMenu(obj, event.clientX, event.clientY, 'pointer', trigger);
                 }}
                 className={`relative min-w-0 rounded-lg border p-2 transition-colors ${isSelected(obj) ? 'border-[var(--primary)] bg-[var(--accent-primary-soft)] ring-1 ring-[var(--primary)]' : 'border-transparent hover:bg-[var(--accent)]'}`}
               >
@@ -213,10 +242,10 @@ export function ObjectsGrid({
         x={contextTarget?.x ?? 0}
         y={contextTarget?.y ?? 0}
         onOpenChange={(open) => {
-          if (!open) setContextTarget(null);
+          if (!open) closeContextMenu();
         }}
       >
-        {contextTarget && renderContextMenu(contextTarget.object, () => setContextTarget(null))}
+        {contextTarget && renderContextMenu(contextTarget.object, closeContextMenu)}
       </ContextMenu>
     </>
   );
